@@ -1,0 +1,263 @@
+---
+/**
+ * Backend-free contact form. Works with Formspree or Web3Forms; no server needed.
+ *
+ * Configure with environment variables (Cloudflare Pages → Settings → Environment
+ * variables, or a local `.env` file). They are read in src/site.config.ts:
+ *
+ *   PUBLIC_FORM_ENDPOINT    Formspree: the form URL, e.g. https://formspree.io/f/abcdwxyz
+ *   PUBLIC_FORM_ACCESS_KEY  Web3Forms: the access key from web3forms.com. If this is set and
+ *                           PUBLIC_FORM_ENDPOINT is empty, the form posts to
+ *                           https://api.web3forms.com/submit automatically.
+ *
+ * With neither set, the form still renders but shows a note and an email link instead
+ * of posting. Without JavaScript the form does a normal POST to the provider.
+ */
+import { site } from '../site.config';
+
+interface Props {
+  id?: string;
+}
+const { id = 'contact-form' } = Astro.props;
+
+const WEB3FORMS_URL = 'https://api.web3forms.com/submit';
+const action = site.formEndpoint || (site.formAccessKey ? WEB3FORMS_URL : '');
+const configured = Boolean(action);
+const mailto = `mailto:${site.email}?subject=${encodeURIComponent('Hello from your portfolio')}`;
+---
+
+<form
+  class="contact"
+  id={id}
+  method="POST"
+  action={configured ? action : mailto}
+  data-contact-form
+  data-configured={configured ? 'true' : 'false'}
+  data-email={site.email}
+>
+  {site.formAccessKey && <input type="hidden" name="access_key" value={site.formAccessKey} />}
+  <input type="hidden" name="subject" value="New message from your portfolio site" />
+  <input type="hidden" name="_subject" value="New message from your portfolio site" />
+
+  <!-- Honeypots: humans never see these. "_gotcha" is Formspree's, "botcheck" is Web3Forms'. -->
+  <div class="hp" aria-hidden="true">
+    <label>Leave this empty <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" /></label>
+    <label>Do not check <input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off" /></label>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label for={`${id}-first`}>First name <span aria-hidden="true">*</span></label>
+      <input id={`${id}-first`} name="first_name" type="text" autocomplete="given-name" required />
+    </div>
+    <div class="field">
+      <label for={`${id}-last`}>Last name <span aria-hidden="true">*</span></label>
+      <input id={`${id}-last`} name="last_name" type="text" autocomplete="family-name" required />
+    </div>
+  </div>
+
+  <div class="field">
+    <label for={`${id}-email`}>Email <span aria-hidden="true">*</span></label>
+    <input id={`${id}-email`} name="email" type="email" autocomplete="email" inputmode="email" required />
+  </div>
+
+  <div class="field">
+    <label for={`${id}-message`}>Message</label>
+    <textarea id={`${id}-message`} name="message" rows="5"></textarea>
+  </div>
+
+  {
+    !configured && (
+      <p class="note">
+        The contact form isn’t connected yet. In the meantime, email me at{' '}
+        <a href={mailto}>{site.email}</a>.
+      </p>
+    )
+  }
+
+  <div class="actions">
+    <button type="submit" class="submit">Submit</button>
+    <p class="status" role="status" aria-live="polite" data-status></p>
+  </div>
+</form>
+
+<style>
+  .contact {
+    display: grid;
+    gap: clamp(20px, 3vw, 32px);
+    max-width: 820px;
+    margin-inline: auto;
+  }
+  .row {
+    display: grid;
+    gap: inherit;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 640px) {
+    .row {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  label {
+    font-size: 0.875rem;
+    color: var(--fg-muted);
+    letter-spacing: 0.02em;
+  }
+  label span {
+    color: var(--fg-faint);
+  }
+  input,
+  textarea {
+    width: 100%;
+    font: inherit;
+    font-size: 1rem;
+    color: var(--fg);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    padding: 10px 0;
+    transition:
+      border-color 0.25s var(--ease),
+      box-shadow 0.25s var(--ease);
+  }
+  textarea {
+    resize: vertical;
+    min-height: 8rem;
+  }
+  input:hover,
+  textarea:hover {
+    border-bottom-color: var(--fg-faint);
+  }
+  input:focus,
+  textarea:focus {
+    outline: none;
+  }
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+    border-bottom-color: var(--accent);
+    box-shadow: 0 1px 0 0 var(--accent);
+  }
+  .field:focus-within label {
+    color: var(--fg);
+  }
+  input:user-invalid,
+  textarea:user-invalid {
+    border-bottom-color: #e5676b;
+  }
+
+  .actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .submit {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    padding: 14px 44px 14px calc(44px + 0.3em);
+    background: transparent;
+    border: 1px solid var(--fg);
+    color: var(--fg);
+    cursor: pointer;
+    transition:
+      background-color 0.25s var(--ease),
+      color 0.25s var(--ease),
+      opacity 0.25s var(--ease);
+  }
+  .submit:hover {
+    background: var(--fg);
+    color: var(--bg);
+  }
+  .submit:disabled {
+    opacity: 0.5;
+    cursor: progress;
+  }
+  .status {
+    min-height: 1.6em;
+    margin: 0;
+    font-size: 0.9375rem;
+    color: var(--fg-muted);
+    text-align: center;
+  }
+  .status[data-state='success'] {
+    color: var(--fg);
+  }
+  .status[data-state='error'] {
+    color: #e5676b;
+  }
+  .note {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--fg-muted);
+  }
+  .note a,
+  .status :global(a) {
+    color: var(--fg);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+</style>
+
+<script>
+  function setStatus(el: HTMLElement, state: 'sending' | 'success' | 'error' | '', html: string) {
+    el.dataset.state = state;
+    el.innerHTML = html;
+  }
+
+  document.querySelectorAll<HTMLFormElement>('form[data-contact-form]').forEach((form) => {
+    const status = form.querySelector<HTMLElement>('[data-status]')!;
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    const email = form.dataset.email ?? '';
+    const mailLink = `<a href="mailto:${email}">${email}</a>`;
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+
+      if (form.dataset.configured !== 'true') {
+        setStatus(status, 'error', `The form isn’t connected yet — please email me at ${mailLink}.`);
+        return;
+      }
+
+      button.disabled = true;
+      button.setAttribute('aria-busy', 'true');
+      setStatus(status, 'sending', 'Sending…');
+
+      try {
+        const res = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' },
+        });
+        const data = await res.json().catch(() => ({}));
+        // Formspree answers {ok: true}; Web3Forms answers {success: true}.
+        if (!res.ok || data.success === false) throw new Error(data.message || `HTTP ${res.status}`);
+        form.reset();
+        setStatus(status, 'success', 'Thanks — your message is on its way. I’ll get back to you soon.');
+      } catch {
+        setStatus(status, 'error', `Something went wrong sending your message. Please try again or email ${mailLink}.`);
+      } finally {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+      }
+    });
+  });
+</script>

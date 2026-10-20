@@ -1,0 +1,50 @@
+---
+// Old Wix URLs are handled by redirects configured elsewhere in the build, so this page is
+// only reached for genuinely unknown paths.
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Page not found" description="The page you were looking for doesn’t exist.">
+  <section class="nf container">
+    <p class="eyebrow">Error 404</p>
+    <h1>Page not found</h1>
+    <p class="lede">This frame didn’t make the final edit. The page may have moved or never existed.</p>
+    <a class="back" href="/#work">View the work <span aria-hidden="true">→</span></a>
+  </section>
+</BaseLayout>
+
+<style>
+  .nf {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding-block: clamp(64px, 12vw, 160px);
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    margin: 16px 0 20px;
+  }
+  .lede {
+    color: var(--fg-muted);
+    max-width: 44ch;
+    margin-bottom: 36px;
+  }
+  .back {
+    font-family: var(--font-display);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--fg-faint);
+    transition: border-color 0.25s var(--ease);
+  }
+  .back:hover {
+    border-bottom-color: var(--fg);
+  }
+</style>

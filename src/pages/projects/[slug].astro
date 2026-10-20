@@ -1,0 +1,192 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Gallery from '../../components/Gallery.astro';
+import ProjectNav from '../../components/ProjectNav.astro';
+import { getProjects, projectCover, projectGallery, type Project } from '../../lib/photos';
+
+export async function getStaticPaths() {
+  const projects = await getProjects();
+  const n = projects.length;
+  return projects.map((project, i) => ({
+    params: { slug: project.id },
+    props: {
+      project,
+      prev: projects[(i - 1 + n) % n],
+      next: projects[(i + 1) % n],
+    },
+  }));
+}
+
+interface Props {
+  project: Project;
+  prev: Project;
+  next: Project;
+}
+
+const { project, prev, next } = Astro.props;
+const { title, type, date, year, location } = project.data;
+
+// Markdown body → plain text (for the meta description and to detect an empty/TODO body).
+const plain = (project.body ?? '')
+  .replace(/<!--[\s\S]*?-->/g, ' ')
+  .replace(/<[^>]+>/g, ' ')
+  .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+  .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+  .replace(/^#{1,6}\s+/gm, '')
+  .replace(/[*_`>~]/g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
+const hasBody = plain.length > 0;
+
+function truncate(text: string, max = 155) {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  return `${cut.slice(0, cut.lastIndexOf(' ') > 80 ? cut.lastIndexOf(' ') : cut.length).replace(/[\s,.;:—-]+$/, '')}…`;
+}
+const description = hasBody ? truncate(plain) : `${title} — photography by Michael Wang`;
+
+const { Content } = await render(project);
+
+const meta = [
+  { term: 'Project Type', value: type },
+  { term: 'Date', value: date || (year ? String(year) : '') },
+  { term: 'Location', value: location },
+].filter((m) => m.value && String(m.value).trim());
+
+const cover = projectCover(project);
+const photos = projectGallery(project);
+---
+
+<BaseLayout title={title} description={description} ogImage={cover.src} ogType="article">
+  <article class="project">
+    <header class="container intro">
+      <div class="lead">
+        <a class="back eyebrow" href="/#work"><span aria-hidden="true">←</span> All work</a>
+        <h1 class="title">{title}</h1>
+        {
+          meta.length > 0 && (
+            <dl class="meta">
+              {meta.map((m) => (
+                <div class="row">
+                  <dt>{m.term}</dt>
+                  <dd>{m.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )
+        }
+      </div>
+      {
+        hasBody && (
+          <div class="description">
+            <Content />
+          </div>
+        )
+      }
+    </header>
+
+    <div class="container">
+      <Gallery photos={photos} title={title} />
+    </div>
+  </article>
+
+  <ProjectNav prev={prev} next={next} />
+</BaseLayout>
+
+<style>
+  .intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(32px, 6vw, 120px);
+    align-items: start;
+    padding-top: clamp(40px, 8vw, 120px);
+    padding-bottom: clamp(48px, 7vw, 112px);
+  }
+  .back {
+    display: inline-flex;
+    gap: 0.6em;
+    margin-bottom: clamp(24px, 3vw, 40px);
+    font-size: 0.6875rem;
+    transition: color 0.3s var(--ease);
+  }
+  .back:hover {
+    color: var(--fg);
+  }
+  .back span {
+    letter-spacing: 0;
+    transition: transform 0.3s var(--ease);
+  }
+  .back:hover span {
+    transform: translateX(-4px);
+  }
+  .title {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-size: clamp(2.5rem, 6.4vw, 6rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px clamp(32px, 4vw, 64px);
+    margin: clamp(28px, 3.5vw, 48px) 0 0;
+    padding-top: clamp(20px, 2vw, 28px);
+    border-top: 1px solid var(--line);
+  }
+  .row {
+    min-width: 0;
+  }
+  dt {
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--fg-faint);
+    margin-bottom: 6px;
+  }
+  dd {
+    margin: 0;
+    font-size: 0.975rem;
+    color: var(--fg);
+  }
+  .description {
+    max-width: 52ch;
+    padding-top: clamp(0px, 4.2vw, 64px);
+    font-size: clamp(1rem, 1.25vw, 1.175rem);
+    line-height: 1.75;
+    color: var(--fg-muted);
+  }
+  .description :global(p:last-child) {
+    margin-bottom: 0;
+  }
+  .description :global(a) {
+    color: var(--fg);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--fg-faint);
+  }
+
+  @media (max-width: 860px) {
+    .intro {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 28px;
+    }
+    .description {
+      padding-top: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .back span {
+      transition: none;
+    }
+    .back:hover span {
+      transform: none;
+    }
+  }
+</style>

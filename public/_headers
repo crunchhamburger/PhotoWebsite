@@ -1,0 +1,19 @@
+# Cloudflare Pages headers — https://developers.cloudflare.com/pages/configuration/headers/
+
+# Basic security headers for every page.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Strict-Transport-Security: max-age=31536000
+
+# Astro's build output: file names contain a content hash, so they can be cached forever.
+# (Optimised images also land here.)
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Optional: once the custom domain is live, stop search engines indexing the *.pages.dev copy.
+# Replace <project> with your Pages project name and uncomment.
+# https://<project>.pages.dev/*
+#   X-Robots-Tag: noindex

@@ -1,0 +1,173 @@
+---
+import { Picture } from 'astro:assets';
+import { projectCover, type Project } from '../lib/photos';
+
+interface Props {
+  prev: Project;
+  next: Project;
+}
+
+const { prev, next } = Astro.props;
+
+const links = [
+  { rel: 'prev', label: 'Previous project', project: prev, cover: projectCover(prev) },
+  { rel: 'next', label: 'Next project', project: next, cover: projectCover(next) },
+] as const;
+---
+
+<nav class="project-nav" aria-label="More projects">
+  <div class="container inner">
+    {
+      links.map(({ rel, label, project, cover }) => (
+        <a class:list={['link', rel]} href={`/projects/${project.id}`} rel={rel}>
+          <span class="thumb">
+            <Picture
+              src={cover.src}
+              alt=""
+              formats={['avif', 'webp']}
+              widths={[...new Set([Math.min(400, cover.src.width), Math.min(800, cover.src.width)])]}
+              sizes="(max-width: 640px) 40vw, 220px"
+              width={cover.src.width}
+              height={cover.src.height}
+              loading="lazy"
+              decoding="async"
+            />
+          </span>
+          <span class="text">
+            <span class="eyebrow">{rel === 'prev' ? `← ${label}` : `${label} →`}</span>
+            <span class="title">{project.data.title}</span>
+          </span>
+        </a>
+      ))
+    }
+    <a class="all" href="/#work">
+      <span class="eyebrow">All work</span>
+    </a>
+  </div>
+</nav>
+
+<style>
+  .project-nav {
+    border-top: 1px solid var(--line);
+    padding-block: clamp(40px, 6vw, 88px);
+  }
+  .inner {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas: 'prev all next';
+    align-items: center;
+    gap: clamp(16px, 3vw, 48px);
+  }
+  .link {
+    display: flex;
+    align-items: center;
+    gap: clamp(14px, 2vw, 28px);
+    min-width: 0;
+  }
+  .prev {
+    grid-area: prev;
+  }
+  .next {
+    grid-area: next;
+    flex-direction: row-reverse;
+    text-align: right;
+  }
+  .all {
+    grid-area: all;
+    padding: 12px 18px;
+    border: 1px solid var(--line);
+    transition:
+      border-color 0.3s var(--ease),
+      color 0.3s var(--ease);
+  }
+  .all .eyebrow {
+    transition: color 0.3s var(--ease);
+  }
+  .all:hover {
+    border-color: var(--fg-muted);
+  }
+  .all:hover .eyebrow {
+    color: var(--fg);
+  }
+
+  .thumb {
+    flex: none;
+    width: clamp(88px, 14vw, 200px);
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: var(--bg-elev);
+  }
+  .thumb :global(picture),
+  .thumb :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .thumb :global(img) {
+    object-fit: cover;
+    filter: saturate(0.85) brightness(0.85);
+    transition:
+      transform 1s var(--ease),
+      filter 0.6s var(--ease);
+  }
+  .text {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+  .text .eyebrow {
+    font-size: 0.6875rem;
+    white-space: nowrap;
+  }
+  .title {
+    font-family: var(--font-display);
+    font-size: clamp(1.05rem, 1.8vw, 1.6rem);
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--fg);
+    overflow-wrap: anywhere;
+  }
+  @media (hover: hover) {
+    .link:hover .thumb :global(img) {
+      transform: scale(1.04);
+      filter: none;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .inner {
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas:
+        'prev next'
+        'all all';
+      row-gap: 36px;
+      align-items: start;
+    }
+    .link,
+    .next {
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+    }
+    .next {
+      align-items: flex-end;
+      text-align: right;
+    }
+    .thumb {
+      width: 100%;
+    }
+    .all {
+      justify-self: center;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .thumb :global(img) {
+      transition: none;
+    }
+    .link:hover .thumb :global(img) {
+      transform: none;
+    }
+  }
+</style>

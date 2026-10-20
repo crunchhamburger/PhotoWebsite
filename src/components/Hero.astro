@@ -1,0 +1,339 @@
+---
+// Cinematic crossfading hero slideshow. Works without JS (shows the first slide);
+// the script adds autoplay (skipped for prefers-reduced-motion), dots, prev/next and pause.
+import { Picture } from 'astro:assets';
+import type { Photo } from '../lib/photos';
+
+interface Props {
+  images: Photo[];
+  label?: string;
+}
+
+const { images, label = 'Featured photographs' } = Astro.props;
+const widths = [640, 960, 1280, 1920, 2400];
+const multi = images.length > 1;
+---
+
+<section class="hero" aria-roledescription="carousel" aria-label={label} data-hero>
+  <div class="hero__viewport" aria-live="off" data-viewport>
+    {
+      images.map((img, i) => (
+        <div
+          class:list={['hero__slide', { 'is-active': i === 0 }]}
+          role="group"
+          aria-roledescription="slide"
+          aria-label={`${i + 1} of ${images.length}`}
+          aria-hidden={i === 0 ? undefined : 'true'}
+          data-slide
+        >
+          <Picture
+            src={img.src}
+            alt={img.alt}
+            formats={['avif', 'webp']}
+            widths={widths}
+            sizes="100vw"
+            loading={i === 0 ? 'eager' : 'lazy'}
+            fetchpriority={i === 0 ? 'high' : 'auto'}
+            decoding={i === 0 ? 'sync' : 'async'}
+          />
+        </div>
+      ))
+    }
+  </div>
+
+  {
+    multi && (
+      <div class="hero__controls" data-controls hidden>
+        <button type="button" class="hero__btn hero__arrow" data-prev aria-label="Previous slide">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.5" />
+          </svg>
+        </button>
+        <div class="hero__dots" role="group" aria-label="Choose slide">
+          {images.map((_, i) => (
+            <button
+              type="button"
+              class="hero__dot"
+              data-dot={i}
+              aria-label={`Show slide ${i + 1}`}
+              aria-current={i === 0 ? 'true' : undefined}
+            />
+          ))}
+        </div>
+        <button type="button" class="hero__btn hero__arrow" data-next aria-label="Next slide">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.5" />
+          </svg>
+        </button>
+        <button type="button" class="hero__btn hero__toggle" data-toggle aria-label="Pause slideshow" hidden>
+          <svg class="icon-pause" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="1.75" />
+          </svg>
+          <svg class="icon-play" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="M7 5l12 7-12 7z" fill="currentColor" />
+          </svg>
+        </button>
+      </div>
+    )
+  }
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    width: 100%;
+    background: var(--bg-elev);
+    overflow: hidden;
+  }
+  .hero__viewport {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: calc(100svh - var(--header-h, 88px));
+    min-height: 420px;
+  }
+  @media (max-width: 760px) {
+    .hero__viewport {
+      aspect-ratio: 4 / 5;
+      min-height: 0;
+      max-height: none;
+    }
+  }
+  .hero__slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 1.4s var(--ease),
+      visibility 0s linear 1.4s;
+  }
+  .hero__slide.is-active {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 1.4s var(--ease),
+      visibility 0s;
+    z-index: 1;
+  }
+  .hero__slide :global(picture) {
+    display: contents;
+  }
+  .hero__slide :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+  /* Soft vignette at the bottom so the controls stay legible over bright frames. */
+  .hero__viewport::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 28%;
+    z-index: 2;
+    pointer-events: none;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.45), transparent);
+  }
+
+  .hero__controls {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: clamp(14px, 3vw, 32px);
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    color: #fff;
+  }
+  .hero__controls[hidden] {
+    display: none;
+  }
+  .hero__btn {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 0.35);
+    border-radius: 50%;
+    background: rgb(0 0 0 / 0.25);
+    color: #fff;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition:
+      background-color 0.25s var(--ease),
+      border-color 0.25s var(--ease);
+  }
+  .hero__btn:hover {
+    background: rgb(0 0 0 / 0.5);
+    border-color: rgb(255 255 255 / 0.8);
+  }
+  .hero__btn[hidden] {
+    display: none;
+  }
+  .hero__toggle {
+    position: absolute;
+    right: var(--gutter);
+    width: 34px;
+    height: 34px;
+  }
+  .hero__toggle .icon-play,
+  .hero__toggle[data-paused] .icon-pause {
+    display: none;
+  }
+  .hero__toggle[data-paused] .icon-play {
+    display: block;
+  }
+  .hero__dots {
+    display: flex;
+    gap: 4px;
+  }
+  .hero__dot {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+  .hero__dot::before {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.5);
+    transform: translate(-50%, -50%);
+    transition:
+      background-color 0.3s var(--ease),
+      width 0.3s var(--ease),
+      height 0.3s var(--ease);
+  }
+  .hero__dot:hover::before {
+    background: rgb(255 255 255 / 0.85);
+  }
+  .hero__dot[aria-current='true']::before {
+    width: 10px;
+    height: 10px;
+    background: transparent;
+    border: 1.5px solid #fff;
+  }
+  @media (max-width: 560px) {
+    .hero__arrow {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  const INTERVAL = 6000;
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-hero]')) {
+    const slides = [...root.querySelectorAll<HTMLElement>('[data-slide]')];
+    const controls = root.querySelector<HTMLElement>('[data-controls]');
+    if (slides.length < 2 || !controls) continue;
+
+    const dots = [...root.querySelectorAll<HTMLButtonElement>('[data-dot]')];
+    const toggle = root.querySelector<HTMLButtonElement>('[data-toggle]')!;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    let index = 0;
+    let timer: number | undefined;
+    let userPaused = reduceMotion.matches; // never autoplay for reduced-motion users
+    let hovering = false;
+    let focusWithin = false;
+
+    controls.hidden = false;
+    toggle.hidden = false;
+
+    const show = (next: number) => {
+      index = (next + slides.length) % slides.length;
+      slides.forEach((s, i) => {
+        const active = i === index;
+        s.classList.toggle('is-active', active);
+        if (active) {
+          s.removeAttribute('aria-hidden');
+          s.removeAttribute('inert');
+        } else {
+          s.setAttribute('aria-hidden', 'true');
+          s.setAttribute('inert', '');
+        }
+      });
+      dots.forEach((d, i) => {
+        if (i === index) d.setAttribute('aria-current', 'true');
+        else d.removeAttribute('aria-current');
+      });
+    };
+
+    const stop = () => {
+      window.clearInterval(timer);
+      timer = undefined;
+    };
+    const sync = () => {
+      const running = !userPaused && !hovering && !focusWithin && !document.hidden;
+      stop();
+      if (running) timer = window.setInterval(() => show(index + 1), INTERVAL);
+      // While playing, announcements would be noisy; when stopped, announce changes politely.
+      root.querySelector('[data-viewport]')!.setAttribute('aria-live', running ? 'off' : 'polite');
+      toggle.toggleAttribute('data-paused', userPaused);
+      toggle.setAttribute('aria-label', userPaused ? 'Play slideshow' : 'Pause slideshow');
+    };
+
+    const go = (n: number) => {
+      show(n);
+      sync(); // restart the interval so a manual change gets a full 6s
+    };
+
+    root.querySelector('[data-prev]')!.addEventListener('click', () => go(index - 1));
+    root.querySelector('[data-next]')!.addEventListener('click', () => go(index + 1));
+    dots.forEach((d, i) => d.addEventListener('click', () => go(i)));
+    toggle.addEventListener('click', () => {
+      userPaused = !userPaused;
+      sync();
+    });
+
+    root.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        go(index - 1);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        go(index + 1);
+      }
+    });
+
+    root.addEventListener('pointerenter', (e) => {
+      if (e.pointerType === 'mouse') {
+        hovering = true;
+        sync();
+      }
+    });
+    root.addEventListener('pointerleave', () => {
+      hovering = false;
+      sync();
+    });
+    root.addEventListener('focusin', () => {
+      focusWithin = true;
+      sync();
+    });
+    root.addEventListener('focusout', (e) => {
+      if (!root.contains(e.relatedTarget as Node | null)) {
+        focusWithin = false;
+        sync();
+      }
+    });
+    document.addEventListener('visibilitychange', sync);
+    reduceMotion.addEventListener('change', () => {
+      if (reduceMotion.matches) userPaused = true;
+      sync();
+    });
+
+    show(0);
+    sync();
+  }
+</script>

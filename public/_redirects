@@ -1,0 +1,49 @@
+# Cloudflare Pages redirects — https://developers.cloudflare.com/pages/configuration/redirects/
+# Format: <from> <to> <status>. The FIRST matching rule wins, so specific rules go above catch-alls.
+#
+# Purpose: keep old Wix links (Google results, Instagram bio, shared links) working.
+# Wix's Portfolio app served projects at /portfolio-collections/my-portfolio/<old-slug>.
+# Some Wix templates used /project-page/<old-slug> instead; those variants are included
+# just in case (unverified — harmless if never hit). Check the old URLs in Google Search
+# Console → Pages, or by searching `site:yourdomain.com` before cancelling Wix.
+
+# --- Old Wix pages ---
+/portfolio      /#work   301
+/portfolio/     /#work   301
+/portfolio-1    /#work   301
+/about-me       /about   301
+/about-me/      /about   301
+
+# --- Old Wix project URLs → new /projects/<slug> ---
+/portfolio-collections/my-portfolio/court-dreams                    /projects/court-dreams                    301
+/portfolio-collections/my-portfolio/pop-up-pulse                    /projects/pop-up-pulse                    301
+/portfolio-collections/my-portfolio/fading-neon                     /projects/fading-neon                     301
+/portfolio-collections/my-portfolio/the-nourishing-table            /projects/the-nourishing-table            301
+/portfolio-collections/my-portfolio/harlem                          /projects/wandering-harlem                301
+/portfolio-collections/my-portfolio/columbia-lunar-new-year-event   /projects/columbia-lunar-new-year-event   301
+
+/project-page/court-dreams                    /projects/court-dreams                    301
+/project-page/pop-up-pulse                    /projects/pop-up-pulse                    301
+/project-page/fading-neon                     /projects/fading-neon                     301
+/project-page/the-nourishing-table            /projects/the-nourishing-table            301
+/project-page/harlem                          /projects/wandering-harlem                301
+/project-page/columbia-lunar-new-year-event   /projects/columbia-lunar-new-year-event   301
+
+# TODO (Michael): these old slugs don't say which project they were. Open each old Wix URL
+# (while Wix is still live) and uncomment the line with the right target. Remaining projects:
+#   cultural-china, cyberpunk-city, echoes-in-the-sky, not-just-an-observer,
+#   scholastic-awards, witness-weight-of-justice, yakuza-style-portraits
+# Note: no comments at the end of a rule line — Cloudflare only allows whole-line comments.
+# 7-nightlapse sounds like a night series: probably cyberpunk-city or echoes-in-the-sky (check).
+# /portfolio-collections/my-portfolio/7-nightlapse      /projects/TODO   301
+# /portfolio-collections/my-portfolio/project-title-1   /projects/TODO   301
+# /portfolio-collections/my-portfolio/project-title-2   /projects/TODO   301
+# /portfolio-collections/my-portfolio/project-title-3   /projects/TODO   301
+# /portfolio-collections/my-portfolio/project-title-4   /projects/TODO   301
+# /portfolio-collections/my-portfolio/project-title-5   /projects/TODO   301
+# /portfolio-collections/my-portfolio/project-title-6   /projects/TODO   301
+# (add matching /project-page/<old-slug> lines too if you uncomment any of the above)
+
+# --- Catch-alls (must stay LAST) ---
+/portfolio-collections/*   /#work   301
+/project-page/*            /#work   301

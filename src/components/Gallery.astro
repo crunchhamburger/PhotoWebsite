@@ -1,0 +1,138 @@
+---
+/**
+ * Two-column masonry gallery. Each tile is a plain link to a large optimised
+ * WebP (so it works without JavaScript); Lightbox.astro progressively enhances
+ * the links into a full-screen viewer using the data-* attributes below.
+ */
+import { Picture, getImage } from 'astro:assets';
+import type { Photo } from '../lib/photos';
+import Lightbox from './Lightbox.astro';
+
+interface Props {
+  photos: Photo[];
+  title: string; // project title, used for the gallery's accessible label
+}
+
+const { photos, title } = Astro.props;
+
+const FULL_WIDTHS = [800, 1200, 1600, 2400];
+
+const items = await Promise.all(
+  photos.map(async (photo) => {
+    const w = photo.src.width;
+    const maxW = Math.min(2400, w);
+    const widths = [...new Set([...FULL_WIDTHS.filter((x) => x < maxW), maxW])];
+    const full = await getImage({ src: photo.src, width: maxW, widths, format: 'webp' });
+    return { photo, full };
+  }),
+);
+---
+
+<section class="gallery" aria-label={`${title} — photographs`} data-gallery>
+  <ul class="grid" role="list">
+    {
+      items.map(({ photo, full }, i) => (
+        <li class="item">
+          <a
+            class="tile"
+            href={full.src}
+            data-lightbox-item
+            data-index={i}
+            data-full={full.src}
+            data-srcset={full.srcSet.attribute}
+            data-width={photo.src.width}
+            data-height={photo.src.height}
+            data-alt={photo.alt}
+            style={`aspect-ratio: ${photo.src.width} / ${photo.src.height}`}
+          >
+            <Picture
+              src={photo.src}
+              alt={photo.alt}
+              formats={['avif', 'webp']}
+              widths={[...new Set([...[480, 800, 1200].filter((x) => x < photo.src.width), Math.min(1600, photo.src.width)])]}
+              sizes="(max-width: 640px) 100vw, 50vw"
+              width={photo.src.width}
+              height={photo.src.height}
+              loading="lazy"
+              decoding="async"
+            />
+            <span class="visually-hidden">Open photograph {i + 1} of {items.length} in viewer</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<Lightbox />
+
+<style>
+  .gallery {
+    padding-block: clamp(8px, 2vw, 24px) clamp(64px, 10vw, 140px);
+  }
+  .grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    columns: 2;
+    column-gap: clamp(12px, 2.4vw, 40px);
+  }
+  .item {
+    break-inside: avoid;
+    margin-bottom: clamp(12px, 2.4vw, 40px);
+  }
+  .tile {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    background: var(--bg-elev);
+    cursor: zoom-in;
+  }
+  .tile :global(picture),
+  .tile :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .tile :global(img) {
+    object-fit: cover;
+    transition:
+      transform 1.2s var(--ease),
+      opacity 0.6s var(--ease);
+  }
+  .tile::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 0);
+    transition: background-color 0.6s var(--ease);
+    pointer-events: none;
+  }
+  @media (hover: hover) {
+    .tile:hover :global(img) {
+      transform: scale(1.02);
+    }
+    .tile:hover::after {
+      background: rgb(0 0 0 / 0.12);
+    }
+  }
+  .tile:focus-visible {
+    outline-offset: 4px;
+  }
+
+  @media (max-width: 640px) {
+    .grid {
+      columns: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tile :global(img),
+    .tile::after {
+      transition: none;
+    }
+    .tile:hover :global(img) {
+      transform: none;
+    }
+  }
+</style>

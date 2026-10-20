@@ -1,6 +1,67 @@
 ---
+import { getImage } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getProjects, projectCover } from '../lib/photos';
+import Hero from '../components/Hero.astro';
+import ProjectGrid from '../components/ProjectGrid.astro';
+import { getProjects, projectCover, heroImages } from '../lib/photos';
+import { site } from '../site.config';
+
 const projects = await getProjects();
+const slides = heroImages();
+
+// Preload the first hero slide (LCP). Must mirror the AVIF <source> that <Picture> emits in Hero.
+const first = slides[0];
+const preload = first
+  ? await getImage({ src: first.src, format: 'avif', widths: [640, 960, 1280, 1920, 2400] })
+  : undefined;
+const preloadImage = preload
+  ? { href: preload.src, srcset: preload.srcSet.attribute, sizes: '100vw', type: 'image/avif' }
+  : undefined;
+
+const ogImage = projects[0] ? projectCover(projects[0]).src : first?.src;
 ---
-<BaseLayout><ul>{projects.map((p) => <li>{p.id} {projectCover(p).file}</li>)}</ul></BaseLayout>
+
+<BaseLayout description={site.description} ogImage={ogImage} preloadImage={preloadImage}>
+  <h1 class="visually-hidden">{site.name} — Photography portfolio</h1>
+
+  <div class="container intro">
+    <p class="eyebrow">Portfolio</p>
+  </div>
+
+  {slides.length > 0 && <Hero images={slides} />}
+
+  <section id="work" class="work container" aria-labelledby="work-heading">
+    <header class="work__head">
+      <p class="eyebrow">Selected projects</p>
+      <h2 id="work-heading" class="work__title">Work</h2>
+    </header>
+    <ProjectGrid projects={projects} />
+  </section>
+</BaseLayout>
+
+<style>
+  .intro {
+    padding-block: clamp(4px, 1vw, 12px) clamp(20px, 3vw, 36px);
+  }
+  .intro .eyebrow {
+    margin: 0;
+  }
+  .work {
+    padding-block: clamp(72px, 10vw, 160px) clamp(80px, 10vw, 160px);
+    scroll-margin-top: var(--header-h, 88px);
+  }
+  .work__head {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: clamp(28px, 4vw, 48px);
+  }
+  .work__head .eyebrow {
+    margin: 0;
+  }
+  .work__title {
+    font-size: clamp(2rem, 4.5vw, 3.5rem);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+</style>
