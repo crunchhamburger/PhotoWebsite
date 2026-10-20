@@ -16,7 +16,7 @@ Do the steps **in this order**. Wix stays live until the very last step, so the 
 
 ## 3. Deploy and test
 
-- [ ] Push to GitHub and import the repo into Vercel (README → Deploying to Vercel).
+- [x] Push to GitHub and import the repo into Vercel (README → Deploying to Vercel).
 - [ ] Set up the contact form (README → Contact form) and redeploy.
 - [ ] Test on the Vercel preview URL (`https://<project>.vercel.app`):
   - [ ] Home: the hero slideshow plays, and the grid and category filters work
@@ -31,14 +31,14 @@ Do the steps **in this order**. Wix stays live until the very last step, so the 
 
 ## 4. Point the domain at the new site
 
-- [ ] Vercel project → **Settings → Domains**: `haozhewang.com` and `www.haozhewang.com`, with `www` redirecting to the apex (README → Custom domain).
+- [x] Vercel project → **Settings → Domains**: `www.haozhewang.com` is primary; `haozhewang.com` redirects to it.
 - [ ] If the domain is currently pointed at Wix, remove the Wix DNS records and use the records (or nameservers) Vercel shows.
-- [ ] Verify: `https://haozhewang.com` loads with a valid padlock, `http://` and `www.` redirect to it, and `https://haozhewang.com/portfolio-collections/my-portfolio/court-dreams` redirects to `/projects/court-dreams`.
+- [x] Verify: `https://www.haozhewang.com` loads with a valid padlock, `http://` and the bare domain redirect to it, and old Wix project URLs redirect to their new pages.
 
 ## 5. Tell Google
 
 - [ ] In [Google Search Console](https://search.google.com/search-console), add a **Domain** property for `haozhewang.com` and verify it with a DNS TXT record (add it under Vercel → Domains → DNS records if Vercel hosts the DNS).
-- [ ] Go to **Sitemaps** and submit `https://haozhewang.com/sitemap-index.xml`.
+- [ ] Go to **Sitemaps** and submit `https://www.haozhewang.com/sitemap-index.xml`.
 - [ ] Update the website link in your Instagram bio and anywhere else you've posted it.
 
 ## 6. Only then: cancel Wix

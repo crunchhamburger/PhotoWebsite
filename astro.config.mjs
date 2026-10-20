@@ -4,7 +4,8 @@ import sitemap from '@astrojs/sitemap';
 
 // Canonical URLs, Open Graph URLs, sitemap.xml and robots.txt use this domain.
 // PUBLIC_SITE_URL overrides it (e.g. for a staging deploy).
-const site = process.env.PUBLIC_SITE_URL || 'https://haozhewang.com';
+// www is the primary host on Vercel (haozhewang.com redirects to it).
+const site = process.env.PUBLIC_SITE_URL || 'https://www.haozhewang.com';
 
 export default defineConfig({
   site,

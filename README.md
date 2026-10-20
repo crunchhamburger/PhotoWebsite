@@ -1,6 +1,6 @@
 # Michael Wang — Photography Portfolio
 
-A fast, static photography portfolio built with [Astro](https://astro.build). It replaces the old Wix site and runs on free hosting (Vercel) at [haozhewang.com](https://haozhewang.com). The only running cost is the domain, about $10–15 a year.
+A fast, static photography portfolio built with [Astro](https://astro.build). It replaces the old Wix site and runs on free hosting (Vercel) at [www.haozhewang.com](https://www.haozhewang.com). The only running cost is the domain, about $10–15 a year.
 
 - `/`: hero slideshow followed by the project grid (`/#work`), with category filters
 - `/projects/<slug>`: project intro, masonry gallery, lightbox, and previous/next project links
@@ -139,7 +139,7 @@ Send a test message after deploying and check that it arrives, including in your
 
 ## Deploying to Vercel
 
-The site is hosted on **Vercel** (free Hobby plan) at **https://haozhewang.com**. Every push to `main` redeploys it, and other branches and pull requests get preview URLs.
+The site is hosted on **Vercel** (free Hobby plan) at **https://www.haozhewang.com**. Every push to the `site` branch (the repo's default) redeploys it, and other branches and pull requests get preview URLs.
 
 1. **Push this project to GitHub** (the repo can be private):
    ```bash
@@ -147,7 +147,7 @@ The site is hosted on **Vercel** (free Hobby plan) at **https://haozhewang.com**
    git push -u origin main
    ```
 2. On [vercel.com](https://vercel.com), go to **Add New → Project**, import the repo and keep the detected settings. `vercel.json` already sets the framework to **Astro**, the build command to `npm run build` and the output directory to `dist`.
-3. **Settings → Environment Variables** (Production): add `PUBLIC_FORM_ENDPOINT` / `PUBLIC_FORM_ACCESS_KEY` (see Contact form). `PUBLIC_SITE_URL` is optional; it defaults to `https://haozhewang.com` in `astro.config.mjs`.
+3. **Settings → Environment Variables** (Production): add `PUBLIC_FORM_ENDPOINT` / `PUBLIC_FORM_ACCESS_KEY` (see Contact form). `PUBLIC_SITE_URL` is optional; it defaults to `https://www.haozhewang.com` in `astro.config.mjs`.
 4. **Settings → Build and Deployment → Node.js Version:** choose **22.x**.
 5. **Deploy.** A full build resizes every photo and takes a minute or two.
 
@@ -157,7 +157,7 @@ The site is hosted on **Vercel** (free Hobby plan) at **https://haozhewang.com**
 
 The domain is connected through Vercel:
 
-1. Project → **Settings → Domains**: list both `haozhewang.com` and `www.haozhewang.com`, with `www` set to **redirect to `haozhewang.com`**. Vercel offers this when you add the domain.
+1. Project → **Settings → Domains**: both `haozhewang.com` and `www.haozhewang.com` are listed, with `www.haozhewang.com` as the primary address and the bare domain redirecting to it. If you ever flip that (bare domain primary), change the default URL in `astro.config.mjs` to match, so canonical links never point at a redirect.
 2. DNS: if the domain uses Vercel nameservers (bought through Vercel, or nameservers pointed at `ns1.vercel-dns.com` / `ns2.vercel-dns.com`), the records are automatic. If DNS is hosted elsewhere, add the `A` record for `@` and the `CNAME` for `www` exactly as the Domains page shows them.
 3. HTTPS certificates are issued automatically once DNS resolves.
 4. If the domain ever changes, update the default in `astro.config.mjs` (or set `PUBLIC_SITE_URL`) and redeploy. Canonical URLs, Open Graph links, `sitemap.xml` and `robots.txt` use it.
