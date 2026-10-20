@@ -1,9 +1,9 @@
 ---
 title: "Not Just an Observer"
 order: 7
-year: 2025 # TODO: confirm year
-date: "" # TODO: e.g. "March 2025"
-location: "" # TODO
+year: 2025
+date: "March 2025"
+location: "CGPS"
 type: "Photography"
 categories: ["Events"]
 cover: "46.jpg"
@@ -12,4 +12,6 @@ alt: {}
 # Old Wix slug: project-title-?
 ---
 
-<!-- TODO: write the description for "Not Just an Observer" (1–3 short paragraphs). -->
+This photo series documents more than a performance — it captures shared cultural engagement. Students of all ages aren’t just watching the Lunar New Year celebration, they’re learning the movements, feeling the rhythm, and immersing themselves in tradition.
+
+From red ribbon choreography to curious expressions of children in the crowd, these images highlight a shift from passive observation to active understanding. Culture, here, becomes collaborative — something not just displayed, but experienced, reshaped, and passed on.

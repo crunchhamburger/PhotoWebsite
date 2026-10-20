@@ -11,7 +11,7 @@ export const site = {
   instagram: 'https://www.instagram.com/michael_whz/',
   copyrightYear: new Date().getFullYear(),
   // Contact form endpoint (Formspree / Web3Forms). Set PUBLIC_FORM_ENDPOINT in
-  // Cloudflare Pages → Settings → Environment variables, or in a local .env file.
+  // Vercel → Settings → Environment Variables, or in a local .env file.
   formEndpoint: import.meta.env.PUBLIC_FORM_ENDPOINT || '',
   // Web3Forms needs an access key instead of a unique URL; leave empty for Formspree.
   formAccessKey: import.meta.env.PUBLIC_FORM_ACCESS_KEY || '',

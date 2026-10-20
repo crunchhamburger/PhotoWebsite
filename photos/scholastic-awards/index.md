@@ -1,9 +1,9 @@
 ---
 title: "Scholastic Awards"
 order: 9
-year: 2025 # TODO: confirm year
-date: "" # TODO: e.g. "March 2025"
-location: "" # TODO
+year: 2024
+date: "2024 Scholastic"
+location: "Wuzhen, China · NYC (C train) · Athens, Greece"
 type: "Photography"
 categories: ["Street", "Travel"]
 cover: "03.jpg"
@@ -12,4 +12,4 @@ alt: {}
 # Old Wix slug: project-title-?
 ---
 
-<!-- TODO: write the description for "Scholastic Awards" (1–3 short paragraphs). -->
+This collection features my photography and digital artwork recognized by the Scholastic Art & Writing Awards. Selected pieces received Gold Key, Silver Key, and Honorable Mention honors in the New York City regional competition.

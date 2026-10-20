@@ -1,9 +1,9 @@
 ---
 title: "Fading Neon"
 order: 6
-year: 2025 # TODO: confirm year
-date: "" # TODO: e.g. "March 2025"
-location: "" # TODO
+year: 2025
+date: "Ongoing project"
+location: "NYC"
 type: "Photography"
 categories: ["Street"]
 cover: "01.jpg"
@@ -12,4 +12,4 @@ alt: {}
 # Old Wix slug: fading-neon
 ---
 
-<!-- TODO: write the description for "Fading Neon" (1–3 short paragraphs). -->
+A documentary series on the vacant lots scattered across East Harlem reveals the fragile character of a city amidst rapid gentrification, where land that could hold homes instead lies fenced off, overgrown, and abandoned at the heart of urban life.

@@ -16,7 +16,9 @@ interface Props {
 
 const { title, description = site.description, ogImage, ogType = 'website', preloadImage } = Astro.props;
 const fullTitle = title ? `${title} — ${site.name}` : `${site.name} — Photography`;
-const canonical = new URL(Astro.url.pathname, Astro.site);
+// Pages build to *.html (build.format 'file'), but are served at clean URLs.
+const cleanPath = Astro.url.pathname.replace(/(index)?\.html$/, '').replace(/(.)\/$/, '$1');
+const canonical = new URL(cleanPath, Astro.site);
 const og = ogImage ? await getImage({ src: ogImage, width: 1200, height: 630, fit: 'cover', format: 'jpg' }) : undefined;
 const ogUrl = og ? new URL(og.src, Astro.site).href : undefined;
 ---

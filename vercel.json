@@ -1,0 +1,47 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "astro",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/portfolio", "destination": "/#work", "permanent": true },
+    { "source": "/portfolio-1", "destination": "/#work", "permanent": true },
+    { "source": "/about-me", "destination": "/about", "permanent": true },
+
+    { "source": "/portfolio-collections/my-portfolio/court-dreams", "destination": "/projects/court-dreams", "permanent": true },
+    { "source": "/portfolio-collections/my-portfolio/pop-up-pulse", "destination": "/projects/pop-up-pulse", "permanent": true },
+    { "source": "/portfolio-collections/my-portfolio/fading-neon", "destination": "/projects/fading-neon", "permanent": true },
+    { "source": "/portfolio-collections/my-portfolio/the-nourishing-table", "destination": "/projects/the-nourishing-table", "permanent": true },
+    { "source": "/portfolio-collections/my-portfolio/harlem", "destination": "/projects/wandering-harlem", "permanent": true },
+    { "source": "/portfolio-collections/my-portfolio/columbia-lunar-new-year-event", "destination": "/projects/columbia-lunar-new-year-event", "permanent": true },
+    { "source": "/portfolio-collections/my-portfolio/7-nightlapse", "destination": "/projects/echoes-in-the-sky", "permanent": true },
+
+    { "source": "/project-page/court-dreams", "destination": "/projects/court-dreams", "permanent": true },
+    { "source": "/project-page/pop-up-pulse", "destination": "/projects/pop-up-pulse", "permanent": true },
+    { "source": "/project-page/fading-neon", "destination": "/projects/fading-neon", "permanent": true },
+    { "source": "/project-page/the-nourishing-table", "destination": "/projects/the-nourishing-table", "permanent": true },
+    { "source": "/project-page/harlem", "destination": "/projects/wandering-harlem", "permanent": true },
+    { "source": "/project-page/columbia-lunar-new-year-event", "destination": "/projects/columbia-lunar-new-year-event", "permanent": true },
+    { "source": "/project-page/7-nightlapse", "destination": "/projects/echoes-in-the-sky", "permanent": true },
+
+    { "source": "/portfolio-collections/:path*", "destination": "/#work", "permanent": true },
+    { "source": "/project-page/:path*", "destination": "/#work", "permanent": true }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+      ]
+    },
+    {
+      "source": "/_astro/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    }
+  ]
+}

@@ -2,7 +2,8 @@
 import { site, nav } from '../site.config';
 import ThemeToggle from './ThemeToggle.astro';
 
-const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+// Pages build to *.html (build.format 'file'); compare against the clean URL.
+const path = Astro.url.pathname.replace(/(index)?\.html$/, '').replace(/\/$/, '') || '/';
 ---
 
 <header class="site-header">

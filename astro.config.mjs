@@ -2,14 +2,17 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 
-// Set PUBLIC_SITE_URL in Cloudflare Pages (or .env) once the domain is live.
-// It drives canonical URLs, Open Graph URLs and sitemap.xml.
-const site = process.env.PUBLIC_SITE_URL || 'https://michaelwang.example';
+// Canonical URLs, Open Graph URLs, sitemap.xml and robots.txt use this domain.
+// PUBLIC_SITE_URL overrides it (e.g. for a staging deploy).
+const site = process.env.PUBLIC_SITE_URL || 'https://haozhewang.com';
 
 export default defineConfig({
   site,
   output: 'static',
-  trailingSlash: 'ignore',
+  // One URL per page, without a trailing slash: /about, /projects/court-dreams.
+  // Pages build to about.html etc., which Vercel serves at clean URLs (cleanUrls in vercel.json).
+  trailingSlash: 'never',
+  build: { format: 'file' },
   integrations: [sitemap({ filter: (page) => !page.includes('/portfolio') })],
   redirects: {
     '/portfolio': '/#work',
