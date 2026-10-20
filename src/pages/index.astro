@@ -1,0 +1,6 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getProjects, projectCover } from '../lib/photos';
+const projects = await getProjects();
+---
+<BaseLayout><ul>{projects.map((p) => <li>{p.id} {projectCover(p).file}</li>)}</ul></BaseLayout>

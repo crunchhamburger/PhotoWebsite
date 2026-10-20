@@ -1,0 +1,43 @@
+---
+import { site } from '../site.config';
+---
+
+<footer class="site-footer">
+  <div class="container inner">
+    <div class="contact">
+      <a href={`mailto:${site.email}`}>{site.email}</a>
+      {site.showPhone && <a href={`tel:${site.phone.replace(/[^\d+]/g, '')}`}>Tel: {site.phone}</a>}
+      <a href={site.instagram} target="_blank" rel="noopener">Instagram</a>
+    </div>
+    <p class="copy">© {site.copyrightYear} {site.name}. All photographs © {site.name}.</p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: clamp(80px, 12vw, 160px);
+    border-top: 1px solid var(--line);
+    font-size: 0.875rem;
+    color: var(--fg-muted);
+  }
+  .inner {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px 32px;
+    padding-block: 40px;
+  }
+  .contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+  }
+  .contact a:hover {
+    color: var(--fg);
+  }
+  .copy {
+    margin: 0;
+    color: var(--fg-faint);
+  }
+</style>
