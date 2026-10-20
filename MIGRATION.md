@@ -17,7 +17,7 @@ Do the steps **in this order**. Wix stays live until the very last step, so the 
 ## 3. Deploy and test
 
 - [x] Push to GitHub and import the repo into Vercel (README → Deploying to Vercel).
-- [ ] Set up the contact form (README → Contact form) and redeploy.
+- [x] Set up the contact form (Web3Forms; README → Contact form).
 - [ ] Test on the Vercel preview URL (`https://<project>.vercel.app`):
   - [ ] Home: the hero slideshow plays, and the grid and category filters work
   - [ ] **Every project** opens, with the correct photos, text and cover

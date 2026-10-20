@@ -37,6 +37,7 @@ const mailto = `mailto:${site.email}?subject=${encodeURIComponent('Hello from yo
 >
   {site.formAccessKey && <input type="hidden" name="access_key" value={site.formAccessKey} />}
   <input type="hidden" name="subject" value="New message from your portfolio site" />
+  <input type="hidden" name="from_name" value="haozhewang.com" />
   <input type="hidden" name="_subject" value="New message from your portfolio site" />
 
   <!-- Honeypots: humans never see these. "_gotcha" is Formspree's, "botcheck" is Web3Forms'. -->

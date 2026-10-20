@@ -13,8 +13,9 @@ export const site = {
   // Contact form endpoint (Formspree / Web3Forms). Set PUBLIC_FORM_ENDPOINT in
   // Vercel → Settings → Environment Variables, or in a local .env file.
   formEndpoint: import.meta.env.PUBLIC_FORM_ENDPOINT || '',
-  // Web3Forms needs an access key instead of a unique URL; leave empty for Formspree.
-  formAccessKey: import.meta.env.PUBLIC_FORM_ACCESS_KEY || '',
+  // Web3Forms access key (public by design; it is sent with every form submission).
+  // PUBLIC_FORM_ACCESS_KEY overrides it. Submissions go to michael.wang8111@gmail.com.
+  formAccessKey: import.meta.env.PUBLIC_FORM_ACCESS_KEY || '62281e8b-5e6f-44f3-b45b-2b17bcebdd64',
 };
 
 // Category filters shown above the grid. Each project's `categories` must use these values.

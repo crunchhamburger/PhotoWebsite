@@ -179,4 +179,4 @@ Cloudflare Pages and Netlify also work for free (build `npm run build`, output `
 - [ ] **Categories:** check each project's `categories` (set from the photos; adjust if you file them differently)
 - [ ] **Photo-to-project matching:** the Wix export had no folders, so photos were sorted by upload batch and matched to the Wix grid covers. Skim each project once (notably Court Dreams' last photo, the Nike "Just Do It" shot)
 - [ ] **Old Wix slugs:** work out which projects `project-title-1` … `project-title-6` were, then add redirects for them in `vercel.json` (until then they redirect to the grid)
-- [ ] **Contact form:** set `PUBLIC_FORM_ENDPOINT` (and `PUBLIC_FORM_ACCESS_KEY` for Web3Forms) in Vercel
+- [x] **Contact form:** connected to Web3Forms (access key in `src/site.config.ts`; messages go to michael.wang8111@gmail.com)
