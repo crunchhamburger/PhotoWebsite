@@ -26,7 +26,7 @@ npm install          # once
 npm run dev          # http://localhost:4321, reloads as you edit
 npm run build        # checks photos, then builds the site into dist/
 npm run preview      # serves dist/ locally to test the production build
-npm run check:photos # lists oversized images and missing alt text
+npm run check:photos # lists oversized images and missing covers
 npm run placeholders # creates placeholder images in empty photo folders
 ```
 
@@ -57,17 +57,17 @@ astro.config.mjs           site URL, sitemap, /portfolio redirect
 
 ## Photo workflow
 
-The `photos/` folders currently hold **generated placeholders** (dark gradients labelled "PLACEHOLDER"). To swap in the real photos:
+The `photos/` folders hold the photos imported from the Wix Media Manager export (resized to a 3000 px long edge, JPEG quality 85, metadata stripped). To add or replace photos:
 
-1. **Delete the placeholder files** in a folder (`cover.jpg`, `01.jpg` … `08.jpg`). Keep `index.md`.
-2. **Export from Lightroom:** JPEG, sRGB, long edge **3000–4000 px**, quality **~85**. Each file should come out at roughly 1–4 MB. Larger files make the build slower without improving how the site looks, and the checker warns about anything over 5 MB.
-3. **Name the files for their order:** `01.jpg`, `02.jpg`, … `20.jpg`. They sort numerically, so `10.jpg` comes after `09.jpg`. Pad numbers with zeros for clarity.
-4. **Add a `cover.jpg`.** It is the square grid tile (center-cropped) and the image shown when the link is shared. It can be a copy of one of the gallery images. To use a different file, set `cover:` in `index.md`. The cover is left out of the gallery.
-5. **Hero and portrait:** put 2–5 landscape images in `photos/_home/` and one portrait in `photos/_about/`. Add alt text in `alt.json` next to them:
+1. **Export from Lightroom:** JPEG, sRGB, long edge **3000–4000 px**, quality **~85**. Each file should come out at roughly 1–4 MB. Larger files make the build slower without improving how the site looks, and the checker warns about anything over 5 MB.
+2. **Name the files for their order:** `01.jpg`, `02.jpg`, … `20.jpg`. They sort numerically, so `10.jpg` comes after `09.jpg`. Pad numbers with zeros for clarity.
+3. **Pick the cover** with `cover:` in `index.md`, e.g. `cover: "07.jpg"`. It is the square grid tile (center-cropped) and the image shown when the link is shared, and it stays in the gallery. A separate file named `cover.jpg` also works; that one is left out of the gallery.
+4. **Hero and portrait:** landscape images in `photos/_home/` (shown in filename order) and one portrait in `photos/_about/`. Their descriptions live in `alt.json` next to them:
    ```json
    { "01.jpg": "Neon-lit Tokyo side street at night, a lone pedestrian under signs" }
    ```
-6. Run `npm run check:photos` and add the alt text it lists as missing.
+5. **Alt text per photo is optional.** Photos without it are described as "<Project title>, photograph N". Add entries under `alt:` in `index.md` if you want better descriptions.
+6. Run `npm run check:photos` to catch oversized files or a missing cover.
 
 `npm run placeholders` only writes to folders that have **no** images, so it never overwrites your photos. HEIC, TIFF and RAW files are not supported, so export JPEGs.
 
@@ -106,8 +106,8 @@ Edit `src/site.config.ts`:
 | Setting | What it does |
 |---|---|
 | `email` | Shown in the footer and the contact section |
-| `phone`, `showPhone` | Phone number; it stays hidden unless `showPhone: true` |
-| `instagram` | Full Instagram URL for the header icon (confirm the handle) |
+| `phone`, `showPhone` | Phone number in the footer; set `showPhone: false` to hide it |
+| `instagram` | Full Instagram URL for the header icon |
 | `name`, `tagline`, `description` | Wordmark and the default SEO description |
 | `categories` | Filter buttons above the grid |
 
@@ -188,11 +188,8 @@ Send a test message after deploying and check that it arrives, including in your
 
 - [ ] **Project descriptions** for the 12 projects other than Court Dreams (`photos/<slug>/index.md`; look for `TODO`)
 - [ ] **Dates, years and locations** for each project
-- [ ] **Categories:** check each project's `categories`
-- [ ] **Real photos:** replace all placeholders (see [Photo workflow](#photo-workflow))
-- [ ] **Alt text:** `coverAlt`, each `alt:` entry, plus `photos/_home/alt.json` and `photos/_about/alt.json` (run `npm run check:photos`)
-- [ ] **Instagram handle:** confirm `instagram` in `src/site.config.ts` (currently `michael_whz`)
-- [ ] **Phone number:** decide whether to show it (`showPhone` in `src/site.config.ts`)
-- [ ] **Old Wix slugs:** work out which projects `7-nightlapse` and `project-title-1` … `project-title-6` were, then uncomment those lines in `public/_redirects`
+- [ ] **Categories:** check each project's `categories` (set from the photos; adjust if you file them differently)
+- [ ] **Photo-to-project matching:** the Wix export had no folders, so photos were sorted by upload batch and matched to the Wix grid covers. Skim each project once (notably Court Dreams' last photo, the Nike "Just Do It" shot)
+- [ ] **Old Wix slugs:** work out which projects `project-title-1` … `project-title-6` were, then uncomment those lines in `public/_redirects` (until then they redirect to the grid)
 - [ ] **Contact form:** set `PUBLIC_FORM_ENDPOINT` (and `PUBLIC_FORM_ACCESS_KEY` for Web3Forms)
 - [ ] **Domain:** set `PUBLIC_SITE_URL` once it is live

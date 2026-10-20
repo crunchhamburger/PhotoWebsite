@@ -6,9 +6,8 @@ date: "August 14th, 2025"
 location: "NYC"
 type: "Photography"
 categories: ["Street", "Events"]
-cover: "cover.jpg"
-coverAlt: "" # TODO: describe the cover photo
-# Alt text per photo, keyed by filename. `npm run check:photos` lists the missing ones.
+cover: "01.jpg"
+# Optional alt text per photo, keyed by filename, e.g. "01.jpg": "Players warming up"
 alt: {}
 # Old Wix slug: court-dreams
 ---

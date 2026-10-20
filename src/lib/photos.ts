@@ -43,10 +43,13 @@ export function projectCover(project: Project): Photo {
   };
 }
 
-/** Gallery images in filename order. The cover is excluded unless it is the only image. */
+/**
+ * Gallery images in filename order. A dedicated cover file (cover.jpg etc.) is left out of the
+ * gallery; if `cover:` points at a numbered photo instead, that photo stays in the gallery.
+ */
 export function projectGallery(project: Project): Photo[] {
   const imgs = imagesIn(project.id);
-  const gallery = imgs.length > 1 ? imgs.filter((i) => i.file !== project.data.cover) : imgs;
+  const gallery = imgs.length > 1 ? imgs.filter((i) => !/^cover\./i.test(i.file)) : imgs;
   return gallery.map((i, n) => ({
     src: i.src,
     file: i.file,

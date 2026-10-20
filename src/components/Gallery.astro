@@ -48,7 +48,8 @@ const items = await Promise.all(
             <Picture
               src={photo.src}
               alt={photo.alt}
-              formats={['avif', 'webp']}
+              formats={['webp']}
+              fallbackFormat="webp"
               widths={[...new Set([...[480, 800, 1200].filter((x) => x < photo.src.width), Math.min(1600, photo.src.width)])]}
               sizes="(max-width: 640px) 100vw, 50vw"
               width={photo.src.width}

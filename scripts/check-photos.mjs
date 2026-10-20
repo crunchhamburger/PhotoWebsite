@@ -2,7 +2,7 @@
 //   - images over 5 MB (export smaller from Lightroom: long edge ~3000–4000 px, JPEG quality ~85)
 //   - non-web formats (.tif/.heic/...) and unsupported files
 //   - project folders without index.md, without images, or missing their cover file
-//   - missing alt text (coverAlt, per-image `alt:` entries, _home/_about alt.json)
+//   - alt text entries that point at images which no longer exist (alt text itself is optional)
 //
 //   npm run check:photos              # warnings only, always exits 0
 //   npm run check:photos -- --strict  # exits 1 if there are any warnings
@@ -185,12 +185,8 @@ function checkSpecial(folder, dir) {
     warn(folder, folder === '_home' ? 'no hero images found' : 'no portrait image found');
     return;
   }
+  // alt.json is optional (a generic description is used otherwise); only check stale entries.
   const alts = readAltJson(folder, dir);
-  // The About page only uses the first image in _about.
-  const used = folder === '_about' ? images.slice(0, 1) : images;
-  for (const f of used) {
-    if (!String(alts[f] ?? '').trim()) warn(folder, `${f}: missing alt text in ${folder}/alt.json`);
-  }
   for (const key of Object.keys(alts)) {
     if (!images.includes(key)) warn(folder, `alt.json has an entry for "${key}" but no such image exists`);
   }
@@ -218,16 +214,10 @@ function checkProject(folder, dir) {
   const cover = fm.cover || 'cover.jpg';
   if (!images.includes(cover)) {
     warn(folder, `cover file "${cover}" not found — using ${images[0]} instead`);
-  } else if (!String(fm.coverAlt ?? '').trim() && !String(fm.alt[cover] ?? '').trim()) {
-    warn(folder, `${cover}: coverAlt is empty`);
   }
 
-  const gallery = images.length > 1 ? images.filter((f) => f !== cover) : images;
-  const missing = gallery.filter((f) => !String(fm.alt[f] ?? '').trim());
-  if (missing.length) {
-    // One line per folder, but every image counts as a warning.
-    warn(folder, `missing alt text for ${missing.length} image${missing.length === 1 ? '' : 's'}: ${missing.join(', ')}`, missing.length);
-  }
+  // Per-photo alt text is optional: photos without it get "<Title>, photograph N".
+  // Only flag entries that point at images which no longer exist.
   for (const key of Object.keys(fm.alt)) {
     if (!images.includes(key)) warn(folder, `alt text for "${key}" but no such image exists (renamed?)`);
   }

@@ -3,12 +3,11 @@ title: "Cultural China: The Unseen Stories of Shanghai and Wuzhen"
 order: 3
 year: 2025 # TODO: confirm year
 date: "" # TODO: e.g. "March 2025"
-location: "" # TODO
+location: "Shanghai & Wuzhen, China"
 type: "Photography"
-categories: ["Travel"] # TODO: check categories
-cover: "cover.jpg"
-coverAlt: "" # TODO: describe the cover photo
-# Alt text per photo, keyed by filename. `npm run check:photos` lists the missing ones.
+categories: ["Travel", "Street"]
+cover: "07.jpg"
+# Optional alt text per photo, keyed by filename, e.g. "01.jpg": "Players warming up"
 alt: {}
 # Old Wix slug: project-title-?
 ---

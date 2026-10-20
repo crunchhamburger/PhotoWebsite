@@ -24,7 +24,8 @@ const links = [
             <Picture
               src={cover.src}
               alt=""
-              formats={['avif', 'webp']}
+              formats={['webp']}
+              fallbackFormat="webp"
               widths={[...new Set([Math.min(400, cover.src.width), Math.min(800, cover.src.width)])]}
               sizes="(max-width: 640px) 40vw, 220px"
               width={cover.src.width}

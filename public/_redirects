@@ -29,13 +29,16 @@
 /project-page/harlem                          /projects/wandering-harlem                301
 /project-page/columbia-lunar-new-year-event   /projects/columbia-lunar-new-year-event   301
 
+# 7-nightlapse = the star-trail night-lapse (NIGHTLAPSE_TENAFLY) = Echoes in the Sky
+/portfolio-collections/my-portfolio/7-nightlapse   /projects/echoes-in-the-sky   301
+/project-page/7-nightlapse                         /projects/echoes-in-the-sky   301
+
 # TODO (Michael): these old slugs don't say which project they were. Open each old Wix URL
 # (while Wix is still live) and uncomment the line with the right target. Remaining projects:
-#   cultural-china, cyberpunk-city, echoes-in-the-sky, not-just-an-observer,
+#   cultural-china, cyberpunk-city, not-just-an-observer,
 #   scholastic-awards, witness-weight-of-justice, yakuza-style-portraits
+# Until then the catch-all below sends them to the grid.
 # Note: no comments at the end of a rule line — Cloudflare only allows whole-line comments.
-# 7-nightlapse sounds like a night series: probably cyberpunk-city or echoes-in-the-sky (check).
-# /portfolio-collections/my-portfolio/7-nightlapse      /projects/TODO   301
 # /portfolio-collections/my-portfolio/project-title-1   /projects/TODO   301
 # /portfolio-collections/my-portfolio/project-title-2   /projects/TODO   301
 # /portfolio-collections/my-portfolio/project-title-3   /projects/TODO   301

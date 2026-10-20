@@ -7,8 +7,7 @@ export const site = {
   email: 'michael.wang8111@gmail.com',
   // Phone is kept in config so it can be hidden without touching markup.
   phone: '929-317-9404',
-  showPhone: false, // TODO: set to true if you want the phone number public.
-  // TODO: confirm your Instagram handle (watermark suggests "michael_whz").
+  showPhone: true, // set to false to hide the phone number in the footer
   instagram: 'https://www.instagram.com/michael_whz/',
   copyrightYear: new Date().getFullYear(),
   // Contact form endpoint (Formspree / Web3Forms). Set PUBLIC_FORM_ENDPOINT in
