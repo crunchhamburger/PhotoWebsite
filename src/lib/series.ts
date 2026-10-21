@@ -74,17 +74,24 @@ export function formatValue(v: number, unit: string, decimals: number): string {
   return n;
 }
 
-export const unitLabel = (unit: string) =>
-  ({ '%': 'Percent', '% y/y': 'Percent change on a year earlier', '$/bbl': 'U.S. dollars per barrel', index: 'Index' })[unit] ?? unit;
+export const unitLabel = (unit: string, lang: 'en' | 'zh' = 'en') =>
+  (lang === 'zh'
+    ? { '%': '百分比', '% y/y': '同比变化（%）', '$/bbl': '美元/桶', index: '指数' }
+    : { '%': 'Percent', '% y/y': 'Percent change on a year earlier', '$/bbl': 'U.S. dollars per barrel', index: 'Index' })[unit] ?? unit;
 
-/** "Oct 19, 2026", or "Sep 2026" for monthly data. */
-export const formatDay = (t: number, frequency = 'daily') =>
-  new Date(t).toLocaleDateString('en-US', {
+/** "Oct 19, 2026" / "2026年10月19日", or "Sep 2026" / "2026年9月" for monthly data. */
+export const formatDay = (t: number, frequency = 'daily', lang: 'en' | 'zh' = 'en') => {
+  if (lang === 'zh') {
+    const d = new Date(t);
+    return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${frequency === 'monthly' ? '' : `${d.getUTCDate()}日`}`;
+  }
+  return new Date(t).toLocaleDateString('en-US', {
     month: 'short',
     day: frequency === 'monthly' ? undefined : 'numeric',
     year: 'numeric',
     timeZone: 'UTC',
   });
+};
 
 /** About `count` round tick values covering [min, max]. */
 export function niceTicks(min: number, max: number, count = 4): number[] {
@@ -103,7 +110,7 @@ export function niceTicks(min: number, max: number, count = 4): number[] {
 }
 
 /** Date ticks for the x axis: years, quarters or months depending on the span. */
-export function timeTicks(t0: number, t1: number): { t: number; label: string }[] {
+export function timeTicks(t0: number, t1: number, lang: 'en' | 'zh' = 'en'): { t: number; label: string }[] {
   const span = (t1 - t0) / (365.25 * 86400000);
   const s = new Date(t0);
   const out: { t: number; label: string }[] = [];
@@ -123,8 +130,13 @@ export function timeTicks(t0: number, t1: number): { t: number; label: string }[
       const t = Date.UTC(y, m, 1);
       if (t > t1) break;
       const d = new Date(t);
-      const mon = d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
-      out.push({ t, label: d.getUTCMonth() === 0 || out.length === 0 ? `${mon} ’${String(d.getUTCFullYear()).slice(2)}` : mon });
+      const first = d.getUTCMonth() === 0 || out.length === 0;
+      if (lang === 'zh') {
+        out.push({ t, label: first ? `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月` : `${d.getUTCMonth() + 1}月` });
+      } else {
+        const mon = d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+        out.push({ t, label: first ? `${mon} ’${String(d.getUTCFullYear()).slice(2)}` : mon });
+      }
       m += stepMonths;
     }
   }

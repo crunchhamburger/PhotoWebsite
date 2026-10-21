@@ -18,6 +18,10 @@
 // copied into the site: they are other publications' graphics and live only in the private
 // research view (see ~/Market Briefs/scripts/upload-research.mjs). A missing brief is skipped.
 //
+// Chinese edition (optional): `audio_zh` (an MP3 in audio/, copied to public/podcast/audio/<slug>.zh.mp3)
+// and the Chinese brief page <kind>/<date>-zh.html (copied, tidied, to src/content/briefs/<slug>.zh.html).
+// The site's /zh/podcast pages use them; episodes without them fall back to English there.
+//
 // The episode's own `charts:` list (original charts of public-domain data, placed under named
 // brief sections) is validated here too; see src/content.config.ts for the format.
 import { readdirSync, readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync, statSync, rmSync } from 'node:fs';
@@ -94,6 +98,13 @@ function validate(fm, folderKind, fileDate) {
         }
       });
     }
+  }
+  for (const k of ['title_zh', 'headline_zh']) if (fm[k] !== undefined && !isStr(fm[k])) errs.push(`${k}: expected a string`);
+  if (fm.audio_zh !== undefined && (!isStr(fm.audio_zh) || !/\.mp3$/i.test(fm.audio_zh) || /[\\/]/.test(fm.audio_zh))) {
+    errs.push(`audio_zh: expected an .mp3 file name in audio/, got ${JSON.stringify(fm.audio_zh)}`);
+  }
+  if (fm.duration_zh !== undefined && fm.duration_zh !== null && !(Number.isInteger(fm.duration_zh) && fm.duration_zh > 0)) {
+    errs.push(`duration_zh: expected whole seconds, got ${JSON.stringify(fm.duration_zh)}`);
   }
   errs.push(...validateCharts(fm.charts));
   return { errs, date };
@@ -183,7 +194,8 @@ function cleanPage(html) {
   let s = m[1];
   s = s.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, '');
   s = s.replace(/<div class="listen">[\s\S]*?<\/div>/i, '');
-  s = s.replace(/<h2[^>]*>\s*(?:\d+\.\s*)?Charts\s*<\/h2>[\s\S]*?(?=<h2|$)/i, '');
+  s = s.replace(/<p class="lang">[\s\S]*?<\/p>/i, '');
+  s = s.replace(/<h2[^>]*>\s*(?:\d+\.\s*)?(?:Charts|图表)\s*<\/h2>[\s\S]*?(?=<h2|$)/i, '');
   s = s.replace(/<(script|style|audio|video|iframe|object)\b[\s\S]*?<\/\1>/gi, '');
   s = s.replace(/<\/?(img|figure|figcaption|source|embed)\b[^>]*>/gi, '');
   s = s.replace(/\s+on\w+="[^"]*"/gi, '');
@@ -228,6 +240,10 @@ function importBrief(ep) {
   for (const c of ep.charts) {
     if (!headings.includes(headingKey(c.after))) changes.push(`WARNING chart "${c.title}": no section "${c.after}" in the brief, it will go at the end`);
   }
+  // Chinese brief page, when the pipeline made one.
+  const zhFile = join(SRC, ep.kind, `${ep.date}-zh.html`);
+  const zhPage = existsSync(zhFile) ? cleanPage(readFileSync(zhFile, 'utf8')) : null;
+  if (zhPage && writeIfChanged(join(BRIEFS_DIR, `${ep.slug}.zh.html`), zhPage)) changes.push('Chinese brief page');
   if (page) {
     if (writeIfChanged(htmlDest, page)) changes.push('brief page');
     removeIfPresent(mdDest);
@@ -283,8 +299,16 @@ for (const kind of KINDS) {
       problems.push(`${label}: MP3 not found: ${relative(SRC, mp3)}`);
       continue;
     }
+    let mp3Zh = null;
+    if (fm.audio_zh) {
+      mp3Zh = join(SRC, 'audio', fm.audio_zh);
+      if (!existsSync(mp3Zh)) {
+        problems.push(`${label}: Chinese MP3 not found: ${relative(SRC, mp3Zh)}`);
+        continue;
+      }
+    }
     const slug = kind === 'weekly' ? `${date}-weekly` : date;
-    episodes.push({ label, file, mp3, slug, kind, date, charts: fm.charts ?? [] });
+    episodes.push({ label, file, mp3, mp3Zh, slug, kind, date, charts: fm.charts ?? [] });
   }
 }
 
@@ -316,6 +340,13 @@ for (const ep of episodes) {
   if (!sameFile(ep.mp3, mp3Dest)) {
     copyFileSync(ep.mp3, mp3Dest);
     changes.push('audio');
+  }
+  if (ep.mp3Zh) {
+    const zhDest = join(AUDIO_DIR, `${ep.slug}.zh.mp3`);
+    if (!sameFile(ep.mp3Zh, zhDest)) {
+      copyFileSync(ep.mp3Zh, zhDest);
+      changes.push('Chinese audio');
+    }
   }
   let briefNote = '';
   try {

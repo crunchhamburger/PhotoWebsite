@@ -11,9 +11,11 @@ interface Props {
     sources: { publication: string; title: string; url: string }[];
     note?: string;
   };
+  lang?: 'en' | 'zh';
 }
 
-const { spec } = Astro.props;
+const { spec, lang = 'en' } = Astro.props;
+const zh = lang === 'zh';
 const max = Math.max(...spec.data.map((d) => Math.abs(d.value))) || 1;
 const fmt = (v: number) => {
   const n = Number.isInteger(v) ? v.toLocaleString('en-US') : v.toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -21,7 +23,9 @@ const fmt = (v: number) => {
   if (spec.unit === '%') return `${n}%`;
   return spec.unit ? `${n} ${spec.unit}` : n;
 };
-const verified = spec.verification === 'official' ? 'Official figures.' : 'Figures confirmed by two independent sources.';
+const verified = zh
+  ? spec.verification === 'official' ? '官方数据。' : '数据经两个独立来源核实。'
+  : spec.verification === 'official' ? 'Official figures.' : 'Figures confirmed by two independent sources.';
 ---
 
 <figure class="chart">
@@ -42,7 +46,7 @@ const verified = spec.verification === 'official' ? 'Official figures.' : 'Figur
     }
   </ul>
   <p class="chart-source">
-    {verified} Sources:{' '}
+    {verified} {zh ? '来源：' : 'Sources: '}
     {
       spec.sources.map((s, i) => (
         <>
@@ -50,7 +54,7 @@ const verified = spec.verification === 'official' ? 'Official figures.' : 'Figur
           <a href={s.url} target="_blank" rel="noopener noreferrer">{s.publication}</a>
         </>
       ))
-    }. Chart: Michael Wang.{spec.note && ` ${spec.note}`}
+    }{zh ? '。图表：Michael Wang。' : '. Chart: Michael Wang.'}{spec.note && ` ${spec.note}`}
   </p>
 </figure>
 

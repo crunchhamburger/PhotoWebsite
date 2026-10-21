@@ -1,16 +1,20 @@
 ---
-import { formatEpisodeDate, durationLabel, type Episode } from '../lib/podcast';
+import { formatEpisodeDate, durationLabel, episodeText, type Episode } from '../lib/podcast';
+import { langFromUrl, useT } from '../i18n';
 
 interface Props {
   episode: Episode;
 }
 
-const { date, kind, duration } = Astro.props.episode.data;
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
+const { date, kind } = Astro.props.episode.data;
+const { duration } = episodeText(Astro.props.episode, lang);
 ---
 <p class="episode-meta">
-  <time datetime={date.toISOString().slice(0, 10)}>{formatEpisodeDate(date)}</time>
-  <span class:list={['badge', kind]}>{kind}</span>
-  {duration && <span class="duration">{durationLabel(duration)}</span>}
+  <time datetime={date.toISOString().slice(0, 10)}>{formatEpisodeDate(date, lang)}</time>
+  <span class:list={['badge', kind]}>{t(kind === 'weekly' ? 'podcast.kind.weekly' : 'podcast.kind.daily')}</span>
+  {duration && <span class="duration">{durationLabel(duration, lang)}</span>}
 </p>
 
 <style>

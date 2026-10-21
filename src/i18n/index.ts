@@ -22,9 +22,11 @@ export function basePath(url: URL): string {
   return p.replace(/^\/zh(?=\/|$)/, '') || '/';
 }
 
-/** Whether a page exists in Chinese. The podcast (/podcast…) is English-only. */
+/** Whether a page exists in Chinese. The podcast has Chinese pages too (episodes without a
+ *  Chinese edition fall back to English there); the RSS feed is English-only. */
 export function hasTranslation(path: string): boolean {
-  return path === '/' || path.startsWith('/#') || path === '/about' || path.startsWith('/projects/');
+  if (path.endsWith('.xml')) return false;
+  return path === '/' || path.startsWith('/#') || path === '/about' || path.startsWith('/projects/') || path === '/podcast' || path.startsWith('/podcast/');
 }
 
 /** Localise an English path ('/', '/about', '/#work', '/projects/x') for `lang`.
@@ -46,6 +48,35 @@ const dict = {
     'nav.portfolio': 'Portfolio',
     'nav.about': 'About Me',
     'nav.podcast': 'Podcast',
+    'podcast.eyebrow': 'Podcast',
+    'podcast.title': 'Market Brief',
+    'podcast.description':
+      'A short spoken summary of the day in AI infrastructure, chips and markets: the main signal, the takeaways and the numbers worth remembering, with links to the original reporting. News summary, not investment advice.',
+    'podcast.rss': 'Subscribe with RSS',
+    'podcast.empty': 'No episodes yet.',
+    'podcast.listLabel': 'Episodes, newest first',
+    'podcast.play': 'Play: {title}',
+    'podcast.showNotes': 'Show notes',
+    'podcast.showNotesFor': 'Show notes: {title}',
+    'podcast.allEpisodes': 'All episodes',
+    'podcast.listen': 'Listen · narrated brief',
+    'podcast.tickers': 'Tickers mentioned',
+    'podcast.sources': 'Sources',
+    'podcast.charts': 'Charts',
+    'podcast.chartsIntro': 'Charts in the original reporting, linked at their source.',
+    'podcast.more': 'More episodes',
+    'podcast.older': 'Older',
+    'podcast.newer': 'Newer',
+    'podcast.disclaimer': 'News summary, not investment advice.',
+    'podcast.noZh': '',
+    'podcast.kind.daily': 'daily',
+    'podcast.kind.weekly': 'weekly',
+    'podcast.min': '{n} min',
+    'chart.source': 'Source',
+    'chart.by': 'Chart: Michael Wang.',
+    'chart.official': 'Official figures.',
+    'chart.twoSources': 'Figures confirmed by two independent sources.',
+    'chart.sources': 'Sources:',
     'header.home': 'Michael Wang — home',
     'header.instagram': 'Instagram (opens in a new tab)',
     'header.openMenu': 'Open menu',
@@ -121,7 +152,36 @@ const dict = {
     'nav.home': '首页',
     'nav.portfolio': '作品集',
     'nav.about': '关于我',
-    'nav.podcast': '播客（英文）',
+    'nav.podcast': '播客',
+    'podcast.eyebrow': '播客',
+    'podcast.title': '市场简报',
+    'podcast.description':
+      '每天几分钟，用语音梳理AI基础设施、芯片与市场：当天的主线、核心结论和值得记住的数字，并附原始报道链接。新闻摘要，不构成投资建议。',
+    'podcast.rss': 'RSS 订阅（英文）',
+    'podcast.empty': '暂无节目。',
+    'podcast.listLabel': '节目列表，最新在前',
+    'podcast.play': '播放：{title}',
+    'podcast.showNotes': '节目笔记',
+    'podcast.showNotesFor': '节目笔记：{title}',
+    'podcast.allEpisodes': '全部节目',
+    'podcast.listen': '收听 · 中文语音版',
+    'podcast.tickers': '涉及股票',
+    'podcast.sources': '来源',
+    'podcast.charts': '图表',
+    'podcast.chartsIntro': '原始报道中的图表，链接至出处。',
+    'podcast.more': '更多节目',
+    'podcast.older': '更早',
+    'podcast.newer': '更新',
+    'podcast.disclaimer': '新闻摘要，不构成投资建议。',
+    'podcast.noZh': '本期暂无中文版，以下为英文原文和英文语音。',
+    'podcast.kind.daily': '每日',
+    'podcast.kind.weekly': '每周',
+    'podcast.min': '{n} 分钟',
+    'chart.source': '来源',
+    'chart.by': '图表：Michael Wang。',
+    'chart.official': '官方数据。',
+    'chart.twoSources': '数据经两个独立来源核实。',
+    'chart.sources': '来源：',
     'header.home': 'Michael Wang——首页',
     'header.instagram': 'Instagram（在新标签页打开）',
     'header.openMenu': '打开菜单',

@@ -11,7 +11,8 @@
       "source": "Federal Reserve Board (H.15), via FRED",
       "sourceUrl": "https://fred.stlouisfed.org/series/DGS10",
       "min": -5,
-      "max": 30
+      "max": 30,
+      "short_zh": "10年期美债"
     },
     "DGS2": {
       "title": "2-year Treasury yield",
@@ -22,7 +23,8 @@
       "source": "Federal Reserve Board (H.15), via FRED",
       "sourceUrl": "https://fred.stlouisfed.org/series/DGS2",
       "min": -5,
-      "max": 30
+      "max": 30,
+      "short_zh": "2年期美债"
     },
     "DFEDTARU": {
       "title": "Fed funds target range, upper limit",
@@ -33,7 +35,8 @@
       "source": "Federal Reserve Board, via FRED",
       "sourceUrl": "https://fred.stlouisfed.org/series/DFEDTARU",
       "min": 0,
-      "max": 25
+      "max": 25,
+      "short_zh": "联邦基金目标利率上限"
     },
     "DCOILBRENTEU": {
       "title": "Brent crude oil, spot price",
@@ -45,7 +48,8 @@
       "sourceUrl": "https://fred.stlouisfed.org/series/DCOILBRENTEU",
       "note": "EIA spot price. Futures prices quoted in the news can differ, especially when markets are volatile.",
       "min": -100,
-      "max": 500
+      "max": 500,
+      "short_zh": "布伦特现货"
     },
     "DCOILWTICO": {
       "title": "WTI crude oil, spot price",
@@ -57,7 +61,8 @@
       "sourceUrl": "https://fred.stlouisfed.org/series/DCOILWTICO",
       "note": "EIA spot price. Futures prices quoted in the news can differ, especially when markets are volatile.",
       "min": -100,
-      "max": 500
+      "max": 500,
+      "short_zh": "WTI现货"
     },
     "CPIAUCSL": {
       "title": "Consumer prices (CPI-U), all items",
@@ -68,7 +73,8 @@
       "source": "U.S. Bureau of Labor Statistics, via FRED",
       "sourceUrl": "https://fred.stlouisfed.org/series/CPIAUCSL",
       "min": 0,
-      "max": 2000
+      "max": 2000,
+      "short_zh": "CPI"
     },
     "CPILFESL": {
       "title": "Consumer prices (CPI-U) excluding food and energy",
@@ -79,7 +85,8 @@
       "source": "U.S. Bureau of Labor Statistics, via FRED",
       "sourceUrl": "https://fred.stlouisfed.org/series/CPILFESL",
       "min": 0,
-      "max": 2000
+      "max": 2000,
+      "short_zh": "核心CPI"
     },
     "UNRATE": {
       "title": "Unemployment rate",
@@ -90,7 +97,8 @@
       "source": "U.S. Bureau of Labor Statistics, via FRED",
       "sourceUrl": "https://fred.stlouisfed.org/series/UNRATE",
       "min": 0,
-      "max": 40
+      "max": 40,
+      "short_zh": "失业率"
     },
     "DTWEXBGS": {
       "title": "Trade-weighted U.S. dollar index, broad",
@@ -101,7 +109,8 @@
       "source": "Federal Reserve Board (H.10), via FRED",
       "sourceUrl": "https://fred.stlouisfed.org/series/DTWEXBGS",
       "min": 0,
-      "max": 1000
+      "max": 1000,
+      "short_zh": "美元指数（广义）"
     }
   }
 }

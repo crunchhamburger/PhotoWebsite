@@ -8,10 +8,14 @@ import type { SeriesId } from '../../lib/series';
 interface Props {
   spec: { title: string; series: string[]; range: string; transform: 'level' | 'yoy'; note?: string };
   asOf: Date;
+  lang?: 'en' | 'zh';
 }
 
-const { spec, asOf } = Astro.props;
-const lines = spec.series.map((id) => seriesLine(id as SeriesId, asOf, spec.range, spec.transform));
+const { spec, asOf, lang = 'en' } = Astro.props;
+const zh = lang === 'zh';
+const lines = spec.series
+  .map((id) => seriesLine(id as SeriesId, asOf, spec.range, spec.transform))
+  .map((l) => (zh ? { ...l, label: (l.meta as { short_zh?: string }).short_zh ?? l.label } : l));
 const units = new Set(lines.map((l) => l.unit));
 if (units.size > 1) throw new Error(`Chart "${spec.title}" mixes units: ${[...units].join(', ')}`);
 const unit = lines[0].unit;
@@ -31,7 +35,7 @@ const paths = lines.map((l) =>
     .map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)},${Y(p.v).toFixed(1)}`)
     .join(''),
 );
-const xTicks = timeTicks(t0, t1);
+const xTicks = timeTicks(t0, t1, lang);
 const yDecimals = Math.max(0, -Math.floor(Math.log10(Math.abs(yTicks[1] - yTicks[0]) || 1)));
 const yLabel = (v: number) => formatValue(v, unit, Math.min(yDecimals, 2));
 
@@ -42,16 +46,22 @@ const summary = lines
   .map((l) => {
     const v = l.points.map((p) => p.v);
     const f = (n: number) => formatValue(n, l.unit, l.decimals);
-    return `${l.label}: ${f(v[0])} on ${formatDay(l.points[0].t, l.meta.frequency)}, ${f(v[v.length - 1])} on ${formatDay(l.points[l.points.length - 1].t, l.meta.frequency)}, high ${f(Math.max(...v))}, low ${f(Math.min(...v))}`;
+    const first = formatDay(l.points[0].t, l.meta.frequency, lang);
+    const lastDay = formatDay(l.points[l.points.length - 1].t, l.meta.frequency, lang);
+    return zh
+      ? `${l.label}：${first} ${f(v[0])}，${lastDay} ${f(v[v.length - 1])}，最高 ${f(Math.max(...v))}，最低 ${f(Math.min(...v))}`
+      : `${l.label}: ${f(v[0])} on ${first}, ${f(v[v.length - 1])} on ${lastDay}, high ${f(Math.max(...v))}, low ${f(Math.min(...v))}`;
   })
-  .join('. ');
-const rangeLabel = { '3m': '3 months', '6m': '6 months', '1y': '1 year', '2y': '2 years', '5y': '5 years', '10y': '10 years', ytd: 'Year to date', max: 'Since 2000' }[spec.range];
+  .join(zh ? '。' : '. ');
+const rangeLabel = (zh
+  ? { '3m': '3个月', '6m': '6个月', '1y': '1年', '2y': '2年', '5y': '5年', '10y': '10年', ytd: '年初至今', max: '2000年以来' }
+  : { '3m': '3 months', '6m': '6 months', '1y': '1 year', '2y': '2 years', '5y': '5 years', '10y': '10 years', ytd: 'Year to date', max: 'Since 2000' })[spec.range];
 ---
 
 <figure class="chart">
   <figcaption class="chart-head">
     <span class="chart-title">{spec.title}</span>
-    <span class="chart-sub">{unitLabel(unit)} · {rangeLabel}</span>
+    <span class="chart-sub">{unitLabel(unit, lang)} · {rangeLabel}</span>
   </figcaption>
 
   <ul class="legend">
@@ -60,13 +70,13 @@ const rangeLabel = { '3m': '3 months', '6m': '6 months', '1y': '1 year', '2y': '
         <li class={`s${i}`}>
           <span class="swatch" aria-hidden="true" />
           {l.label} <strong>{formatValue(last[i].v, l.unit, l.decimals)}</strong>
-          <span class="as-of">{formatDay(last[i].t, l.meta.frequency)}</span>
+          <span class="as-of">{formatDay(last[i].t, l.meta.frequency, lang)}</span>
         </li>
       ))
     }
   </ul>
 
-  <div class="plot" role="img" aria-label={`${spec.title}. ${summary}.`}>
+  <div class="plot" role="img" aria-label={zh ? `${spec.title}。${summary}。` : `${spec.title}. ${summary}.`}>
     <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true" focusable="false">
       {yTicks.map((v) => <line class="grid" x1="0" x2="1000" y1={Y(v)} y2={Y(v)} vector-effect="non-scaling-stroke" />)}
       {y0 < 0 && y1 > 0 && <line class="zero" x1="0" x2="1000" y1={Y(0)} y2={Y(0)} vector-effect="non-scaling-stroke" />}
@@ -88,7 +98,7 @@ const rangeLabel = { '3m': '3 months', '6m': '6 months', '1y': '1 year', '2y': '
   </div>
 
   <p class="chart-source">
-    Source: {sources.join('; ')}. Chart: Michael Wang.{notes.map((n) => ` ${n}`)}
+    {zh ? `来源：${sources.join('；')}。图表：Michael Wang。` : `Source: ${sources.join('; ')}. Chart: Michael Wang.`}{notes.map((n) => ` ${n}`)}
   </p>
 </figure>
 

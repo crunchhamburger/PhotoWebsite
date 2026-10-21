@@ -1,0 +1,362 @@
+---
+// Rendered by src/pages/podcast/[slug].astro and src/pages/zh/podcast/[slug].astro.
+// Chinese pages show the Chinese brief and Mandarin audio when the episode has a Chinese
+// edition, and otherwise the English brief and audio under a short notice.
+import { render } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import EpisodeMeta from '../components/EpisodeMeta.astro';
+import { podcast } from '../site.config';
+import LineChart from '../components/charts/LineChart.astro';
+import BarChart from '../components/charts/BarChart.astro';
+import { getBrief, placeCharts, audioPath, episodeText, episodeHref, hasZh, localizeChart, type Episode } from '../lib/podcast';
+import { langFromUrl, useT } from '../i18n';
+
+interface Props {
+  episode: Episode;
+  newer?: Episode;
+  older?: Episode;
+}
+
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
+const { episode, newer, older } = Astro.props;
+const { tickers, sources, date } = episode.data;
+const { title, headline } = episodeText(episode, lang);
+const { Content } = await render(episode);
+
+// The full brief in the page's language (Chinese only when there is a Chinese edition).
+const zhBrief = lang === 'zh' ? await getBrief(episode.id, 'zh') : undefined;
+const useZh = Boolean(zhBrief) && hasZh(episode);
+const briefLang = useZh ? 'zh' : 'en';
+const brief = useZh ? zhBrief : await getBrief(episode.id);
+const showNotice = lang === 'zh' && !useZh;
+const charts = episode.data.charts.map((c) => localizeChart(c, briefLang));
+const briefHtml = brief?.html ?? '';
+const sourcesAt = briefHtml.search(/<h2[^>]*>\s*(?:\d+\.\s*)?(?:Sources|来源)\s*<\/h2>/i);
+// "Source" link text for a chart: the publication's domain, e.g. ft.com.
+const sourceLabel = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return t('chart.source');
+  }
+};
+// Numbered briefs (the weekly) number Charts just before Sources: "7. Sources" → "6. Charts".
+const sourcesNum = Number(briefHtml.slice(sourcesAt).match(/^<h2[^>]*>\s*(\d+)\./)?.[1] ?? 0);
+const chartsWord = briefLang === 'zh' ? '图表' : 'Charts';
+const chartsHeading = sourcesAt >= 0 && sourcesNum > 1 ? `${sourcesNum - 1}. ${chartsWord}` : chartsWord;
+const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt), briefHtml.slice(sourcesAt)] : [briefHtml, ''];
+// Our original charts (listed in the episode's frontmatter), each under the section it belongs to.
+const pieces = placeCharts(briefMain, charts);
+const back = lang === 'zh' ? '/zh/podcast' : '/podcast';
+---
+<BaseLayout title={title} description={headline} ogType="article">
+  <link slot="head" rel="alternate" type="application/rss+xml" title={podcast.title} href="/podcast/rss.xml" />
+
+  <article class="episode container">
+    <header class="intro">
+      <a class="back eyebrow" href={back}><span aria-hidden="true">←</span> {t('podcast.allEpisodes')}</a>
+      <EpisodeMeta episode={episode} />
+      <h1 class="title">{title}</h1>
+      <p class="lede">{headline}</p>
+      {showNotice && <p class="notice">{t('podcast.noZh')}</p>}
+      <div class="listen">
+        <span class="eyebrow">{useZh ? t('podcast.listen') : 'Listen · narrated brief'}</span>
+        <audio controls preload="metadata" src={audioPath(episode, briefLang)} aria-label={t('podcast.play', { title })}></audio>
+      </div>
+    </header>
+
+    {brief ? (
+      <>
+        <div class="notes brief" lang={showNotice ? 'en' : undefined}>
+          {pieces.map((piece) => (
+            <>
+              <Fragment set:html={piece.html} />
+              {piece.charts.map((c) => (c.type === 'line' ? <LineChart spec={c} asOf={date} lang={briefLang} /> : <BarChart spec={c} lang={briefLang} />))}
+            </>
+          ))}
+        </div>
+        {brief.sourceCharts.length > 0 && (
+          <section class="block" aria-labelledby="charts-heading">
+            <h2 id="charts-heading" class="eyebrow">{chartsHeading}</h2>
+            <p class="chart-list-intro">{briefLang === 'zh' ? '原始报道中的图表，链接至出处。' : 'Charts in the original reporting, linked at their source.'}</p>
+            <ol class="chart-list">
+              {brief.sourceCharts.map((chart) => (
+                <li>
+                  {chart.caption}
+                  {chart.url && <> <a href={chart.url} target="_blank" rel="noopener noreferrer">{sourceLabel(chart.url)}</a></>}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+        {briefSources && <div class="notes brief brief-sources" lang={showNotice ? 'en' : undefined} set:html={briefSources} />}
+      </>
+    ) : (
+      <div class="notes" lang={showNotice ? 'en' : undefined}>
+        <Content />
+        {charts.map((c) => (c.type === 'line' ? <LineChart spec={c} asOf={date} lang={briefLang} /> : <BarChart spec={c} lang={briefLang} />))}
+      </div>
+    )}
+
+    {tickers.length > 0 && (
+      <section class="block" aria-labelledby="tickers-heading">
+        <h2 id="tickers-heading" class="eyebrow">{t('podcast.tickers')}</h2>
+        <ul class="tickers">
+          {tickers.map((tk) => <li>{tk}</li>)}
+        </ul>
+      </section>
+    )}
+
+    {!briefSources && sources.length > 0 && (
+      <section class="block" aria-labelledby="sources-heading">
+        <h2 id="sources-heading" class="eyebrow">{t('podcast.sources')}</h2>
+        <ul class="sources">
+          {sources.map((s) => (
+            <li>
+              <span class="pub">{s.publication}</span>
+              <a href={s.url} target="_blank" rel="noopener noreferrer">{s.title}</a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <footer class="foot">
+      <p class="disclaimer">{t('podcast.disclaimer')}</p>
+      {(newer || older) && (
+        <nav class="pager" aria-label={t('podcast.more')}>
+          {older ? <a href={episodeHref(older, lang)} rel="prev"><span aria-hidden="true">←</span> {t('podcast.older')}</a> : <span></span>}
+          {newer && <a href={episodeHref(newer, lang)} rel="next">{t('podcast.newer')} <span aria-hidden="true">→</span></a>}
+        </nav>
+      )}
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .episode {
+    max-width: calc(760px + 2 * var(--gutter));
+    padding-block: clamp(40px, 7vw, 104px) 0;
+  }
+
+  .intro { display: grid; gap: 16px; }
+  .back {
+    justify-self: start;
+    display: inline-flex;
+    gap: 0.6em;
+    align-items: center;
+    margin-bottom: clamp(8px, 1.4vw, 16px);
+    transition: color 0.2s var(--ease);
+  }
+  .back:hover { color: var(--fg); }
+  .title {
+    font-size: clamp(1.73rem, 1.44rem + 1.24vw, 2.66rem);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+  .lede {
+    margin: 0;
+    font-size: clamp(1.05rem, 0.98rem + 0.35vw, 1.25rem);
+    line-height: 1.6;
+    font-weight: 300;
+    text-wrap: pretty;
+  }
+  .notice {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--fg-muted);
+    border-left: 2px solid var(--line);
+    padding-left: 12px;
+  }
+  .listen {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 12px 14px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .listen .eyebrow { font-size: 0.625rem; }
+  audio {
+    display: block;
+    width: 100%;
+    height: 44px;
+  }
+
+  .notes {
+    margin-top: clamp(36px, 5vw, 56px);
+    padding-top: clamp(28px, 4vw, 40px);
+    border-top: 1px solid var(--line);
+    font-size: clamp(1rem, 0.96rem + 0.19vw, 1.125rem);
+  }
+  .notes :global(p) { margin: 0 0 1.1em; }
+  .notes :global(a) {
+    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-color: var(--fg-faint);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.22em;
+    transition: text-decoration-color 0.25s var(--ease), color 0.25s var(--ease);
+  }
+  .notes :global(a:hover) { color: var(--accent); text-decoration-color: currentColor; }
+  .notes :global(h2) {
+    font-size: clamp(1.2rem, 1.11rem + 0.42vw, 1.5rem);
+    font-weight: 500;
+    margin: 0 0 0.8em;
+  }
+  .notes :global(h2:not(:first-child)) { margin-top: 1.8em; }
+  .notes :global(ul) { margin: 0; padding-left: 1.2em; }
+  .notes :global(li) { margin-bottom: 0.7em; line-height: 1.7; }
+  .notes :global(li::marker) { color: var(--fg-faint); }
+
+  /* Full brief: research-note detail on top of the show-notes styles. */
+  .brief :global(h3) {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin: 2em 0 0.9em;
+  }
+  .brief :global(p) { margin: 0 0 0.6em; }
+  .brief :global(p + ul) { margin-bottom: 1.6em; }
+  .brief :global(strong) { color: var(--fg); font-weight: 600; }
+  .brief :global(em) { color: var(--fg-muted); }
+  .brief :global(ol) { margin: 0; padding-left: 1.4em; }
+  .brief :global(ol li) { margin-bottom: 0.9em; line-height: 1.7; }
+  .brief :global(ol li::marker) { color: var(--fg-faint); font-variant-numeric: tabular-nums; }
+  .brief :global(hr) { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
+  .brief :global(a) { overflow-wrap: anywhere; }
+  .brief :global(h2) { font-size: clamp(1.2rem, 1.11rem + 0.42vw, 1.5rem); font-weight: 500; margin: 1.8em 0 0.8em; }
+  .brief > :global(p:first-child) { font-size: 0.8125rem; letter-spacing: 0.04em; color: var(--fg-muted); }
+  .brief :global(ul) { margin: 0 0 1.4em; padding-left: 1.2em; }
+  .brief :global(.lede) {
+    margin: 0 0 1.4em;
+    padding: 16px 18px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .brief :global(.note) { font-size: 0.875rem; color: var(--fg-muted); }
+  .brief :global(.tablewrap) { overflow-x: auto; margin: 0 0 0.8em; }
+  .brief :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .brief :global(th) {
+    text-align: left;
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    padding: 8px 10px 8px 0;
+    border-bottom: 1px solid var(--fg-faint);
+  }
+  .brief :global(td) { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.5; }
+  .brief :global(td:nth-child(2)) { white-space: nowrap; color: var(--fg); }
+  .brief-sources { font-size: 0.95rem; }
+  .brief-sources :global(li) { margin-bottom: 0.45em; line-height: 1.55; }
+
+  .chart-list-intro { margin: 0 0 12px; font-size: 0.875rem; color: var(--fg-muted); }
+  .chart-list { margin: 0; padding-left: 1.4em; font-size: 0.95rem; color: var(--fg-muted); }
+  .chart-list li { margin-bottom: 0.6em; line-height: 1.55; }
+  .chart-list li::marker { color: var(--fg-faint); font-variant-numeric: tabular-nums; }
+  .chart-list a {
+    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-color: var(--fg-faint);
+    text-underline-offset: 0.2em;
+  }
+  .chart-list a:hover { color: var(--accent); }
+
+  .block {
+    margin-top: clamp(36px, 5vw, 56px);
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+  }
+  .block h2 { font-size: 0.6875rem; margin-bottom: 16px; }
+
+  .tickers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .tickers li {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--fg-muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 12px 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sources {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+  }
+  .sources li {
+    display: grid;
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+    gap: 4px 16px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  .pub {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-faint);
+    padding-top: 0.2em;
+  }
+  .sources a {
+    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-color: var(--fg-faint);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.22em;
+    overflow-wrap: anywhere;
+    transition: text-decoration-color 0.25s var(--ease), color 0.25s var(--ease);
+  }
+  .sources a:hover { color: var(--accent); text-decoration-color: currentColor; }
+  @media (max-width: 560px) {
+    .sources li { grid-template-columns: 1fr; }
+  }
+
+  .foot {
+    margin-top: clamp(40px, 6vw, 72px);
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    display: grid;
+    gap: 20px;
+  }
+  .disclaimer { margin: 0; font-size: 0.8125rem; color: var(--fg-faint); }
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .pager a { color: var(--fg-muted); transition: color 0.2s var(--ease); }
+  .pager a:hover { color: var(--fg); }
+</style>

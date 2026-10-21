@@ -1,0 +1,14 @@
+---
+import PodcastEpisode from '../../../views/PodcastEpisode.astro';
+import { getEpisodes } from '../../../lib/podcast';
+
+export async function getStaticPaths() {
+  const episodes = await getEpisodes();
+  return episodes.map((episode, i) => ({
+    params: { slug: episode.id },
+    props: { episode, newer: episodes[i - 1], older: episodes[i + 1] },
+  }));
+}
+---
+
+<PodcastEpisode {...Astro.props} />

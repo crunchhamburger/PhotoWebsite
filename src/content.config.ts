@@ -40,6 +40,9 @@ const lineChart = z.object({
   range: z.enum(['3m', '6m', '1y', '2y', '5y', '10y', 'ytd', 'max']).default('1y'),
   transform: z.enum(['level', 'yoy']).default('level'), // yoy: % change on a year earlier (monthly series)
   note: z.string().optional(),
+  title_zh: z.string().optional(), // Chinese title for /zh/podcast pages
+  after_zh: z.string().optional(), // Chinese section heading; default maps `after` (src/lib/podcast.ts)
+  note_zh: z.string().optional(),
 });
 // Figures from the news, drawn by us. Allowed only when an official source or two independent
 // publications confirm every number; `sources` lists them under the chart.
@@ -53,6 +56,9 @@ const barChart = z
     verification: z.enum(['official', 'two-sources']),
     sources: z.array(chartSource).min(1),
     note: z.string().optional(),
+    title_zh: z.string().optional(), // Chinese title for /zh/podcast pages
+    after_zh: z.string().optional(), // Chinese section heading; default maps `after` (src/lib/podcast.ts)
+    note_zh: z.string().optional(),
   })
   .refine(
     (c) => c.verification === 'official' || new Set(c.sources.map((s) => s.publication.toLowerCase())).size >= 2,
@@ -87,6 +93,11 @@ const podcast = defineCollection({
       .array(z.object({ publication: z.string(), title: z.string(), url: z.string().url() }))
       .default([]),
     charts: z.array(chartSpec).max(4).default([]),
+    // Chinese edition (optional): shown on /zh/podcast. Without it the Chinese pages fall back to English.
+    title_zh: z.string().optional(),
+    headline_zh: z.string().optional(),
+    audio_zh: z.string().regex(/\.mp3$/i, 'audio_zh must be an .mp3 file name').optional(),
+    duration_zh: z.number().int().positive().optional(),
   }),
 });
 
