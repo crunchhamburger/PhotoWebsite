@@ -168,7 +168,7 @@ Cloudflare Pages and Netlify also work for free (build `npm run build`, output `
 
 ## Podcast (Market Brief)
 
-`/podcast` lists the Market Brief episodes, `/podcast/<slug>` shows one (player, show notes, tickers, sources), and `/podcast/rss.xml` is the feed for podcast apps. Episodes come from the brief pipeline in `~/Documents/Market Briefs` (see `HANDOFF.md` there for the file format):
+`/podcast` lists the Market Brief episodes, `/podcast/<slug>` shows one (player, show notes, tickers, sources), and `/podcast/rss.xml` is the feed for podcast apps. Episodes come from the brief pipeline in `~/Market Briefs` (see `HANDOFF.md` there for the file format):
 
 ```bash
 npm run podcast:import   # copy new or changed episodes, then npm run build

@@ -24,7 +24,7 @@ import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 
-const SRC = process.env.MARKET_BRIEFS_DIR || join(homedir(), 'Documents', 'Market Briefs');
+const SRC = process.env.MARKET_BRIEFS_DIR || join(homedir(), 'Market Briefs');
 const REPO = fileURLToPath(new URL('..', import.meta.url));
 const CONTENT_DIR = join(REPO, 'src/content/podcast');
 const AUDIO_DIR = join(REPO, 'public/podcast/audio');
