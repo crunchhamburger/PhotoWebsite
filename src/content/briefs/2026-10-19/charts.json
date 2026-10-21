@@ -1,0 +1,22 @@
+[
+  {
+    "file": "ft-02-ai-capex-vs-past-booms.png",
+    "caption": "AI build-out vs past booms: 3.6% of GDP/yr vs railroads 2.2%, roads and telecom 1.1%",
+    "url": "https://www.ft.com/content/9ea5a37d-15c9-4d5b-94d6-719048c9cd3c"
+  },
+  {
+    "file": "ft-01-us-datacentre-construction-spend.png",
+    "caption": "US data-centre construction spend: past $5bn/month from <$1bn before ChatGPT",
+    "url": "https://www.ft.com/content/9ea5a37d-15c9-4d5b-94d6-719048c9cd3c"
+  },
+  {
+    "file": "prices-01-h100-index-1m.png",
+    "caption": "Ornn H100 index, 1 month: $2.81/hr, -3.77% w/w",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "wsj-01-blue-owl-vs-alt-managers.png",
+    "caption": "Blue Owl vs Apollo, Ares, KKR, Blackstone and S&P 500 since Nov 2025 (FactSet)",
+    "url": "https://www.wsj.com/finance/blue-owl-stock-price-private-credit-ca6673d9"
+  }
+]

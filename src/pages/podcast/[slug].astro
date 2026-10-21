@@ -3,7 +3,7 @@ import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import EpisodeMeta from '../../components/EpisodeMeta.astro';
 import { podcast } from '../../site.config';
-import { getEpisodes, getPrivateBrief, audioPath, type Episode } from '../../lib/podcast';
+import { getEpisodes, getBrief, audioPath, showChartImages, type Episode } from '../../lib/podcast';
 
 export async function getStaticPaths() {
   const episodes = await getEpisodes();
@@ -23,11 +23,19 @@ const { episode, newer, older } = Astro.props;
 const { title, headline, tickers, sources } = episode.data;
 const { Content } = await render(episode);
 
-// Local preview (npm run dev only): the full brief with charts, split so the charts sit
-// before its Sources list, as in the email.
-const brief = await getPrivateBrief(episode.id);
+// The full brief, laid out like the emailed brief page: takeaways, through-line, numbers,
+// then charts, then its Sources list. Episodes without one fall back to the short show notes.
+const brief = await getBrief(episode.id);
 const briefHtml = brief?.entry.rendered?.html ?? '';
 const sourcesAt = briefHtml.search(/<h2[^>]*>\s*Sources\s*<\/h2>/i);
+// "Source" link text for a chart: the publication's domain, e.g. ft.com.
+const sourceLabel = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return 'Source';
+  }
+};
 const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt), briefHtml.slice(sourcesAt)] : [briefHtml, ''];
 ---
 <BaseLayout title={title} description={headline} ogType="article">
@@ -39,20 +47,19 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
       <EpisodeMeta episode={episode} />
       <h1 class="title">{title}</h1>
       <p class="lede">{headline}</p>
-      <audio controls preload="metadata" src={audioPath(episode)} aria-label={`Play: ${title}`}></audio>
+      <div class="listen">
+        <span class="eyebrow">Listen · narrated brief</span>
+        <audio controls preload="metadata" src={audioPath(episode)} aria-label={`Play: ${title}`}></audio>
+      </div>
     </header>
 
     {brief ? (
       <>
-        <p class="preview-note">
-          <span class="preview-label">Local preview</span>
-          The full brief from the email, with charts and every source. Only <code>npm run dev</code> shows
-          this; the public site shows the short show notes, tickers and source links.
-        </p>
         <div class="notes brief" set:html={briefMain} />
         {brief.charts.length > 0 && (
           <section class="block" aria-labelledby="charts-heading">
             <h2 id="charts-heading" class="eyebrow">Charts</h2>
+            {showChartImages ? (
             <div class="charts">
               {brief.charts.map((chart, i) => (
                 <figure>
@@ -67,6 +74,16 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
                 </figure>
               ))}
             </div>
+            ) : (
+              <ol class="chart-list">
+                {brief.charts.map((chart) => (
+                  <li>
+                    {chart.caption}
+                    {chart.url && <> <a href={chart.url} target="_blank" rel="noopener noreferrer">{sourceLabel(chart.url)}</a></>}
+                  </li>
+                ))}
+              </ol>
+            )}
           </section>
         )}
         {briefSources && <div class="notes brief brief-sources" set:html={briefSources} />}
@@ -86,7 +103,7 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
       </section>
     )}
 
-    {!brief && sources.length > 0 && (
+    {!briefSources && sources.length > 0 && (
       <section class="block" aria-labelledby="sources-heading">
         <h2 id="sources-heading" class="eyebrow">Sources</h2>
         <ul class="sources">
@@ -142,11 +159,20 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
     font-weight: 300;
     text-wrap: pretty;
   }
+  .listen {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 12px 14px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .listen .eyebrow { font-size: 0.625rem; }
   audio {
     display: block;
     width: 100%;
     height: 44px;
-    margin-top: 8px;
   }
 
   .notes {
@@ -174,32 +200,6 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
   .notes :global(ul) { margin: 0; padding-left: 1.2em; }
   .notes :global(li) { margin-bottom: 0.7em; line-height: 1.7; }
   .notes :global(li::marker) { color: var(--fg-faint); }
-
-  .preview-note {
-    margin: clamp(32px, 4.5vw, 48px) 0 0;
-    padding: 14px 16px;
-    border: 1px dashed var(--fg-faint);
-    border-radius: 4px;
-    font-size: 0.875rem;
-    line-height: 1.6;
-    color: var(--fg-muted);
-  }
-  .preview-label {
-    display: inline-block;
-    margin-right: 8px;
-    font-family: var(--font-display);
-    font-size: 0.625rem;
-    font-weight: 600;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--bg);
-    background: var(--fg-muted);
-    padding: 3px 8px 2px;
-    border-radius: 2px;
-    vertical-align: 0.1em;
-  }
-  .preview-note code { font-size: 0.9em; }
-  .preview-note + .notes { margin-top: 24px; }
 
   /* Full brief: research-note detail on top of the show-notes styles. */
   .brief :global(h3) {
@@ -253,6 +253,16 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
     text-underline-offset: 0.2em;
   }
   .charts figcaption a:hover { color: var(--accent); }
+  .chart-list { margin: 0; padding-left: 1.4em; font-size: 0.95rem; color: var(--fg-muted); }
+  .chart-list li { margin-bottom: 0.6em; line-height: 1.55; }
+  .chart-list li::marker { color: var(--fg-faint); font-variant-numeric: tabular-nums; }
+  .chart-list a {
+    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-color: var(--fg-faint);
+    text-underline-offset: 0.2em;
+  }
+  .chart-list a:hover { color: var(--accent); }
   .n { margin-right: 6px; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 500; }
 
   .block {

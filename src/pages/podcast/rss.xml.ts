@@ -3,7 +3,7 @@ import type { APIContext } from 'astro';
 import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { podcast } from '../../site.config';
-import { getEpisodes, audioPath, audioFile, formatDuration, pubDate } from '../../lib/podcast';
+import { getEpisodes, getBrief, audioPath, audioFile, formatDuration, pubDate } from '../../lib/podcast';
 
 const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -26,14 +26,16 @@ export async function GET(context: APIContext) {
       `<itunes:explicit>false</itunes:explicit>`,
       `<itunes:category text="Business"><itunes:category text="Investing" /></itunes:category>`,
     ].join(''),
-    items: episodes.map((ep) => {
+    items: await Promise.all(episodes.map(async (ep) => {
       const { title, headline, date, duration } = ep.data;
+      // Show notes: the full brief when there is one, else the short episode notes.
+      const notes = (await getBrief(ep.id))?.entry.rendered?.html ?? ep.rendered?.html ?? '';
       return {
         title,
         link: `/podcast/${ep.id}`,
         pubDate: pubDate(date),
         description: `${headline} ${podcast.disclaimer}`,
-        content: `<p>${escape(headline)}</p>${ep.rendered?.html ?? ''}<p><em>${podcast.disclaimer}</em></p>`,
+        content: `<p>${escape(headline)}</p>${notes}<p><em>${podcast.disclaimer}</em></p>`,
         enclosure: {
           url: new URL(audioPath(ep), site).href,
           // Run from the project root (npm run build / dev), where public/ lives.
@@ -45,6 +47,6 @@ export async function GET(context: APIContext) {
           duration ? `<itunes:duration>${formatDuration(duration)}</itunes:duration>` : '',
         ].join(''),
       };
-    }),
+    })),
   });
 }

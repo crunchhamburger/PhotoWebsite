@@ -3,8 +3,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { BRIEFS_DIR } from '../../../../lib/podcast';
 
-// Serves the full brief's chart images to the local preview. Dev only: in a production
-// build this generates no files, so third-party charts never reach dist/.
+// Serves the brief's chart images in `npm run dev` only. They are screenshots of other
+// publications' graphics, so a production build generates no files here (see showChartImages).
 export const getStaticPaths = (() => {
   if (!import.meta.env.DEV || !existsSync(BRIEFS_DIR)) return [];
   return readdirSync(BRIEFS_DIR, { withFileTypes: true })

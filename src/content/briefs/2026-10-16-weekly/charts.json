@@ -1,0 +1,47 @@
+[
+  {
+    "file": "01-cpi-full-table.png",
+    "caption": "The full September CPI table: energy +5.2% m/m, core +0.3%.",
+    "url": "https://www.cnbc.com/2026/10/14/cpi-inflation-breakdown-september-2026.html"
+  },
+  {
+    "file": "02-cpiw-trend.png",
+    "caption": "CPI for wage earners (CPI-W), 2021 to Sept 2026, back up to 3.9%.",
+    "url": "https://www.cnbc.com/2026/10/14/cpi-inflation-breakdown-september-2026.html"
+  },
+  {
+    "file": "03-10y-treasury-yield.png",
+    "caption": "10-year Treasury yield in 2026: ~4.0% to over 5.3%, easing to ~5.1%.",
+    "url": "https://www.ft.com/content/cf5f1209-da29-4ce1-b425-0e83818bf9ec"
+  },
+  {
+    "file": "04-brent-wti.png",
+    "caption": "Brent and WTI in 2026: Brent back near $110.",
+    "url": "https://www.ft.com/content/8ee22d89-03eb-48dc-99a5-27555373a89c"
+  },
+  {
+    "file": "05-nasdaq100-weekly.png",
+    "caption": "Nasdaq 100 weekly % change: -5.5%, worst since April 2025.",
+    "url": "https://www.ft.com/content/4c4f03f4-f878-4bd6-8128-5be7e3bb8ca1"
+  },
+  {
+    "file": "06-chip-stock-split.png",
+    "caption": "Chip stocks rebased since Aug 3: SK Hynix and CXMT slide, Nvidia and TSMC hold.",
+    "url": "https://www.ft.com/content/c5ed09fe-dc65-4f05-8c12-8f74f5dc7ccd"
+  },
+  {
+    "file": "07-datacentre-construction-spend.png",
+    "caption": "US data-center construction spending, 2014-2026.",
+    "url": "https://www.ft.com/content/9ea5a37d-15c9-4d5b-94d6-719048c9cd3c"
+  },
+  {
+    "file": "08-ai-capex-share-of-gdp.png",
+    "caption": "AI build-out projected at ~3.6% of GDP vs ~2.2% for 1870s-90s railroads.",
+    "url": "https://www.ft.com/content/9ea5a37d-15c9-4d5b-94d6-719048c9cd3c"
+  },
+  {
+    "file": "09-openai-ads-hiring.png",
+    "caption": "Hires to OpenAI's ads team by quarter: 18 in Q4 2025 to 64 in Q3 2026.",
+    "url": "https://www.theinformation.com/articles/openais-accelerates-ad-sprint-meta-hires-slashed-prices"
+  }
+]

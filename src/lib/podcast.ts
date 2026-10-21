@@ -40,17 +40,19 @@ export function pubDate(d: Date): Date {
 }
 
 export type Chart = { file: string; caption: string; url: string };
-export type PrivateBrief = { entry: CollectionEntry<'briefs'>; charts: Chart[] };
+export type Brief = { entry: CollectionEntry<'briefs'>; charts: Chart[] };
 
-/** Where the import script puts full briefs and charts (git-ignored). */
+/** Where the import script puts full briefs (committed) and chart images (git-ignored). */
 export const BRIEFS_DIR = resolve('src/content/briefs');
 
 /**
- * The full brief and charts for an episode, for the local preview. Always undefined in a
- * production build, so paywalled text and third-party charts never reach dist/.
+ * Chart images are screenshots of other publications' graphics, so only `npm run dev` shows
+ * them. The public site lists each chart's caption with a link to its source instead.
  */
-export async function getPrivateBrief(id: string): Promise<PrivateBrief | undefined> {
-  if (!import.meta.env.DEV) return undefined;
+export const showChartImages = import.meta.env.DEV;
+
+/** The full brief for an episode, with its chart list (captions and source links). */
+export async function getBrief(id: string): Promise<Brief | undefined> {
   const entry = await getEntry('briefs', id);
   if (!entry) return undefined;
   const chartsFile = resolve(BRIEFS_DIR, id, 'charts.json');

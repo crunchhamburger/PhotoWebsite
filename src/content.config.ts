@@ -49,8 +49,7 @@ const podcast = defineCollection({
   }),
 });
 
-// Full market briefs for the local preview (git-ignored; see scripts/import-podcast.mjs).
-// Only `npm run dev` renders them. The folder doesn't exist on Vercel, so production never has them.
+// Full market briefs shown on each episode page (copied by scripts/import-podcast.mjs).
 const briefs = defineCollection({
   loader: glob({
     pattern: '*.md',

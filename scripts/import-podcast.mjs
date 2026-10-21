@@ -11,10 +11,11 @@
 // Idempotent: unchanged files are skipped. Every episode is validated before anything is
 // copied; a bad frontmatter field or a missing MP3 stops the run with exit code 1.
 //
-// Also copies each episode's full brief (<kind>/<date>.md) and its charts into
-// src/content/briefs/, which is git-ignored and rendered only by `npm run dev` as a local
-// preview. That material quotes paywalled reporting and third-party charts, so it never
-// reaches git or a production build. A missing brief or chart is skipped, never an error.
+// Also copies each episode's full brief (<kind>/<date>.md) to src/content/briefs/<slug>.md,
+// which the episode page shows, with a charts.json of chart captions and source links. The
+// chart images go to src/content/briefs/<slug>/charts/, which is git-ignored: they are
+// screenshots of other publications' graphics, shown only in `npm run dev`. A missing brief
+// or chart is skipped, never an error.
 import { readdirSync, readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { homedir } from 'node:os';
@@ -115,9 +116,11 @@ function cleanBrief(text) {
   const out = [];
   let skipping = false;
   let first = true;
-  for (const line of text.split(/\r?\n/)) {
+  for (let line of text.split(/\r?\n/)) {
     if (first && /^#\s/.test(line)) { first = false; continue; }
     if (line.trim()) first = false;
+    // Weekly intro names internal note files ("Detailed notes are in ft-tech.md, …"): drop that sentence.
+    line = line.replace(/\s*Detailed notes are in .*?\.md\.(?=\s|$)/g, '');
     if (/^##\s+Charts\s*$/.test(line)) { skipping = true; continue; }
     if (skipping && /^##\s/.test(line)) skipping = false;
     if (skipping) continue;
@@ -127,7 +130,7 @@ function cleanBrief(text) {
   return out.join('\n').replace(/(\n---\s*)+(\n## )/g, '\n$2').replace(/\n{3,}/g, '\n\n').trim() + '\n';
 }
 
-/** Copies the full brief and charts for one episode into src/content/briefs/. Returns what changed. */
+/** Copies the full brief, chart list and chart images for one episode into src/content/briefs/. Returns what changed. */
 function importBrief(ep) {
   const changes = [];
   const briefFile = join(SRC, ep.kind, `${ep.date}.md`);
@@ -220,9 +223,9 @@ for (const ep of episodes) {
   let briefNote = '';
   try {
     const briefChanges = importBrief(ep);
-    if (briefChanges.length) briefNote = dim(`    local preview: ${briefChanges.join(', ')}`);
+    if (briefChanges.length) briefNote = dim(`    full brief: ${briefChanges.join(', ')}`);
   } catch (e) {
-    briefNote = yellow(`    local preview skipped: ${e.message}`);
+    briefNote = yellow(`    full brief skipped: ${e.message}`);
   }
   if (changes.length) {
     copied++;

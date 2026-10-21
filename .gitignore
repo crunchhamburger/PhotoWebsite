@@ -5,5 +5,5 @@ dist
 .DS_Store
 .claude
 
-# Full market briefs and charts: local preview only (see scripts/import-podcast.mjs).
-src/content/briefs/
+# Chart screenshots from the market briefs: shown in npm run dev only, never published.
+src/content/briefs/*/charts/

@@ -175,9 +175,9 @@ npm run podcast:import   # copy new or changed episodes, then npm run build
 MARKET_BRIEFS_DIR=/path/to/briefs npm run podcast:import
 ```
 
-The script reads `daily/*-episode.md` and `weekly/*-episode.md`, validates the frontmatter, and copies each episode to `src/content/podcast/<date>.md` (weekly: `<date>-weekly.md`) and its MP3 to `public/podcast/audio/<same slug>.mp3`. Unchanged files are skipped. A missing MP3 or bad field stops the run before anything is copied. Only the episode files' own-words notes, source links and audio are public: never add chart screenshots or article text. Channel title and description are `podcast` in `src/site.config.ts`; the audio cache header is in `vercel.json`.
+The script reads `daily/*-episode.md` and `weekly/*-episode.md`, validates the frontmatter, and copies each episode to `src/content/podcast/<date>.md` (weekly: `<date>-weekly.md`) and its MP3 to `public/podcast/audio/<same slug>.mp3`. Unchanged files are skipped. A missing MP3 or bad field stops the run before anything is copied. Chart screenshots are never published. Channel title and description are `podcast` in `src/site.config.ts`; the audio cache header is in `vercel.json`.
 
-**Local preview of the full brief.** The import also copies each episode's full brief and its charts into `src/content/briefs/`, which is git-ignored. `npm run dev` shows them on the episode page, marked "Local preview". A production build never includes them, so they never reach git or Vercel: they quote paywalled reporting and third-party charts.
+**Full brief on each episode page.** The import also copies each episode's full brief (`daily/<date>.md` or `weekly/<date>.md`) to `src/content/briefs/<slug>.md`, and the episode page shows it in the same order as the emailed brief: Article Takeaways, The Through-Line, Numbers Worth Remembering, Top Takeaways, charts, Sources. Episodes without a brief fall back to the short show notes. Chart images go to `src/content/briefs/<slug>/charts/`, which is git-ignored: they are screenshots of other publications' graphics, so only `npm run dev` shows them, and the public page lists each chart's caption with a link to its source.
 
 ## Performance notes
 
