@@ -11,12 +11,14 @@
 // Idempotent: unchanged files are skipped. Every episode is validated before anything is
 // copied; a bad frontmatter field or a missing MP3 stops the run with exit code 1.
 //
-// Also copies each episode's full brief (<kind>/<date>.md) to src/content/briefs/<slug>.md,
-// which the episode page shows, with a charts.json of chart captions and source links. The
+// Also copies each episode's full brief to src/content/briefs/, which the episode page shows:
+// the published brief page (<kind>/<date>-page.html, the same page the email links to) as
+// <slug>.html when it exists, else the Markdown brief (<kind>/<date>.md) as <slug>.md. Plus a
+// charts.json of chart captions and source links. The
 // chart images go to src/content/briefs/<slug>/charts/, which is git-ignored: they are
 // screenshots of other publications' graphics, shown only in `npm run dev`. A missing brief
 // or chart is skipped, never an error.
-import { readdirSync, readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync, statSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -130,13 +132,55 @@ function cleanBrief(text) {
   return out.join('\n').replace(/(\n---\s*)+(\n## )/g, '\n$2').replace(/\n{3,}/g, '\n\n').trim() + '\n';
 }
 
+/**
+ * The published brief page's <main>, tidied for the site: drops the H1 and audio player (the
+ * episode page has its own), the Charts section with its screenshots (the page lists chart
+ * captions and links instead), and anything executable. Turns the daily page's "- " lines
+ * inside paragraphs into real lists. Returns null if the page has no <main>.
+ */
+function cleanPage(html) {
+  const m = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+  if (!m) return null;
+  let s = m[1];
+  s = s.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, '');
+  s = s.replace(/<div class="listen">[\s\S]*?<\/div>/i, '');
+  s = s.replace(/<h2[^>]*>\s*(?:\d+\.\s*)?Charts\s*<\/h2>[\s\S]*?(?=<h2|$)/i, '');
+  s = s.replace(/<(script|style|audio|video|iframe|object)\b[\s\S]*?<\/\1>/gi, '');
+  s = s.replace(/<\/?(img|figure|figcaption|source|embed)\b[^>]*>/gi, '');
+  s = s.replace(/\s+on\w+="[^"]*"/gi, '');
+  s = s.replace(/<p>([\s\S]*?)<\/p>/g, (all, inner) => {
+    if (!/\n-\s/.test(inner)) return all;
+    const [lead, ...items] = inner.split(/\n-\s+/);
+    return (lead.trim() ? `<p>${lead.trim()}</p>\n` : '') + `<ul>\n${items.map((i) => `<li>${i.trim()}</li>`).join('\n')}\n</ul>`;
+  });
+  s = s.replace(/[^\S\n]*\{\{[A-Z_]+\}\}[^\S\n]*/g, '');
+  return s.replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+
+/** Deletes a file if it exists. Returns true if it did. */
+function removeIfPresent(file) {
+  if (!existsSync(file)) return false;
+  rmSync(file);
+  return true;
+}
+
 /** Copies the full brief, chart list and chart images for one episode into src/content/briefs/. Returns what changed. */
 function importBrief(ep) {
   const changes = [];
-  const briefFile = join(SRC, ep.kind, `${ep.date}.md`);
-  if (!existsSync(briefFile)) return changes;
+  const pageFile = join(SRC, ep.kind, `${ep.date}-page.html`);
+  const mdFile = join(SRC, ep.kind, `${ep.date}.md`);
+  const page = existsSync(pageFile) ? cleanPage(readFileSync(pageFile, 'utf8')) : null;
+  if (!page && !existsSync(mdFile)) return changes;
   mkdirSync(BRIEFS_DIR, { recursive: true });
-  if (writeIfChanged(join(BRIEFS_DIR, `${ep.slug}.md`), cleanBrief(readFileSync(briefFile, 'utf8')))) changes.push('brief');
+  const htmlDest = join(BRIEFS_DIR, `${ep.slug}.html`);
+  const mdDest = join(BRIEFS_DIR, `${ep.slug}.md`);
+  if (page) {
+    if (writeIfChanged(htmlDest, page)) changes.push('brief page');
+    removeIfPresent(mdDest);
+  } else {
+    if (writeIfChanged(mdDest, cleanBrief(readFileSync(mdFile, 'utf8')))) changes.push('brief');
+    removeIfPresent(htmlDest);
+  }
 
   // charts-order.txt: one chart per line, "file<TAB>caption<TAB>source url".
   const chartDir = ep.kind === 'weekly' ? join(SRC, 'weekly', `${ep.date}-charts`) : join(SRC, 'staging', ep.date, 'charts');

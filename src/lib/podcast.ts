@@ -40,7 +40,7 @@ export function pubDate(d: Date): Date {
 }
 
 export type Chart = { file: string; caption: string; url: string };
-export type Brief = { entry: CollectionEntry<'briefs'>; charts: Chart[] };
+export type Brief = { html: string; charts: Chart[] };
 
 /** Where the import script puts full briefs (committed) and chart images (git-ignored). */
 export const BRIEFS_DIR = resolve('src/content/briefs');
@@ -51,11 +51,17 @@ export const BRIEFS_DIR = resolve('src/content/briefs');
  */
 export const showChartImages = import.meta.env.DEV;
 
-/** The full brief for an episode, with its chart list (captions and source links). */
+/**
+ * The full brief for an episode as HTML, with its chart list (captions and source links):
+ * the published brief page (<id>.html) when the import found one, else the Markdown brief.
+ */
 export async function getBrief(id: string): Promise<Brief | undefined> {
-  const entry = await getEntry('briefs', id);
-  if (!entry) return undefined;
+  const pageFile = resolve(BRIEFS_DIR, `${id}.html`);
+  const html = existsSync(pageFile)
+    ? readFileSync(pageFile, 'utf8')
+    : (await getEntry('briefs', id))?.rendered?.html;
+  if (!html) return undefined;
   const chartsFile = resolve(BRIEFS_DIR, id, 'charts.json');
   const charts: Chart[] = existsSync(chartsFile) ? JSON.parse(readFileSync(chartsFile, 'utf8')) : [];
-  return { entry, charts };
+  return { html, charts };
 }

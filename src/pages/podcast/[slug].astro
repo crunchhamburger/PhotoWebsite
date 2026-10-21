@@ -26,8 +26,8 @@ const { Content } = await render(episode);
 // The full brief, laid out like the emailed brief page: takeaways, through-line, numbers,
 // then charts, then its Sources list. Episodes without one fall back to the short show notes.
 const brief = await getBrief(episode.id);
-const briefHtml = brief?.entry.rendered?.html ?? '';
-const sourcesAt = briefHtml.search(/<h2[^>]*>\s*Sources\s*<\/h2>/i);
+const briefHtml = brief?.html ?? '';
+const sourcesAt = briefHtml.search(/<h2[^>]*>\s*(?:\d+\.\s*)?Sources\s*<\/h2>/i);
 // "Source" link text for a chart: the publication's domain, e.g. ft.com.
 const sourceLabel = (url: string) => {
   try {
@@ -36,6 +36,9 @@ const sourceLabel = (url: string) => {
     return 'Source';
   }
 };
+// Numbered briefs (the weekly) number Charts just before Sources: "7. Sources" → "6. Charts".
+const sourcesNum = Number(briefHtml.slice(sourcesAt).match(/^<h2[^>]*>\s*(\d+)\./)?.[1] ?? 0);
+const chartsHeading = sourcesAt >= 0 && sourcesNum > 1 ? `${sourcesNum - 1}. Charts` : 'Charts';
 const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt), briefHtml.slice(sourcesAt)] : [briefHtml, ''];
 ---
 <BaseLayout title={title} description={headline} ogType="article">
@@ -58,7 +61,7 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
         <div class="notes brief" set:html={briefMain} />
         {brief.charts.length > 0 && (
           <section class="block" aria-labelledby="charts-heading">
-            <h2 id="charts-heading" class="eyebrow">Charts</h2>
+            <h2 id="charts-heading" class="eyebrow">{chartsHeading}</h2>
             {showChartImages ? (
             <div class="charts">
               {brief.charts.map((chart, i) => (
@@ -220,6 +223,37 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
   .brief :global(ol li::marker) { color: var(--fg-faint); font-variant-numeric: tabular-nums; }
   .brief :global(hr) { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
   .brief :global(a) { overflow-wrap: anywhere; }
+  .brief :global(h2) { font-size: clamp(1.2rem, 1.11rem + 0.42vw, 1.5rem); font-weight: 500; margin: 1.8em 0 0.8em; }
+  .brief > :global(p:first-child) { font-size: 0.8125rem; letter-spacing: 0.04em; color: var(--fg-muted); }
+  .brief :global(ul) { margin: 0 0 1.4em; padding-left: 1.2em; }
+  .brief :global(.lede) {
+    margin: 0 0 1.4em;
+    padding: 16px 18px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .brief :global(.note) { font-size: 0.875rem; color: var(--fg-muted); }
+  .brief :global(.tablewrap) { overflow-x: auto; margin: 0 0 0.8em; }
+  .brief :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .brief :global(th) {
+    text-align: left;
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    padding: 8px 10px 8px 0;
+    border-bottom: 1px solid var(--fg-faint);
+  }
+  .brief :global(td) { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.5; }
+  .brief :global(td:nth-child(2)) { white-space: nowrap; color: var(--fg); }
   .brief-sources { font-size: 0.95rem; }
   .brief-sources :global(li) { margin-bottom: 0.45em; line-height: 1.55; }
 

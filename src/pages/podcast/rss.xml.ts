@@ -29,7 +29,7 @@ export async function GET(context: APIContext) {
     items: await Promise.all(episodes.map(async (ep) => {
       const { title, headline, date, duration } = ep.data;
       // Show notes: the full brief when there is one, else the short episode notes.
-      const notes = (await getBrief(ep.id))?.entry.rendered?.html ?? ep.rendered?.html ?? '';
+      const notes = (await getBrief(ep.id))?.html ?? ep.rendered?.html ?? '';
       return {
         title,
         link: `/podcast/${ep.id}`,
