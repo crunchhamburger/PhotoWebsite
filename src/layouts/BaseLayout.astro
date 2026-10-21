@@ -5,7 +5,7 @@ import type { ImageMetadata } from 'astro';
 import { site } from '../site.config';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import { basePath, htmlLang, langFromUrl, langs, localize, ogLocale, useT } from '../i18n';
+import { basePath, hasTranslation, htmlLang, langFromUrl, langs, localize, ogLocale, useT } from '../i18n';
 
 interface Props {
   title?: string; // page title; the site name is appended
@@ -19,11 +19,11 @@ const lang = langFromUrl(Astro.url);
 const t = useT(lang);
 const { title, description = t('meta.description'), ogImage, ogType = 'website', preloadImage } = Astro.props;
 const fullTitle = title ? `${title} — ${site.name}` : `${site.name} — ${t('meta.defaultTitle')}`;
-// Same page in each language, for hreflang alternates (404 has no counterpart).
+// Same page in each language, for hreflang alternates (404 and the English-only podcast have none).
 const base = basePath(Astro.url);
 const alternates = langs.map((l) => ({ lang: l, href: new URL(localize(base, l), Astro.site).href }));
 const canonical = new URL(localize(base, lang), Astro.site);
-const is404 = Astro.url.pathname.startsWith('/404');
+const noTwin = Astro.url.pathname.startsWith('/404') || !hasTranslation(base);
 const og = ogImage ? await getImage({ src: ogImage, width: 1200, height: 630, fit: 'cover', format: 'jpg' }) : undefined;
 const ogUrl = og ? new URL(og.src, Astro.site).href : undefined;
 ---
@@ -37,10 +37,10 @@ const ogUrl = og ? new URL(og.src, Astro.site).href : undefined;
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {
-      !is404 &&
+      !noTwin &&
         alternates.map((a) => <link rel="alternate" hreflang={htmlLang[a.lang]} href={a.href} />)
     }
-    {!is404 && <link rel="alternate" hreflang="x-default" href={alternates[0].href} />}
+    {!noTwin && <link rel="alternate" hreflang="x-default" href={alternates[0].href} />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <meta name="theme-color" content="#0b0b0c" />

@@ -1,16 +1,22 @@
 ---
 import { site, nav } from '../site.config';
 import ThemeToggle from './ThemeToggle.astro';
-import { basePath, htmlLang, langFromUrl, localize, useT, type Key } from '../i18n';
+import { basePath, hasTranslation, htmlLang, langFromUrl, localize, useT, type Key } from '../i18n';
 
 const lang = langFromUrl(Astro.url);
 const t = useT(lang);
 const other = lang === 'en' ? 'zh' : 'en';
 const base = basePath(Astro.url);
 const path = localize(base, lang);
-// The 404 page has no translated twin, so its switch goes to the other language's home page.
-const switchHref = localize(Astro.url.pathname.startsWith('/404') ? '/' : base, other);
-const navKeys: Record<string, Key> = { '/': 'nav.home', '/#work': 'nav.portfolio', '/about': 'nav.about' };
+// Pages without a translated twin (404, the English-only podcast) switch to the other language's home page.
+const twin = !Astro.url.pathname.startsWith('/404') && hasTranslation(base);
+const switchHref = localize(twin ? base : '/', other);
+const navKeys: Record<string, Key> = {
+  '/': 'nav.home',
+  '/#work': 'nav.portfolio',
+  '/about': 'nav.about',
+  '/podcast': 'nav.podcast',
+};
 const items = nav.map((item) => ({
   href: localize(item.href, lang),
   label: navKeys[item.href] ? t(navKeys[item.href]) : item.label,

@@ -22,9 +22,15 @@ export function basePath(url: URL): string {
   return p.replace(/^\/zh(?=\/|$)/, '') || '/';
 }
 
-/** Localise an English path ('/', '/about', '/#work', '/projects/x') for `lang`. */
+/** Whether a page exists in Chinese. The podcast (/podcast…) is English-only. */
+export function hasTranslation(path: string): boolean {
+  return path === '/' || path.startsWith('/#') || path === '/about' || path.startsWith('/projects/');
+}
+
+/** Localise an English path ('/', '/about', '/#work', '/projects/x') for `lang`.
+ *  Paths without a Chinese version stay English. */
 export function localize(path: string, lang: Lang): string {
-  if (lang === 'en') return path;
+  if (lang === 'en' || !hasTranslation(path)) return path;
   if (path === '/') return '/zh';
   if (path.startsWith('/#')) return `/zh${path.slice(1)}`;
   return `/zh${path}`;
@@ -39,6 +45,7 @@ const dict = {
     'nav.home': 'Home',
     'nav.portfolio': 'Portfolio',
     'nav.about': 'About Me',
+    'nav.podcast': 'Podcast',
     'header.home': 'Michael Wang — home',
     'header.instagram': 'Instagram (opens in a new tab)',
     'header.openMenu': 'Open menu',
@@ -114,6 +121,7 @@ const dict = {
     'nav.home': '首页',
     'nav.portfolio': '作品集',
     'nav.about': '关于我',
+    'nav.podcast': '播客（英文）',
     'header.home': 'Michael Wang——首页',
     'header.instagram': 'Instagram（在新标签页打开）',
     'header.openMenu': '打开菜单',
