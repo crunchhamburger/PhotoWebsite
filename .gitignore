@@ -4,3 +4,6 @@ dist
 .env
 .DS_Store
 .claude
+
+# Full market briefs and charts: local preview only (see scripts/import-podcast.mjs).
+src/content/briefs/

@@ -26,4 +26,37 @@ const projects = defineCollection({
   }),
 });
 
-export const collections = { projects };
+// Podcast episodes: copied from the market-brief pipeline by `npm run podcast:import`.
+// Slug is the file name: <date> for daily, <date>-weekly for weekly. The MP3 lives at
+// public/podcast/audio/<slug>.mp3; `audio` keeps the pipeline's original file name.
+const podcast = defineCollection({
+  loader: glob({
+    pattern: '*.md',
+    base: './src/content/podcast',
+    generateId: ({ entry }) => entry.replace(/\.md$/, ''),
+  }),
+  schema: z.object({
+    title: z.string(),
+    date: z.coerce.date(),
+    kind: z.enum(['daily', 'weekly']),
+    headline: z.string(),
+    audio: z.string().regex(/\.mp3$/i, 'audio must be an .mp3 file name'),
+    duration: z.number().int().positive().optional(),
+    tickers: z.array(z.string()).default([]),
+    sources: z
+      .array(z.object({ publication: z.string(), title: z.string(), url: z.string().url() }))
+      .default([]),
+  }),
+});
+
+// Full market briefs for the local preview (git-ignored; see scripts/import-podcast.mjs).
+// Only `npm run dev` renders them. The folder doesn't exist on Vercel, so production never has them.
+const briefs = defineCollection({
+  loader: glob({
+    pattern: '*.md',
+    base: './src/content/briefs',
+    generateId: ({ entry }) => entry.replace(/\.md$/, ''),
+  }),
+});
+
+export const collections = { projects, podcast, briefs };

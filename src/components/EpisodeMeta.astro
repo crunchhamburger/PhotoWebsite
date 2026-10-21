@@ -1,0 +1,48 @@
+---
+import { formatEpisodeDate, durationLabel, type Episode } from '../lib/podcast';
+
+interface Props {
+  episode: Episode;
+}
+
+const { date, kind, duration } = Astro.props.episode.data;
+---
+<p class="episode-meta">
+  <time datetime={date.toISOString().slice(0, 10)}>{formatEpisodeDate(date)}</time>
+  <span class:list={['badge', kind]}>{kind}</span>
+  {duration && <span class="duration">{durationLabel(duration)}</span>}
+</p>
+
+<style>
+  .episode-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    margin: 0;
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+    color: var(--fg-muted);
+  }
+  .badge {
+    font-family: var(--font-display);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    line-height: 1;
+    padding: 5px 9px 4px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--fg-muted);
+  }
+  .badge.weekly {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .duration::before {
+    content: '·';
+    margin-right: 14px;
+    color: var(--fg-faint);
+  }
+</style>

@@ -1,0 +1,339 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import EpisodeMeta from '../../components/EpisodeMeta.astro';
+import { podcast } from '../../site.config';
+import { getEpisodes, getPrivateBrief, audioPath, type Episode } from '../../lib/podcast';
+
+export async function getStaticPaths() {
+  const episodes = await getEpisodes();
+  return episodes.map((episode, i) => ({
+    params: { slug: episode.id },
+    props: { episode, newer: episodes[i - 1], older: episodes[i + 1] },
+  }));
+}
+
+interface Props {
+  episode: Episode;
+  newer?: Episode;
+  older?: Episode;
+}
+
+const { episode, newer, older } = Astro.props;
+const { title, headline, tickers, sources } = episode.data;
+const { Content } = await render(episode);
+
+// Local preview (npm run dev only): the full brief with charts, split so the charts sit
+// before its Sources list, as in the email.
+const brief = await getPrivateBrief(episode.id);
+const briefHtml = brief?.entry.rendered?.html ?? '';
+const sourcesAt = briefHtml.search(/<h2[^>]*>\s*Sources\s*<\/h2>/i);
+const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt), briefHtml.slice(sourcesAt)] : [briefHtml, ''];
+---
+<BaseLayout title={title} description={headline} ogType="article">
+  <link slot="head" rel="alternate" type="application/rss+xml" title={podcast.title} href="/podcast/rss.xml" />
+
+  <article class="episode container">
+    <header class="intro">
+      <a class="back eyebrow" href="/podcast"><span aria-hidden="true">←</span> All episodes</a>
+      <EpisodeMeta episode={episode} />
+      <h1 class="title">{title}</h1>
+      <p class="lede">{headline}</p>
+      <audio controls preload="metadata" src={audioPath(episode)} aria-label={`Play: ${title}`}></audio>
+    </header>
+
+    {brief ? (
+      <>
+        <p class="preview-note">
+          <span class="preview-label">Local preview</span>
+          The full brief from the email, with charts and every source. Only <code>npm run dev</code> shows
+          this; the public site shows the short show notes, tickers and source links.
+        </p>
+        <div class="notes brief" set:html={briefMain} />
+        {brief.charts.length > 0 && (
+          <section class="block" aria-labelledby="charts-heading">
+            <h2 id="charts-heading" class="eyebrow">Charts</h2>
+            <div class="charts">
+              {brief.charts.map((chart, i) => (
+                <figure>
+                  <a href={`/podcast/${episode.id}/charts/${chart.file}`} target="_blank" rel="noopener">
+                    <img src={`/podcast/${episode.id}/charts/${chart.file}`} alt={chart.caption} loading="lazy" decoding="async" />
+                  </a>
+                  <figcaption>
+                    <span class="n">{String(i + 1).padStart(2, '0')}</span>
+                    {chart.caption}
+                    {chart.url && <> <a href={chart.url} target="_blank" rel="noopener noreferrer">Source</a></>}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </section>
+        )}
+        {briefSources && <div class="notes brief brief-sources" set:html={briefSources} />}
+      </>
+    ) : (
+      <div class="notes">
+        <Content />
+      </div>
+    )}
+
+    {tickers.length > 0 && (
+      <section class="block" aria-labelledby="tickers-heading">
+        <h2 id="tickers-heading" class="eyebrow">Tickers mentioned</h2>
+        <ul class="tickers">
+          {tickers.map((t) => <li>{t}</li>)}
+        </ul>
+      </section>
+    )}
+
+    {!brief && sources.length > 0 && (
+      <section class="block" aria-labelledby="sources-heading">
+        <h2 id="sources-heading" class="eyebrow">Sources</h2>
+        <ul class="sources">
+          {sources.map((s) => (
+            <li>
+              <span class="pub">{s.publication}</span>
+              <a href={s.url} target="_blank" rel="noopener noreferrer">{s.title}</a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <footer class="foot">
+      <p class="disclaimer">{podcast.disclaimer}</p>
+      {(newer || older) && (
+        <nav class="pager" aria-label="More episodes">
+          {older ? <a href={`/podcast/${older.id}`} rel="prev"><span aria-hidden="true">←</span> Older</a> : <span></span>}
+          {newer && <a href={`/podcast/${newer.id}`} rel="next">Newer <span aria-hidden="true">→</span></a>}
+        </nav>
+      )}
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .episode {
+    max-width: calc(760px + 2 * var(--gutter));
+    padding-block: clamp(40px, 7vw, 104px) 0;
+  }
+
+  .intro { display: grid; gap: 16px; }
+  .back {
+    justify-self: start;
+    display: inline-flex;
+    gap: 0.6em;
+    align-items: center;
+    margin-bottom: clamp(8px, 1.4vw, 16px);
+    transition: color 0.2s var(--ease);
+  }
+  .back:hover { color: var(--fg); }
+  .title {
+    font-size: clamp(1.73rem, 1.44rem + 1.24vw, 2.66rem);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+  .lede {
+    margin: 0;
+    font-size: clamp(1.05rem, 0.98rem + 0.35vw, 1.25rem);
+    line-height: 1.6;
+    font-weight: 300;
+    text-wrap: pretty;
+  }
+  audio {
+    display: block;
+    width: 100%;
+    height: 44px;
+    margin-top: 8px;
+  }
+
+  .notes {
+    margin-top: clamp(36px, 5vw, 56px);
+    padding-top: clamp(28px, 4vw, 40px);
+    border-top: 1px solid var(--line);
+    font-size: clamp(1rem, 0.96rem + 0.19vw, 1.125rem);
+  }
+  .notes :global(p) { margin: 0 0 1.1em; }
+  .notes :global(a) {
+    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-color: var(--fg-faint);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.22em;
+    transition: text-decoration-color 0.25s var(--ease), color 0.25s var(--ease);
+  }
+  .notes :global(a:hover) { color: var(--accent); text-decoration-color: currentColor; }
+  .notes :global(h2) {
+    font-size: clamp(1.2rem, 1.11rem + 0.42vw, 1.5rem);
+    font-weight: 500;
+    margin: 0 0 0.8em;
+  }
+  .notes :global(h2:not(:first-child)) { margin-top: 1.8em; }
+  .notes :global(ul) { margin: 0; padding-left: 1.2em; }
+  .notes :global(li) { margin-bottom: 0.7em; line-height: 1.7; }
+  .notes :global(li::marker) { color: var(--fg-faint); }
+
+  .preview-note {
+    margin: clamp(32px, 4.5vw, 48px) 0 0;
+    padding: 14px 16px;
+    border: 1px dashed var(--fg-faint);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--fg-muted);
+  }
+  .preview-label {
+    display: inline-block;
+    margin-right: 8px;
+    font-family: var(--font-display);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--bg);
+    background: var(--fg-muted);
+    padding: 3px 8px 2px;
+    border-radius: 2px;
+    vertical-align: 0.1em;
+  }
+  .preview-note code { font-size: 0.9em; }
+  .preview-note + .notes { margin-top: 24px; }
+
+  /* Full brief: research-note detail on top of the show-notes styles. */
+  .brief :global(h3) {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin: 2em 0 0.9em;
+  }
+  .brief :global(p) { margin: 0 0 0.6em; }
+  .brief :global(p + ul) { margin-bottom: 1.6em; }
+  .brief :global(strong) { color: var(--fg); font-weight: 600; }
+  .brief :global(em) { color: var(--fg-muted); }
+  .brief :global(ol) { margin: 0; padding-left: 1.4em; }
+  .brief :global(ol li) { margin-bottom: 0.9em; line-height: 1.7; }
+  .brief :global(ol li::marker) { color: var(--fg-faint); font-variant-numeric: tabular-nums; }
+  .brief :global(hr) { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
+  .brief :global(a) { overflow-wrap: anywhere; }
+  .brief-sources { font-size: 0.95rem; }
+  .brief-sources :global(li) { margin-bottom: 0.45em; line-height: 1.55; }
+
+  .charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    gap: clamp(10px, 1.6vw, 24px);
+  }
+  .charts figure {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    padding: 10px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .charts img {
+    width: 100%;
+    height: auto;
+    border-radius: 2px;
+    background: #fff; /* charts are screenshots on white */
+  }
+  .charts figcaption { font-size: 0.8125rem; line-height: 1.5; color: var(--fg-muted); }
+  .charts figcaption a {
+    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-color: var(--fg-faint);
+    text-underline-offset: 0.2em;
+  }
+  .charts figcaption a:hover { color: var(--accent); }
+  .n { margin-right: 6px; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 500; }
+
+  .block {
+    margin-top: clamp(36px, 5vw, 56px);
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+  }
+  .block h2 { font-size: 0.6875rem; margin-bottom: 16px; }
+
+  .tickers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .tickers li {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--fg-muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 12px 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sources {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+  }
+  .sources li {
+    display: grid;
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+    gap: 4px 16px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  .pub {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-faint);
+    padding-top: 0.2em;
+  }
+  .sources a {
+    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-color: var(--fg-faint);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.22em;
+    overflow-wrap: anywhere;
+    transition: text-decoration-color 0.25s var(--ease), color 0.25s var(--ease);
+  }
+  .sources a:hover { color: var(--accent); text-decoration-color: currentColor; }
+  @media (max-width: 560px) {
+    .sources li { grid-template-columns: 1fr; }
+  }
+
+  .foot {
+    margin-top: clamp(40px, 6vw, 72px);
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    display: grid;
+    gap: 20px;
+  }
+  .disclaimer { margin: 0; font-size: 0.8125rem; color: var(--fg-faint); }
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .pager a { color: var(--fg-muted); transition: color 0.2s var(--ease); }
+  .pager a:hover { color: var(--fg); }
+</style>

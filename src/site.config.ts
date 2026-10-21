@@ -26,4 +26,15 @@ export const nav = [
   { label: 'Home', href: '/' },
   { label: 'Portfolio', href: '/#work' },
   { label: 'About Me', href: '/about' },
+  { label: 'Podcast', href: '/podcast' },
 ];
+
+// The Market Brief podcast (/podcast and /podcast/rss.xml).
+export const podcast = {
+  title: 'Michael Wang — Market Brief',
+  description:
+    'A short spoken summary of the day in AI infrastructure, chips and markets: the main signal, the takeaways and the numbers worth remembering, with links to the original reporting. News summary, not investment advice.',
+  author: 'Michael Wang',
+  language: 'en-us',
+  disclaimer: 'News summary, not investment advice.',
+};

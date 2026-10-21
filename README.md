@@ -166,6 +166,19 @@ The domain is connected through Vercel:
 
 Cloudflare Pages and Netlify also work for free (build `npm run build`, output `dist`). They don't read `vercel.json`, so the redirects and headers would have to move to `public/_redirects` and `public/_headers`.
 
+## Podcast (Market Brief)
+
+`/podcast` lists the Market Brief episodes, `/podcast/<slug>` shows one (player, show notes, tickers, sources), and `/podcast/rss.xml` is the feed for podcast apps. Episodes come from the brief pipeline in `~/Documents/Market Briefs` (see `HANDOFF.md` there for the file format):
+
+```bash
+npm run podcast:import   # copy new or changed episodes, then npm run build
+MARKET_BRIEFS_DIR=/path/to/briefs npm run podcast:import
+```
+
+The script reads `daily/*-episode.md` and `weekly/*-episode.md`, validates the frontmatter, and copies each episode to `src/content/podcast/<date>.md` (weekly: `<date>-weekly.md`) and its MP3 to `public/podcast/audio/<same slug>.mp3`. Unchanged files are skipped. A missing MP3 or bad field stops the run before anything is copied. Only the episode files' own-words notes, source links and audio are public: never add chart screenshots or article text. Channel title and description are `podcast` in `src/site.config.ts`; the audio cache header is in `vercel.json`.
+
+**Local preview of the full brief.** The import also copies each episode's full brief and its charts into `src/content/briefs/`, which is git-ignored. `npm run dev` shows them on the episode page, marked "Local preview". A production build never includes them, so they never reach git or Vercel: they quote paywalled reporting and third-party charts.
+
 ## Performance notes
 
 - Images are resized and converted at build time. Upload originals at 3000–4000 px; anything bigger only slows builds.
