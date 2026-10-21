@@ -192,6 +192,30 @@ npm test                # unit tests for the series validation
 
 **Daily publishing** runs from `~/Market Briefs/scripts/publish-site.mjs` (data → import → build → commit → push, idempotent, logged to `~/Market Briefs/logs/publish-site.log`).
 
+## Private research view (/research)
+
+An owner-only area at `https://www.haozhewang.com/research` shows each brief beside the publisher screenshots saved while reading it (FT, WSJ, CNBC, The Information, Ornn). It is the only part of the site that isn't static: `api/research.js` is one Vercel function, and `vercel.json` rewrites `/research/*` to it. The public pages, RSS and sitemap never link to it, `robots.txt` disallows it, and the build check fails if any of it reaches `dist/`.
+
+- **Sign-in:** GitHub OAuth (state + PKCE). Only the GitHub account whose numeric id is `RESEARCH_OWNER_GITHUB_ID` gets in. The GitHub token is used once to read the account id and then revoked.
+- **Session:** a `__Host-` cookie, HMAC-signed, HttpOnly, Secure, SameSite=Lax, valid 12 hours. Sign out is a POST from the page.
+- **Images:** every image request is checked (`/research/img/...` returns 401 without a valid session) and streamed from a **private** Cloudflare R2 bucket through the function. There is no public bucket URL and no shareable signed link. Responses are `private, no-store`, `noindex`, `no-referrer`, with a strict Content-Security-Policy.
+- **Fails closed:** until every setting below exists, every `/research` URL answers 503.
+- **What gets uploaded:** `~/Market Briefs/scripts/upload-research.mjs` (run by the 7:20 stage after publishing, separately from it) uploads briefs and metadata, and screenshots only from publishers set to `true` in `~/Market Briefs/config/research.json`. All are `false` until you've confirmed each publisher's terms allow keeping copies in your own private cloud storage (the file records what was checked on 2026-10-20). Screenshots not uploaded show as captions on the remote view.
+- **On this Mac only:** `npm run research:local` serves the same view at http://127.0.0.1:4330/research with every screenshot, straight from `~/Market Briefs/research-store`. No upload and no sign-in; it only listens on 127.0.0.1.
+- **Tests:** `npm test` (sessions, OAuth, image auth, path checks, SigV4 against AWS's example) and `node ~/Market\ Briefs/scripts/test-upload-research.mjs` (uploader against a fake S3 server).
+
+### One-time setup (about 15 minutes)
+
+1. **Cloudflare R2** (free tier: 10 GB, no egress fees). In the Cloudflare dashboard: R2 → Create bucket, e.g. `haozhewang-research`. Leave **Public access** off: no r2.dev URL and no custom domain.
+2. **Two R2 API tokens** (R2 → Manage R2 API Tokens → Create API token), each limited to that bucket:
+   - *Object Read only* → for Vercel. Note the Access Key ID and Secret Access Key.
+   - *Object Read & Write* → for this Mac. Store its secret in the Keychain:
+     `security add-generic-password -s r2-research-upload -a r2 -w` (it prompts for the secret).
+3. **`~/Market Briefs/config/research.json`**: fill in `r2.accountId` (Cloudflare account id), `r2.bucket` and the read-write `r2.accessKeyId`.
+4. **GitHub OAuth app** (GitHub → Settings → Developer settings → OAuth Apps → New): homepage `https://www.haozhewang.com`, callback `https://www.haozhewang.com/research/callback`. Note the Client ID and generate a Client secret. Your numeric user id: `https://api.github.com/users/<your-login>` → `id`.
+5. **Vercel → Project → Settings → Environment Variables** (Production): `RESEARCH_GITHUB_CLIENT_ID`, `RESEARCH_GITHUB_CLIENT_SECRET`, `RESEARCH_OWNER_GITHUB_ID`, `RESEARCH_SESSION_SECRET` (`openssl rand -base64 48`), `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_READ_ACCESS_KEY_ID`, `R2_READ_SECRET_ACCESS_KEY`. Redeploy.
+6. Run `node ~/Market\ Briefs/scripts/upload-research.mjs` once; it confirms the bucket refuses anonymous reads. Then sign in at `/research`.
+
 ## Performance notes
 
 - Images are resized and converted at build time. Upload originals at 3000–4000 px; anything bigger only slows builds.

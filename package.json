@@ -12,7 +12,8 @@
     "podcast:import": "node scripts/import-podcast.mjs",
     "series:update": "node scripts/fetch-series.mjs",
     "test": "node --test scripts/test/*.test.mjs",
-    "check:public": "node scripts/check-public-dist.mjs"
+    "check:public": "node scripts/check-public-dist.mjs",
+    "research:local": "node scripts/research-local.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.19",

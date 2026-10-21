@@ -29,6 +29,13 @@
     { "source": "/portfolio-collections/:path*", "destination": "/#work", "permanent": true },
     { "source": "/project-page/:path*", "destination": "/#work", "permanent": true }
   ],
+  "rewrites": [
+    { "source": "/research", "destination": "/api/research" },
+    { "source": "/research/:path*", "destination": "/api/research?__path=:path*" }
+  ],
+  "functions": {
+    "api/research.js": { "maxDuration": 15 }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -42,6 +49,13 @@
     {
       "source": "/_astro/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/(research|api)(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
+        { "key": "Cache-Control", "value": "private, no-store, max-age=0" }
+      ]
     },
     {
       "source": "/podcast/audio/(.*)",
