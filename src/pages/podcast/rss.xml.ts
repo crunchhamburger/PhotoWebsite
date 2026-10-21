@@ -2,7 +2,7 @@ import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
 import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { podcast } from '../../site.config';
+import { podcast, site as siteConfig } from '../../site.config';
 import { getEpisodes, getBrief, audioPath, audioFile, formatDuration, pubDate } from '../../lib/podcast';
 
 const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -17,9 +17,12 @@ export async function GET(context: APIContext) {
     site: new URL('/podcast', site).href,
     // Match the site's URLs: /podcast/2026-10-20, never /podcast/2026-10-20/.
     trailingSlash: false,
-    xmlns: { itunes: 'http://www.itunes.com/dtds/podcast-1.0.dtd' },
+    xmlns: { itunes: 'http://www.itunes.com/dtds/podcast-1.0.dtd', atom: 'http://www.w3.org/2005/Atom' },
     customData: [
       `<language>${podcast.language}</language>`,
+      // Feed's own URL (recommended by validators) and the owner contact Apple uses to verify the show.
+      `<atom:link href="${new URL('/podcast/rss.xml', site).href}" rel="self" type="application/rss+xml" />`,
+      `<itunes:owner><itunes:name>${escape(podcast.author)}</itunes:name><itunes:email>${siteConfig.email}</itunes:email></itunes:owner>`,
       `<itunes:author>${escape(podcast.author)}</itunes:author>`,
       `<itunes:summary>${escape(podcast.description)}</itunes:summary>`,
       `<itunes:type>episodic</itunes:type>`,

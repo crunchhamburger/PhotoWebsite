@@ -1,0 +1,162 @@
+---
+/**
+ * Email sign-up for the Market Brief. Posts to Web3Forms (same access key as the contact form),
+ * so each sign-up arrives as an email to site.email with the subscriber's address and edition.
+ * Web3Forms does not keep a list or send newsletters: add new subscribers to whatever sends the brief.
+ * Without JavaScript the form does a normal POST to Web3Forms.
+ */
+import { site } from '../site.config';
+import { langFromUrl, useT } from '../i18n';
+
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
+const edition = lang === 'zh' ? 'Chinese 中文' : 'English';
+const configured = Boolean(site.formAccessKey);
+---
+
+{
+  configured && (
+    <form
+      class="subscribe"
+      method="POST"
+      action="https://api.web3forms.com/submit"
+      data-subscribe
+      data-msg-sending={t('subscribe.sending')}
+      data-msg-success={t('subscribe.success')}
+      data-msg-error={t('subscribe.error', { email: site.email })}
+    >
+      <input type="hidden" name="access_key" value={site.formAccessKey} />
+      <input type="hidden" name="subject" value={`New Market Brief subscriber (${edition})`} />
+      <input type="hidden" name="from_name" value="haozhewang.com" />
+      <input type="hidden" name="list" value="Market Brief" />
+      <input type="hidden" name="edition" value={edition} />
+      <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+      <p class="heading">{t('subscribe.heading')}</p>
+      <div class="row">
+        <label class="visually-hidden" for="subscribe-email">{t('subscribe.email')}</label>
+        <input
+          id="subscribe-email"
+          name="email"
+          type="email"
+          inputmode="email"
+          autocomplete="email"
+          placeholder={t('subscribe.email')}
+          required
+        />
+        <button type="submit">{t('subscribe.button')}</button>
+      </div>
+      <p class="note">{t('subscribe.note')}</p>
+      <p class="status" role="status" aria-live="polite" data-status></p>
+    </form>
+  )
+}
+
+<style>
+  .subscribe {
+    margin-top: 28px;
+    max-width: 520px;
+  }
+  .heading {
+    margin: 0 0 10px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.9375rem;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+  }
+  input[type='email'] {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    font-size: 1rem;
+    color: var(--fg);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    padding: 10px 0;
+  }
+  input[type='email']:focus-visible {
+    outline: none;
+    border-bottom-color: var(--accent);
+    box-shadow: 0 1px 0 0 var(--accent);
+  }
+  button {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    background: transparent;
+    color: var(--fg);
+    border: 1px solid var(--fg);
+    cursor: pointer;
+    transition: background-color 0.25s var(--ease), color 0.25s var(--ease);
+  }
+  button:hover {
+    background: var(--fg);
+    color: var(--bg);
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: progress;
+  }
+  .note {
+    margin: 10px 0 0;
+    font-size: 0.8125rem;
+    color: var(--fg-muted);
+  }
+  .status {
+    min-height: 1.4em;
+    margin: 6px 0 0;
+    font-size: 0.875rem;
+    color: var(--fg-muted);
+  }
+  .status[data-state='success'] {
+    color: var(--fg);
+  }
+  .status[data-state='error'] {
+    color: #e5676b;
+  }
+  .hp {
+    position: absolute;
+    left: -10000px;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-subscribe]').forEach((form) => {
+    const status = form.querySelector<HTMLElement>('[data-status]')!;
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    const set = (state: string, text: string) => {
+      status.dataset.state = state;
+      status.textContent = text;
+    };
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      button.disabled = true;
+      set('sending', form.dataset.msgSending ?? '');
+      try {
+        const res = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === false) throw new Error(data.message || `HTTP ${res.status}`);
+        form.reset();
+        set('success', form.dataset.msgSuccess ?? '');
+      } catch {
+        set('error', form.dataset.msgError ?? '');
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+</script>

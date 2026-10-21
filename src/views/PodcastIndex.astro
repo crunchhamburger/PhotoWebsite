@@ -2,6 +2,7 @@
 // Rendered by src/pages/podcast/index.astro and src/pages/zh/podcast/index.astro.
 import BaseLayout from '../layouts/BaseLayout.astro';
 import EpisodeMeta from '../components/EpisodeMeta.astro';
+import SubscribeForm from '../components/SubscribeForm.astro';
 import { podcast } from '../site.config';
 import { getEpisodes, audioPath, episodeText, episodeHref } from '../lib/podcast';
 import { langFromUrl, useT } from '../i18n';
@@ -25,6 +26,7 @@ const episodes = await getEpisodes();
         </svg>
         {t('podcast.rss')}
       </a>
+      <SubscribeForm />
     </header>
 
     {episodes.length === 0 ? (
