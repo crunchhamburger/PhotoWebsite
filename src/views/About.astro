@@ -1,0 +1,122 @@
+---
+import { Picture } from 'astro:assets';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ContactForm from '../components/ContactForm.astro';
+import { aboutPortrait } from '../lib/photos';
+import { langFromUrl, useT } from '../i18n';
+import { aboutZh } from '../i18n/about.zh';
+
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
+const portrait = aboutPortrait(lang);
+---
+
+<BaseLayout title={t('about.title')} description={t('about.description')} ogImage={portrait?.src}>
+  <section class="about container" aria-labelledby="about-heading">
+    {
+      portrait && (
+        <figure class="portrait">
+          <Picture
+            src={portrait.src}
+            alt={portrait.alt}
+            formats={['avif', 'webp']}
+            widths={[400, 640, 960, 1280]}
+            sizes="(min-width: 900px) 40vw, 100vw"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+          />
+        </figure>
+      )
+    }
+    <div class="bio">
+      <h1 id="about-heading">{t('about.heading')}</h1>
+      {lang === 'zh' ? aboutZh.paragraphs.map((p) => <p>{p}</p>) : (
+      <Fragment>
+      <p>
+        Ever since I was young, I’ve been drawn to moments others might overlook — a fleeting shadow, a textured wall, a
+        quiet smile in a noisy city. I loved observing the world, but I never had the words or tools to truly express
+        what I saw. That changed when I picked up a camera.
+      </p>
+      <p>
+        Now, with my Sony A7R V and 24-70mm GM II lens, I document life the way I experience it: raw, cinematic, and
+        intentional. From sweeping skylines to intimate portraits, I strive to preserve emotion through light,
+        composition, and detail. My photography is less about creating perfect images and more about telling stories
+        that resonate — whether it’s the fading corners of an old neighborhood or the sharp gleam of city steel.
+      </p>
+      <p>This portfolio is my way of sharing that vision with you.</p>
+      </Fragment>
+      )}
+    </div>
+  </section>
+
+  <section class="contact container" aria-labelledby="contact-heading">
+    <p class="eyebrow">{t('about.contact')}</p>
+    <h2 id="contact-heading">{t('about.getInTouch')}</h2>
+    <ContactForm />
+  </section>
+</BaseLayout>
+
+<style>
+  .about {
+    display: grid;
+    gap: clamp(32px, 5vw, 80px);
+    align-items: center;
+    max-width: 1200px;
+    padding-block: clamp(32px, 6vw, 96px);
+  }
+  @media (min-width: 900px) {
+    .about {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    }
+  }
+  .portrait {
+    margin: 0;
+    width: 100%;
+    max-width: 520px;
+    justify-self: center;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    background: var(--bg-elev);
+  }
+  .portrait :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .bio {
+    max-width: 60ch;
+  }
+  h1 {
+    font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+    font-weight: 500;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    margin-bottom: clamp(24px, 3vw, 40px);
+  }
+  .bio p {
+    color: var(--fg-muted);
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+  .bio p:last-child {
+    color: var(--fg);
+    margin-bottom: 0;
+  }
+
+  .contact {
+    max-width: 1200px;
+    padding-block: clamp(48px, 8vw, 120px);
+    border-top: 1px solid var(--line);
+    text-align: center;
+  }
+  .contact h2 {
+    font-size: clamp(1.5rem, 3vw, 2.25rem);
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    margin: 12px 0 clamp(32px, 5vw, 56px);
+  }
+  .contact :global(form) {
+    text-align: left;
+  }
+</style>

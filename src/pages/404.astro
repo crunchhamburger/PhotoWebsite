@@ -9,7 +9,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     <p class="eyebrow">Error 404</p>
     <h1>Page not found</h1>
     <p class="lede">This frame didn’t make the final edit. The page may have moved or never existed.</p>
+    <p class="lede" lang="zh-Hans">页面未找到——它可能已被移动，或从未存在。</p>
     <a class="back" href="/#work">View the work <span aria-hidden="true">→</span></a>
+    <a class="back zh" href="/zh#work" lang="zh-Hans">浏览作品 <span aria-hidden="true">→</span></a>
   </section>
 </BaseLayout>
 
@@ -43,6 +45,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     padding-bottom: 6px;
     border-bottom: 1px solid var(--fg-faint);
     transition: border-color 0.25s var(--ease);
+  }
+  .back.zh {
+    margin-top: 18px;
+    letter-spacing: 0.2em;
   }
   .back:hover {
     border-bottom-color: var(--fg);

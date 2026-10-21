@@ -58,4 +58,19 @@ const briefs = defineCollection({
   }),
 });
 
-export const collections = { projects, podcast, briefs };
+// Simplified Chinese text for a project: photos/<slug>/index.zh.md (photos and settings come from index.md).
+const projectsZh = defineCollection({
+  loader: glob({
+    pattern: '[!_]*/index.zh.md',
+    base: './photos',
+    generateId: ({ entry }) => entry.split('/')[0],
+  }),
+  schema: z.object({
+    title: z.string(),
+    date: z.string().optional(),
+    location: z.string().optional(),
+    type: z.string().optional(),
+  }),
+});
+
+export const collections = { projects, projectsZh, podcast, briefs };

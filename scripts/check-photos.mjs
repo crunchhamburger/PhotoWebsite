@@ -21,7 +21,8 @@ const WEB_IMG = /\.(jpe?g|png|webp|avif)$/i;
 const BUILD_IMG = /\.(jpe?g|png|webp|avif|tiff?)$/i;
 // Image formats that should be re-exported as JPEG.
 const NON_WEB = /\.(tiff?|heic|heif|dng|cr2|cr3|nef|arw|raf|orf|rw2|psd|gif|bmp)$/i;
-const IGNORED = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini', 'index.md', 'alt.json']);
+// index.zh.md / alt.zh.json hold the Simplified Chinese text for the /zh pages.
+const IGNORED = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini', 'index.md', 'index.zh.md', 'alt.json', 'alt.zh.json']);
 
 const tty = process.stdout.isTTY && !process.env.NO_COLOR;
 const paint = (code) => (s) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s);

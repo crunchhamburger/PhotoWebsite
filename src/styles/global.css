@@ -3,8 +3,10 @@
 
 /* ---------- Design tokens ---------- */
 :root {
-  --font-display: 'Raleway Variable', 'Raleway', system-ui, sans-serif;
-  --font-body: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Raleway/Inter have no Chinese glyphs, so CJK text falls through to the system's Chinese font. */
+  --font-cjk: 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
+  --font-display: 'Raleway Variable', 'Raleway', system-ui, var(--font-cjk);
+  --font-body: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', var(--font-cjk);
 
   /* Dark gallery theme is the default */
   --bg: #0b0b0c;
@@ -79,6 +81,14 @@ p {
 button {
   font: inherit;
   color: inherit;
+}
+
+/* Chinese reads better with a little more line height and less tracking on spaced-out labels. */
+:lang(zh) body {
+  line-height: 1.75;
+}
+:lang(zh) .eyebrow {
+  letter-spacing: 0.2em;
 }
 
 /* ---------- Utilities ---------- */

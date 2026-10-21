@@ -14,7 +14,13 @@ export default defineConfig({
   // Pages build to about.html etc., which Vercel serves at clean URLs (cleanUrls in vercel.json).
   trailingSlash: 'never',
   build: { format: 'file' },
-  integrations: [sitemap({ filter: (page) => !page.includes('/portfolio') })],
+  integrations: [
+    sitemap({
+      filter: (page) => !page.includes('/portfolio'),
+      // English at /, Simplified Chinese at /zh: the sitemap links each page to its translation.
+      i18n: { defaultLocale: 'en', locales: { en: 'en', zh: 'zh-Hans' } },
+    }),
+  ],
   redirects: {
     '/portfolio': '/#work',
   },

@@ -1,15 +1,18 @@
 ---
 import { site } from '../site.config';
+import { langFromUrl, useT } from '../i18n';
+
+const t = useT(langFromUrl(Astro.url));
 ---
 
 <footer class="site-footer">
   <div class="container inner">
     <div class="contact">
       <a href={`mailto:${site.email}`}>{site.email}</a>
-      {site.showPhone && <a href={`tel:${site.phone.replace(/[^\d+]/g, '')}`}>Tel: {site.phone}</a>}
+      {site.showPhone && <a href={`tel:${site.phone.replace(/[^\d+]/g, '')}`}>{t('footer.tel')} {site.phone}</a>}
       <a href={site.instagram} target="_blank" rel="noopener">Instagram</a>
     </div>
-    <p class="copy">© {site.copyrightYear} {site.name}. All photographs © {site.name}.</p>
+    <p class="copy">© {site.copyrightYear} {site.name}. {t('footer.rights', { name: site.name })}</p>
   </div>
 </footer>
 

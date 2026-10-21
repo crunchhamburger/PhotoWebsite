@@ -5,6 +5,7 @@ import type { ImageMetadata } from 'astro';
 import { site } from '../site.config';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import { basePath, htmlLang, langFromUrl, langs, localize, ogLocale, useT } from '../i18n';
 
 interface Props {
   title?: string; // page title; the site name is appended
@@ -14,23 +15,32 @@ interface Props {
   preloadImage?: { href: string; srcset?: string; sizes?: string; type?: string }; // LCP hero
 }
 
-const { title, description = site.description, ogImage, ogType = 'website', preloadImage } = Astro.props;
-const fullTitle = title ? `${title} — ${site.name}` : `${site.name} — Photography`;
-// Pages build to *.html (build.format 'file'), but are served at clean URLs.
-const cleanPath = Astro.url.pathname.replace(/(index)?\.html$/, '').replace(/(.)\/$/, '$1');
-const canonical = new URL(cleanPath, Astro.site);
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
+const { title, description = t('meta.description'), ogImage, ogType = 'website', preloadImage } = Astro.props;
+const fullTitle = title ? `${title} — ${site.name}` : `${site.name} — ${t('meta.defaultTitle')}`;
+// Same page in each language, for hreflang alternates (404 has no counterpart).
+const base = basePath(Astro.url);
+const alternates = langs.map((l) => ({ lang: l, href: new URL(localize(base, l), Astro.site).href }));
+const canonical = new URL(localize(base, lang), Astro.site);
+const is404 = Astro.url.pathname.startsWith('/404');
 const og = ogImage ? await getImage({ src: ogImage, width: 1200, height: 630, fit: 'cover', format: 'jpg' }) : undefined;
 const ogUrl = og ? new URL(og.src, Astro.site).href : undefined;
 ---
 
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang={htmlLang[lang]} data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    {
+      !is404 &&
+        alternates.map((a) => <link rel="alternate" hreflang={htmlLang[a.lang]} href={a.href} />)
+    }
+    {!is404 && <link rel="alternate" hreflang="x-default" href={alternates[0].href} />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <meta name="theme-color" content="#0b0b0c" />
@@ -40,6 +50,8 @@ const ogUrl = og ? new URL(og.src, Astro.site).href : undefined;
     <meta property="og:description" content={description} />
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={ogLocale[lang]} />
+    <meta property="og:locale:alternate" content={ogLocale[lang === 'en' ? 'zh' : 'en']} />
     {ogUrl && <meta property="og:image" content={ogUrl} />}
     {ogUrl && <meta property="og:image:width" content="1200" />}
     {ogUrl && <meta property="og:image:height" content="630" />}
@@ -69,7 +81,7 @@ const ogUrl = og ? new URL(og.src, Astro.site).href : undefined;
     <slot name="head" />
   </head>
   <body>
-    <a class="skip-link" href="#main">Skip to content</a>
+    <a class="skip-link" href="#main">{t('skip')}</a>
     <Header />
     <main id="main" tabindex="-1">
       <slot />

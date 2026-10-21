@@ -1,6 +1,7 @@
 ---
 import { Picture } from 'astro:assets';
 import { projectCover, type Project } from '../lib/photos';
+import { langFromUrl, localize, useT } from '../i18n';
 
 interface Props {
   prev: Project;
@@ -8,18 +9,20 @@ interface Props {
 }
 
 const { prev, next } = Astro.props;
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
 
 const links = [
-  { rel: 'prev', label: 'Previous project', project: prev, cover: projectCover(prev) },
-  { rel: 'next', label: 'Next project', project: next, cover: projectCover(next) },
+  { rel: 'prev', label: t('nav.prevProject'), project: prev, cover: projectCover(prev) },
+  { rel: 'next', label: t('nav.nextProject'), project: next, cover: projectCover(next) },
 ] as const;
 ---
 
-<nav class="project-nav" aria-label="More projects">
+<nav class="project-nav" aria-label={t('nav.more')}>
   <div class="container inner">
     {
       links.map(({ rel, label, project, cover }) => (
-        <a class:list={['link', rel]} href={`/projects/${project.id}`} rel={rel}>
+        <a class:list={['link', rel]} href={localize(`/projects/${project.id}`, lang)} rel={rel}>
           <span class="thumb">
             <Picture
               src={cover.src}
@@ -41,8 +44,8 @@ const links = [
         </a>
       ))
     }
-    <a class="all" href="/#work">
-      <span class="eyebrow">All work</span>
+    <a class="all" href={localize('/#work', lang)}>
+      <span class="eyebrow">{t('project.allWork')}</span>
     </a>
   </div>
 </nav>

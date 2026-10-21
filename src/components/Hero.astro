@@ -3,13 +3,15 @@
 // the script adds autoplay (skipped for prefers-reduced-motion), dots, prev/next and pause.
 import { Picture } from 'astro:assets';
 import type { Photo } from '../lib/photos';
+import { langFromUrl, useT } from '../i18n';
 
 interface Props {
   images: Photo[];
   label?: string;
 }
 
-const { images, label = 'Featured photographs' } = Astro.props;
+const t = useT(langFromUrl(Astro.url));
+const { images, label = t('hero.label') } = Astro.props;
 const widths = [640, 960, 1280, 1920, 2400];
 const multi = images.length > 1;
 ---
@@ -22,7 +24,7 @@ const multi = images.length > 1;
           class:list={['hero__slide', { 'is-active': i === 0 }]}
           role="group"
           aria-roledescription="slide"
-          aria-label={`${i + 1} of ${images.length}`}
+          aria-label={t('hero.slideOf', { i: i + 1, n: images.length })}
           aria-hidden={i === 0 ? undefined : 'true'}
           data-slide
         >
@@ -44,28 +46,36 @@ const multi = images.length > 1;
   {
     multi && (
       <div class="hero__controls" data-controls hidden>
-        <button type="button" class="hero__btn hero__arrow" data-prev aria-label="Previous slide">
+        <button type="button" class="hero__btn hero__arrow" data-prev aria-label={t('hero.prev')}>
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.5" />
           </svg>
         </button>
-        <div class="hero__dots" role="group" aria-label="Choose slide">
+        <div class="hero__dots" role="group" aria-label={t('hero.choose')}>
           {images.map((_, i) => (
             <button
               type="button"
               class="hero__dot"
               data-dot={i}
-              aria-label={`Show slide ${i + 1}`}
+              aria-label={t('hero.show', { i: i + 1 })}
               aria-current={i === 0 ? 'true' : undefined}
             />
           ))}
         </div>
-        <button type="button" class="hero__btn hero__arrow" data-next aria-label="Next slide">
+        <button type="button" class="hero__btn hero__arrow" data-next aria-label={t('hero.next')}>
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
             <path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.5" />
           </svg>
         </button>
-        <button type="button" class="hero__btn hero__toggle" data-toggle aria-label="Pause slideshow" hidden>
+        <button
+          type="button"
+          class="hero__btn hero__toggle"
+          data-toggle
+          aria-label={t('hero.pause')}
+          data-label-pause={t('hero.pause')}
+          data-label-play={t('hero.play')}
+          hidden
+        >
           <svg class="icon-pause" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
             <path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="1.75" />
           </svg>
@@ -281,7 +291,7 @@ const multi = images.length > 1;
       // While playing, announcements would be noisy; when stopped, announce changes politely.
       root.querySelector('[data-viewport]')!.setAttribute('aria-live', running ? 'off' : 'polite');
       toggle.toggleAttribute('data-paused', userPaused);
-      toggle.setAttribute('aria-label', userPaused ? 'Play slideshow' : 'Pause slideshow');
+      toggle.setAttribute('aria-label', (userPaused ? toggle.dataset.labelPlay : toggle.dataset.labelPause) ?? '');
     };
 
     const go = (n: number) => {

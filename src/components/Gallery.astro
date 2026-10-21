@@ -7,6 +7,9 @@
 import { Picture, getImage } from 'astro:assets';
 import type { Photo } from '../lib/photos';
 import Lightbox from './Lightbox.astro';
+import { langFromUrl, useT } from '../i18n';
+
+const t = useT(langFromUrl(Astro.url));
 
 interface Props {
   photos: Photo[];
@@ -28,7 +31,7 @@ const items = await Promise.all(
 );
 ---
 
-<section class="gallery" aria-label={`${title} — photographs`} data-gallery>
+<section class="gallery" aria-label={t('project.photos', { title })} data-gallery>
   <ul class="grid" role="list">
     {
       items.map(({ photo, full }, i) => (
@@ -57,7 +60,7 @@ const items = await Promise.all(
               loading="lazy"
               decoding="async"
             />
-            <span class="visually-hidden">Open photograph {i + 1} of {items.length} in viewer</span>
+            <span class="visually-hidden">{t('lightbox.open', { i: i + 1, n: items.length })}</span>
           </a>
         </li>
       ))

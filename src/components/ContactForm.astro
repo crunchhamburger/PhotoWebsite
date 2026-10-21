@@ -14,11 +14,16 @@
  * of posting. Without JavaScript the form does a normal POST to the provider.
  */
 import { site } from '../site.config';
+import { langFromUrl, useT } from '../i18n';
 
 interface Props {
   id?: string;
 }
 const { id = 'contact-form' } = Astro.props;
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
+// The email subject stays English; messages from the Chinese page are tagged so you can tell.
+const subject = `New message from your portfolio site${lang === 'zh' ? ' (中文页面)' : ''}`;
 
 const WEB3FORMS_URL = 'https://api.web3forms.com/submit';
 const action = site.formEndpoint || (site.formAccessKey ? WEB3FORMS_URL : '');
@@ -34,11 +39,15 @@ const mailto = `mailto:${site.email}?subject=${encodeURIComponent('Hello from yo
   data-contact-form
   data-configured={configured ? 'true' : 'false'}
   data-email={site.email}
+  data-msg-not-connected={t('form.notConnectedJs')}
+  data-msg-sending={t('form.sending')}
+  data-msg-success={t('form.success')}
+  data-msg-error={t('form.error')}
 >
   {site.formAccessKey && <input type="hidden" name="access_key" value={site.formAccessKey} />}
-  <input type="hidden" name="subject" value="New message from your portfolio site" />
+  <input type="hidden" name="subject" value={subject} />
   <input type="hidden" name="from_name" value="haozhewang.com" />
-  <input type="hidden" name="_subject" value="New message from your portfolio site" />
+  <input type="hidden" name="_subject" value={subject} />
 
   <!-- Honeypots: humans never see these. "_gotcha" is Formspree's, "botcheck" is Web3Forms'. -->
   <div class="hp" aria-hidden="true">
@@ -48,36 +57,36 @@ const mailto = `mailto:${site.email}?subject=${encodeURIComponent('Hello from yo
 
   <div class="row">
     <div class="field">
-      <label for={`${id}-first`}>First name <span aria-hidden="true">*</span></label>
+      <label for={`${id}-first`}>{t('form.first')} <span aria-hidden="true">*</span></label>
       <input id={`${id}-first`} name="first_name" type="text" autocomplete="given-name" required />
     </div>
     <div class="field">
-      <label for={`${id}-last`}>Last name <span aria-hidden="true">*</span></label>
+      <label for={`${id}-last`}>{t('form.last')} <span aria-hidden="true">*</span></label>
       <input id={`${id}-last`} name="last_name" type="text" autocomplete="family-name" required />
     </div>
   </div>
 
   <div class="field">
-    <label for={`${id}-email`}>Email <span aria-hidden="true">*</span></label>
+    <label for={`${id}-email`}>{t('form.email')} <span aria-hidden="true">*</span></label>
     <input id={`${id}-email`} name="email" type="email" autocomplete="email" inputmode="email" required />
   </div>
 
   <div class="field">
-    <label for={`${id}-message`}>Message</label>
+    <label for={`${id}-message`}>{t('form.message')}</label>
     <textarea id={`${id}-message`} name="message" rows="5"></textarea>
   </div>
 
   {
     !configured && (
       <p class="note">
-        The contact form isn’t connected yet. In the meantime, email me at{' '}
+        {t('form.notConnected')}{' '}
         <a href={mailto}>{site.email}</a>.
       </p>
     )
   }
 
   <div class="actions">
-    <button type="submit" class="submit">Submit</button>
+    <button type="submit" class="submit">{t('form.submit')}</button>
     <p class="status" role="status" aria-live="polite" data-status></p>
   </div>
 </form>
@@ -228,19 +237,22 @@ const mailto = `mailto:${site.email}?subject=${encodeURIComponent('Hello from yo
     const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
     const email = form.dataset.email ?? '';
     const mailLink = `<a href="mailto:${email}">${email}</a>`;
+    // Messages are translated on the server and passed in as data-msg-* attributes.
+    const msg = (key: 'notConnected' | 'sending' | 'success' | 'error') =>
+      (form.dataset[`msg${key[0].toUpperCase()}${key.slice(1)}`] ?? '').replace('{email}', mailLink);
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (!form.reportValidity()) return;
 
       if (form.dataset.configured !== 'true') {
-        setStatus(status, 'error', `The form isn’t connected yet — please email me at ${mailLink}.`);
+        setStatus(status, 'error', msg('notConnected'));
         return;
       }
 
       button.disabled = true;
       button.setAttribute('aria-busy', 'true');
-      setStatus(status, 'sending', 'Sending…');
+      setStatus(status, 'sending', msg('sending'));
 
       try {
         const res = await fetch(form.action, {
@@ -252,9 +264,9 @@ const mailto = `mailto:${site.email}?subject=${encodeURIComponent('Hello from yo
         // Formspree answers {ok: true}; Web3Forms answers {success: true}.
         if (!res.ok || data.success === false) throw new Error(data.message || `HTTP ${res.status}`);
         form.reset();
-        setStatus(status, 'success', 'Thanks — your message is on its way. I’ll get back to you soon.');
+        setStatus(status, 'success', msg('success'));
       } catch {
-        setStatus(status, 'error', `Something went wrong sending your message. Please try again or email ${mailLink}.`);
+        setStatus(status, 'error', msg('error'));
       } finally {
         button.disabled = false;
         button.removeAttribute('aria-busy');

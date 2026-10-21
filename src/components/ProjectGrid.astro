@@ -4,12 +4,15 @@
 import { Picture } from 'astro:assets';
 import { categories } from '../site.config';
 import { projectCover, type Project } from '../lib/photos';
+import { langFromUrl, localize, useT, type Key } from '../i18n';
 
 interface Props {
   projects: Project[];
 }
 
 const { projects } = Astro.props;
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
 const used = categories.filter((c) => projects.some((p) => p.data.categories.includes(c)));
 const sizes = '(max-width: 559px) calc(100vw - 32px), (max-width: 1023px) 50vw, min(33vw, 540px)';
 ---
@@ -17,20 +20,29 @@ const sizes = '(max-width: 559px) calc(100vw - 32px), (max-width: 1023px) 50vw, 
 <div class="pgrid" data-pgrid>
   {
     used.length > 1 && (
-      <div class="pgrid__filters" role="group" aria-label="Filter projects by category" data-filters hidden>
+      <div class="pgrid__filters" role="group" aria-label={t('grid.filterLabel')} data-filters hidden>
         <button type="button" class="pgrid__filter" data-filter="all" aria-pressed="true">
-          All
+          {t('grid.all')}
         </button>
         {used.map((c) => (
           <button type="button" class="pgrid__filter" data-filter={c} aria-pressed="false">
-            {c}
+            {t(`cat.${c}` as Key)}
           </button>
         ))}
       </div>
     )
   }
 
-  <p class="visually-hidden" aria-live="polite" data-status></p>
+  <p
+    class="visually-hidden"
+    aria-live="polite"
+    data-status
+    data-template={t('grid.status')}
+    data-one={t('grid.project')}
+    data-many={t('grid.projects')}
+    data-all-label={t('grid.allCategories')}
+  >
+  </p>
 
   <ul class="pgrid__list" role="list">
     {
@@ -38,7 +50,7 @@ const sizes = '(max-width: 559px) calc(100vw - 32px), (max-width: 1023px) 50vw, 
         const cover = projectCover(p);
         return (
           <li class="pgrid__item" data-categories={p.data.categories.join('|')}>
-            <a class="pgrid__tile" href={`/projects/${p.id}`}>
+            <a class="pgrid__tile" href={localize(`/projects/${p.id}`, lang)}>
               <div class="pgrid__media">
                 <Picture
                   src={cover.src}
@@ -222,8 +234,14 @@ const sizes = '(max-width: 559px) calc(100vw - 32px), (max-width: 1023px) 50vw, 
       }
       for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.filter === filter));
       if (status) {
-        const label = filter === 'all' ? 'all categories' : filter;
-        status.textContent = `Showing ${shown} ${shown === 1 ? 'project' : 'projects'} in ${label}.`;
+        // Strings come from data attributes so the same script works on the English and Chinese pages.
+        const d = status.dataset;
+        const btn = buttons.find((b) => b.dataset.filter === filter);
+        const label = filter === 'all' ? d.allLabel : btn?.textContent?.trim() || filter;
+        status.textContent = (d.template ?? '')
+          .replace('{n}', String(shown))
+          .replace('{projects}', (shown === 1 ? d.one : d.many) ?? '')
+          .replace('{label}', label ?? '');
       }
     };
 
