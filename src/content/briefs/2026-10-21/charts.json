@@ -1,0 +1,27 @@
+[
+  {
+    "file": "info-01-nvidia-neocloud-commitments.png",
+    "caption": "Nvidia's >$170B of guarantees and investments in neoclouds, led by the $105B OpenAI Ohio lease guarantee",
+    "url": "https://www.theinformation.com/articles/nvidia-put-170-billion-line-neoclouds"
+  },
+  {
+    "file": "wsj-01-anthropic-h1-income-statement.png",
+    "caption": "Anthropic income statement, H1 2025 vs H1 2026: revenue and opex vs the ~$72B fair-value charge behind the $80.7B loss",
+    "url": "https://www.wsj.com/tech/ai/anthropic-revenue-growth-ipo-accaf0f1"
+  },
+  {
+    "file": "prices-01-h100-index-1w.png",
+    "caption": "Ornn H100 index, 1 week: $3.12/hr, +4.70% d/d, third straight gain from the Oct 16 low, -2.80% w/w",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "ft-02-france-10y-yield.png",
+    "caption": "French 10-year yield, 2002-2026: back at 5% (LSEG)",
+    "url": "https://www.ft.com/content/76f076e4-9db2-4971-8ac9-73d9f39e4876"
+  },
+  {
+    "file": "ft-01-heating-oil-price.png",
+    "caption": "US heating oil price since Q1 2025: ~$4.2 to ~$6.1/gal after the Iran war (EIA)",
+    "url": "https://www.ft.com/content/162c6dd8-5501-46f4-8f7c-b456a4e29539"
+  }
+]

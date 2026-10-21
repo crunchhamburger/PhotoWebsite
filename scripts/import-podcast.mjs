@@ -225,7 +225,11 @@ function removeIfPresent(file) {
 /** Copies the full brief, chart list and chart images for one episode into src/content/briefs/. Returns what changed. */
 function importBrief(ep) {
   const changes = [];
-  const pageFile = join(SRC, ep.kind, `${ep.date}-page.html`);
+  // The brief page: <kind>/<date>-page.html, or the bilingual edition's English page
+  // (editions/<date>/index.html, weekly editions/<date>-weekly/index.html).
+  const editionPage = join(SRC, 'editions', ep.kind === 'weekly' ? `${ep.date}-weekly` : ep.date, 'index.html');
+  const legacyPage = join(SRC, ep.kind, `${ep.date}-page.html`);
+  const pageFile = existsSync(legacyPage) ? legacyPage : editionPage;
   const mdFile = join(SRC, ep.kind, `${ep.date}.md`);
   const page = existsSync(pageFile) ? cleanPage(readFileSync(pageFile, 'utf8')) : null;
   if (!page && !existsSync(mdFile)) return changes;
@@ -264,6 +268,7 @@ function importBrief(ep) {
     if (!file || !/^[\w.-]+\.(png|jpe?g|webp)$/i.test(file) || !existsSync(join(chartDir, file))) continue;
     charts.push({ file, caption, url });
   }
+  mkdirSync(join(BRIEFS_DIR, ep.slug), { recursive: true });
   if (writeIfChanged(join(BRIEFS_DIR, ep.slug, 'charts.json'), JSON.stringify(charts, null, 2) + '\n') && !changes.length) {
     changes.push('chart list');
   }
