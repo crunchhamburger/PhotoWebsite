@@ -14,10 +14,12 @@
 // Also copies each episode's full brief to src/content/briefs/, which the episode page shows:
 // the published brief page (<kind>/<date>-page.html, the same page the email links to) as
 // <slug>.html when it exists, else the Markdown brief (<kind>/<date>.md) as <slug>.md. Plus a
-// charts.json of chart captions and source links. The
-// chart images go to src/content/briefs/<slug>/charts/, which is git-ignored: they are
-// screenshots of other publications' graphics, shown only in `npm run dev`. A missing brief
-// or chart is skipped, never an error.
+// charts.json of the source charts' captions and links. The screenshots themselves are never
+// copied into the site: they are other publications' graphics and live only in the private
+// research view (see ~/Market Briefs/scripts/upload-research.mjs). A missing brief is skipped.
+//
+// The episode's own `charts:` list (original charts of public-domain data, placed under named
+// brief sections) is validated here too; see src/content.config.ts for the format.
 import { readdirSync, readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync, statSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { homedir } from 'node:os';
@@ -29,6 +31,8 @@ const REPO = fileURLToPath(new URL('..', import.meta.url));
 const CONTENT_DIR = join(REPO, 'src/content/podcast');
 const AUDIO_DIR = join(REPO, 'public/podcast/audio');
 const BRIEFS_DIR = join(REPO, 'src/content/briefs');
+const SERIES = JSON.parse(readFileSync(join(REPO, 'src/data/series.json'), 'utf8')).series;
+const RANGES = ['3m', '6m', '1y', '2y', '5y', '10y', 'ytd', 'max'];
 
 const color = process.stdout.isTTY && !process.env.NO_COLOR;
 const c = (code) => (s) => (color ? `\x1b[${code}m${s}\x1b[0m` : s);
@@ -91,7 +95,42 @@ function validate(fm, folderKind, fileDate) {
       });
     }
   }
+  errs.push(...validateCharts(fm.charts));
   return { errs, date };
+}
+
+/** Checks the episode's `charts:` list (original charts). Mirrors the schema in src/content.config.ts. */
+function validateCharts(charts) {
+  if (charts === undefined || charts === null) return [];
+  if (!Array.isArray(charts)) return ['charts: expected a list'];
+  const errs = [];
+  if (charts.length > 4) errs.push('charts: at most 4 per episode');
+  const isStr = (v) => typeof v === 'string' && v.trim() !== '';
+  charts.forEach((c, i) => {
+    const at = `charts[${i}]`;
+    if (!c || typeof c !== 'object') return errs.push(`${at}: expected an object`);
+    if (!isStr(c.after)) errs.push(`${at}.after: name the brief section heading to place it under`);
+    if (!isStr(c.title)) errs.push(`${at}.title: required`);
+    if (c.type === 'line') {
+      if (!Array.isArray(c.series) || c.series.length < 1 || c.series.length > 3) errs.push(`${at}.series: 1 to 3 series ids`);
+      else c.series.filter((id) => !SERIES[id]).forEach((id) => errs.push(`${at}.series: unknown series "${id}" (see src/data/series.json)`));
+      if (c.range !== undefined && !RANGES.includes(c.range)) errs.push(`${at}.range: one of ${RANGES.join(', ')}`);
+      if (c.transform !== undefined && !['level', 'yoy'].includes(c.transform)) errs.push(`${at}.transform: level or yoy`);
+    } else if (c.type === 'bar') {
+      if (!Array.isArray(c.data) || c.data.length < 2 || c.data.length > 12) errs.push(`${at}.data: 2 to 12 {label, value}`);
+      else if (!c.data.every((d) => isStr(d?.label) && typeof d?.value === 'number' && Number.isFinite(d.value))) errs.push(`${at}.data: each needs a label and a number`);
+      if (!['official', 'two-sources'].includes(c.verification)) errs.push(`${at}.verification: official or two-sources`);
+      const srcs = Array.isArray(c.sources) ? c.sources : [];
+      if (!srcs.length || !srcs.every((s) => isStr(s?.publication) && isStr(s?.title) && /^https?:\/\//.test(s?.url ?? ''))) {
+        errs.push(`${at}.sources: each needs publication, title and an http(s) url`);
+      } else if (c.verification === 'two-sources' && new Set(srcs.map((s) => s.publication.toLowerCase())).size < 2) {
+        errs.push(`${at}: two-sources needs at least two different publications`);
+      }
+    } else {
+      errs.push(`${at}.type: line or bar`);
+    }
+  });
+  return errs;
 }
 
 /** True when dest exists and has exactly the same bytes as src. */
@@ -157,6 +196,13 @@ function cleanPage(html) {
   return s.replace(/\n{3,}/g, '\n\n').trim() + '\n';
 }
 
+/** Deletes a folder if it exists. Returns true if it did. */
+function removeDir(dir) {
+  if (!existsSync(dir)) return false;
+  rmSync(dir, { recursive: true, force: true });
+  return true;
+}
+
 /** Deletes a file if it exists. Returns true if it did. */
 function removeIfPresent(file) {
   if (!existsSync(file)) return false;
@@ -174,6 +220,14 @@ function importBrief(ep) {
   mkdirSync(BRIEFS_DIR, { recursive: true });
   const htmlDest = join(BRIEFS_DIR, `${ep.slug}.html`);
   const mdDest = join(BRIEFS_DIR, `${ep.slug}.md`);
+  // Each original chart goes under the brief section named in `after`; warn if there is none.
+  const headingKey = (h) => h.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#x27;|&#39;|’/g, "'").replace(/^\s*\d+\.\s*/, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const headings = page
+    ? [...page.matchAll(/<h[23]\b[^>]*>([\s\S]*?)<\/h[23]>/gi)].map((m) => headingKey(m[1]))
+    : readFileSync(mdFile, 'utf8').split('\n').filter((l) => /^#{2,3}\s/.test(l)).map((l) => headingKey(l.replace(/^#+\s*/, '')));
+  for (const c of ep.charts) {
+    if (!headings.includes(headingKey(c.after))) changes.push(`WARNING chart "${c.title}": no section "${c.after}" in the brief, it will go at the end`);
+  }
   if (page) {
     if (writeIfChanged(htmlDest, page)) changes.push('brief page');
     removeIfPresent(mdDest);
@@ -187,12 +241,11 @@ function importBrief(ep) {
   const orderFile = ep.kind === 'weekly' ? join(chartDir, 'charts-order.txt') : join(SRC, 'staging', ep.date, 'charts-order.txt');
   if (!existsSync(orderFile)) return changes;
   const charts = [];
-  const outDir = join(BRIEFS_DIR, ep.slug, 'charts');
+  // Earlier versions copied the screenshots here; make sure none are left in the site folder.
+  if (removeDir(join(BRIEFS_DIR, ep.slug, 'charts'))) changes.push('removed local screenshot copies');
   for (const line of readFileSync(orderFile, 'utf8').split(/\r?\n/)) {
     const [file, caption = '', url = ''] = line.split('\t').map((s) => s.trim());
     if (!file || !/^[\w.-]+\.(png|jpe?g|webp)$/i.test(file) || !existsSync(join(chartDir, file))) continue;
-    mkdirSync(outDir, { recursive: true });
-    if (writeIfChanged(join(outDir, file), readFileSync(join(chartDir, file)))) changes.push(`chart ${file}`);
     charts.push({ file, caption, url });
   }
   if (writeIfChanged(join(BRIEFS_DIR, ep.slug, 'charts.json'), JSON.stringify(charts, null, 2) + '\n') && !changes.length) {
@@ -231,7 +284,7 @@ for (const kind of KINDS) {
       continue;
     }
     const slug = kind === 'weekly' ? `${date}-weekly` : date;
-    episodes.push({ label, file, mp3, slug, kind, date });
+    episodes.push({ label, file, mp3, slug, kind, date, charts: fm.charts ?? [] });
   }
 }
 
@@ -267,7 +320,7 @@ for (const ep of episodes) {
   let briefNote = '';
   try {
     const briefChanges = importBrief(ep);
-    if (briefChanges.length) briefNote = dim(`    full brief: ${briefChanges.join(', ')}`);
+    if (briefChanges.length) briefNote = (briefChanges.some((c) => c.startsWith('WARNING')) ? yellow : dim)(`    full brief: ${briefChanges.join(', ')}`);
   } catch (e) {
     briefNote = yellow(`    full brief skipped: ${e.message}`);
   }

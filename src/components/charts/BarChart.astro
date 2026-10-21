@@ -1,0 +1,83 @@
+---
+// An original bar chart of figures from the news, drawn by us. The pipeline may only use it for
+// numbers confirmed by an official source or by two independent publications (checked by the
+// episode schema); those sources are linked under the chart.
+interface Props {
+  spec: {
+    title: string;
+    unit: string;
+    data: { label: string; value: number }[];
+    verification: 'official' | 'two-sources';
+    sources: { publication: string; title: string; url: string }[];
+    note?: string;
+  };
+}
+
+const { spec } = Astro.props;
+const max = Math.max(...spec.data.map((d) => Math.abs(d.value))) || 1;
+const fmt = (v: number) => {
+  const n = Number.isInteger(v) ? v.toLocaleString('en-US') : v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (spec.unit.startsWith('$')) return `$${n}${spec.unit.slice(1)}`;
+  if (spec.unit === '%') return `${n}%`;
+  return spec.unit ? `${n} ${spec.unit}` : n;
+};
+const verified = spec.verification === 'official' ? 'Official figures.' : 'Figures confirmed by two independent sources.';
+---
+
+<figure class="chart">
+  <figcaption class="chart-head">
+    <span class="chart-title">{spec.title}</span>
+  </figcaption>
+  <ul class="bars">
+    {
+      spec.data.map((d) => (
+        <li>
+          <span class="label">{d.label}</span>
+          <span class="track">
+            <span class:list={['bar', { neg: d.value < 0 }]} style={`width:${((Math.abs(d.value) / max) * 100).toFixed(1)}%`} />
+          </span>
+          <span class="value">{fmt(d.value)}</span>
+        </li>
+      ))
+    }
+  </ul>
+  <p class="chart-source">
+    {verified} Sources:{' '}
+    {
+      spec.sources.map((s, i) => (
+        <>
+          {i > 0 && ', '}
+          <a href={s.url} target="_blank" rel="noopener noreferrer">{s.publication}</a>
+        </>
+      ))
+    }. Chart: Michael Wang.{spec.note && ` ${spec.note}`}
+  </p>
+</figure>
+
+<style>
+  .chart {
+    margin: 28px 0 32px;
+    padding: 16px 16px 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .chart .chart-head { margin-bottom: 12px; }
+  .chart .chart-title { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--fg); }
+  .chart .bars { display: grid; gap: 10px; margin: 0 0 12px; padding: 0; list-style: none; }
+  .chart .bars li {
+    display: grid;
+    grid-template-columns: minmax(4.5rem, 30%) 1fr auto;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 0.8125rem;
+  }
+  .chart .label { color: var(--fg-muted); line-height: 1.3; }
+  .chart .track { height: 14px; }
+  .chart .bar { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+  .chart .bar.neg { background: var(--fg-muted); }
+  .chart .value { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chart .chart-source { margin: 0; font-size: 0.75rem; line-height: 1.5; color: var(--fg-faint); }
+  .chart .chart-source a { color: var(--fg-muted); text-decoration: underline; text-underline-offset: 0.2em; }
+</style>

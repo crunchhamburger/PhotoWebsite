@@ -1,0 +1,182 @@
+---
+// An original line chart of public-domain government data, drawn at build time.
+// The plot is an SVG stretched to the box (lines keep a constant width); labels are plain HTML,
+// so text stays readable at any width and follows the site's fonts and both themes.
+import { seriesLine, formatValue, formatDay, unitLabel, niceTicks, timeTicks, thin } from '../../lib/series';
+import type { SeriesId } from '../../lib/series';
+
+interface Props {
+  spec: { title: string; series: string[]; range: string; transform: 'level' | 'yoy'; note?: string };
+  asOf: Date;
+}
+
+const { spec, asOf } = Astro.props;
+const lines = spec.series.map((id) => seriesLine(id as SeriesId, asOf, spec.range, spec.transform));
+const units = new Set(lines.map((l) => l.unit));
+if (units.size > 1) throw new Error(`Chart "${spec.title}" mixes units: ${[...units].join(', ')}`);
+const unit = lines[0].unit;
+
+const all = lines.flatMap((l) => l.points);
+const t0 = Math.min(...all.map((p) => p.t));
+const t1 = Math.max(...all.map((p) => p.t));
+const yTicks = niceTicks(Math.min(...all.map((p) => p.v)), Math.max(...all.map((p) => p.v)));
+const y0 = yTicks[0];
+const y1 = yTicks[yTicks.length - 1];
+const X = (t: number) => ((t - t0) / (t1 - t0 || 1)) * 1000;
+const Y = (v: number) => (1 - (v - y0) / (y1 - y0 || 1)) * 1000;
+const pct = (n: number) => `${(n / 10).toFixed(2)}%`;
+
+const paths = lines.map((l) =>
+  thin(l.points)
+    .map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)},${Y(p.v).toFixed(1)}`)
+    .join(''),
+);
+const xTicks = timeTicks(t0, t1);
+const yDecimals = Math.max(0, -Math.floor(Math.log10(Math.abs(yTicks[1] - yTicks[0]) || 1)));
+const yLabel = (v: number) => formatValue(v, unit, Math.min(yDecimals, 2));
+
+const last = lines.map((l) => l.points[l.points.length - 1]);
+const sources = [...new Set(lines.map((l) => l.meta.source))];
+const notes = [...new Set([spec.note, ...lines.map((l) => l.meta.note)].filter(Boolean))];
+const summary = lines
+  .map((l) => {
+    const v = l.points.map((p) => p.v);
+    const f = (n: number) => formatValue(n, l.unit, l.decimals);
+    return `${l.label}: ${f(v[0])} on ${formatDay(l.points[0].t, l.meta.frequency)}, ${f(v[v.length - 1])} on ${formatDay(l.points[l.points.length - 1].t, l.meta.frequency)}, high ${f(Math.max(...v))}, low ${f(Math.min(...v))}`;
+  })
+  .join('. ');
+const rangeLabel = { '3m': '3 months', '6m': '6 months', '1y': '1 year', '2y': '2 years', '5y': '5 years', '10y': '10 years', ytd: 'Year to date', max: 'Since 2000' }[spec.range];
+---
+
+<figure class="chart">
+  <figcaption class="chart-head">
+    <span class="chart-title">{spec.title}</span>
+    <span class="chart-sub">{unitLabel(unit)} · {rangeLabel}</span>
+  </figcaption>
+
+  <ul class="legend">
+    {
+      lines.map((l, i) => (
+        <li class={`s${i}`}>
+          <span class="swatch" aria-hidden="true" />
+          {l.label} <strong>{formatValue(last[i].v, l.unit, l.decimals)}</strong>
+          <span class="as-of">{formatDay(last[i].t, l.meta.frequency)}</span>
+        </li>
+      ))
+    }
+  </ul>
+
+  <div class="plot" role="img" aria-label={`${spec.title}. ${summary}.`}>
+    <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      {yTicks.map((v) => <line class="grid" x1="0" x2="1000" y1={Y(v)} y2={Y(v)} vector-effect="non-scaling-stroke" />)}
+      {y0 < 0 && y1 > 0 && <line class="zero" x1="0" x2="1000" y1={Y(0)} y2={Y(0)} vector-effect="non-scaling-stroke" />}
+      {paths.map((d, i) => <path class={`line s${i}`} d={d} vector-effect="non-scaling-stroke" />)}
+    </svg>
+    {last.map((p, i) => <span class={`dot s${i}`} style={`left:${pct(X(p.t))};top:${pct(Y(p.v))}`} aria-hidden="true" />)}
+    <div class="y-labels" aria-hidden="true">
+      {yTicks.map((v) => <span style={`top:${pct(Y(v))}`}>{yLabel(v)}</span>)}
+    </div>
+    <div class="x-labels" aria-hidden="true">
+      {
+        xTicks.map((tick) => {
+          const x = X(tick.t);
+          const align = x < 60 ? 'start' : x > 940 ? 'end' : 'mid';
+          return <span class={align} style={`left:${pct(x)}`}>{tick.label}</span>;
+        })
+      }
+    </div>
+  </div>
+
+  <p class="chart-source">
+    Source: {sources.join('; ')}. Chart: Michael Wang.{notes.map((n) => ` ${n}`)}
+  </p>
+</figure>
+
+<style>
+  .chart {
+    margin: 28px 0 32px;
+    padding: 16px 16px 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .chart .chart-head { display: grid; gap: 2px; margin-bottom: 10px; }
+  .chart .chart-title { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--fg); }
+  .chart .chart-sub { font-size: 0.75rem; color: var(--fg-muted); }
+
+  .chart .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
+    font-size: 0.8125rem;
+    color: var(--fg-muted);
+  }
+  .chart .legend li { margin: 0; line-height: 1.5; }
+  .chart .legend strong { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .chart .legend .as-of { font-size: 0.75rem; color: var(--fg-faint); }
+  .chart .swatch {
+    display: inline-block;
+    width: 14px;
+    height: 0;
+    margin-right: 6px;
+    vertical-align: middle;
+    border-top: 2px solid currentColor;
+  }
+
+  .chart .plot {
+    position: relative;
+    height: 200px;
+    margin: 0 4px 26px 46px;
+  }
+  @media (min-width: 640px) {
+    .chart .plot { height: 240px; }
+  }
+  .chart .plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .chart .grid { stroke: var(--line); stroke-width: 1; }
+  .chart .zero { stroke: var(--fg-faint); stroke-width: 1; }
+  .chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+
+  /* Series colours: accent, then muted, then faint dashed. */
+  .chart .s0 { color: var(--accent); stroke: var(--accent); }
+  .chart .s1 { color: var(--fg-muted); stroke: var(--fg-muted); }
+  .chart .s2 { color: var(--fg-faint); stroke: var(--fg-faint); }
+  .chart path.s2 { stroke-dasharray: 5 4; }
+  .chart .legend .s0, .chart .legend .s1, .chart .legend .s2 { color: var(--fg-muted); }
+  .chart .legend .s0 .swatch { border-color: var(--accent); }
+  .chart .legend .s1 .swatch { border-color: var(--fg-muted); }
+  .chart .legend .s2 .swatch { border-color: var(--fg-faint); border-top-style: dashed; }
+
+  .chart .dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 0 2px var(--bg-elev);
+  }
+
+  .chart .y-labels span {
+    position: absolute;
+    right: calc(100% + 8px);
+    transform: translateY(-50%);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .chart .x-labels span {
+    position: absolute;
+    top: calc(100% + 8px);
+    font-size: 0.6875rem;
+    color: var(--fg-faint);
+    white-space: nowrap;
+  }
+  .chart .x-labels .mid { transform: translateX(-50%); }
+  .chart .x-labels .end { transform: translateX(-100%); }
+
+  .chart .chart-source { margin: 0; font-size: 0.75rem; line-height: 1.5; color: var(--fg-faint); }
+</style>

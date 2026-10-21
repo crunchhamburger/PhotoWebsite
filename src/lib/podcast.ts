@@ -39,17 +39,12 @@ export function pubDate(d: Date): Date {
   return new Date(d.getTime() + 12 * 3600 * 1000);
 }
 
-export type Chart = { file: string; caption: string; url: string };
-export type Brief = { html: string; charts: Chart[] };
+/** A chart in the original reporting: caption and link only. The screenshots never reach the site. */
+export type SourceChart = { file: string; caption: string; url: string };
+export type Brief = { html: string; sourceCharts: SourceChart[] };
 
-/** Where the import script puts full briefs (committed) and chart images (git-ignored). */
+/** Where the import script puts full briefs and their source-chart captions (committed). */
 export const BRIEFS_DIR = resolve('src/content/briefs');
-
-/**
- * Chart images are screenshots of other publications' graphics, so only `npm run dev` shows
- * them. The public site lists each chart's caption with a link to its source instead.
- */
-export const showChartImages = import.meta.env.DEV;
 
 /**
  * The full brief for an episode as HTML, with its chart list (captions and source links):
@@ -62,6 +57,48 @@ export async function getBrief(id: string): Promise<Brief | undefined> {
     : (await getEntry('briefs', id))?.rendered?.html;
   if (!html) return undefined;
   const chartsFile = resolve(BRIEFS_DIR, id, 'charts.json');
-  const charts: Chart[] = existsSync(chartsFile) ? JSON.parse(readFileSync(chartsFile, 'utf8')) : [];
-  return { html, charts };
+  const sourceCharts: SourceChart[] = existsSync(chartsFile) ? JSON.parse(readFileSync(chartsFile, 'utf8')) : [];
+  return { html, sourceCharts };
+}
+
+/** Heading text for matching a chart's `after`: no tags, entities, numbering or case. */
+export function headingKey(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&#x27;|&#39;|&rsquo;|’/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/^\s*\d+\.\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Splits brief HTML so each chart lands right after the text under the h2/h3 heading that
+ * matches its `after`, before the next heading of either level (so a section's own text, not
+ * its subsections). Charts whose heading isn't found go at the end. Returns HTML pieces, each
+ * followed by its charts.
+ */
+export function placeCharts<T extends { after: string }>(html: string, charts: T[]): { html: string; charts: T[] }[] {
+  const heads = [...html.matchAll(/<h([23])\b[^>]*>([\s\S]*?)<\/h\1>/gi)].map((m) => ({
+    level: Number(m[1]),
+    key: headingKey(m[2]),
+    index: m.index ?? 0,
+  }));
+  const at = new Map<number, T[]>();
+  for (const chart of charts) {
+    const i = heads.findIndex((h) => h.key === headingKey(chart.after));
+    const end = i < 0 ? html.length : (heads[i + 1]?.index ?? html.length);
+    at.set(end, [...(at.get(end) ?? []), chart]);
+  }
+  const cuts = [...at.keys()].sort((a, b) => a - b);
+  const out: { html: string; charts: T[] }[] = [];
+  let from = 0;
+  for (const cut of cuts) {
+    out.push({ html: html.slice(from, cut), charts: at.get(cut)! });
+    from = cut;
+  }
+  out.push({ html: html.slice(from), charts: [] });
+  return out;
 }

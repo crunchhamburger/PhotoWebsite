@@ -5,11 +5,14 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
-    "build": "npm run check:photos && astro build",
+    "build": "npm run check:photos && astro build && node scripts/check-public-dist.mjs",
     "preview": "astro preview",
     "check:photos": "node scripts/check-photos.mjs",
     "placeholders": "node scripts/make-placeholders.mjs",
-    "podcast:import": "node scripts/import-podcast.mjs"
+    "podcast:import": "node scripts/import-podcast.mjs",
+    "series:update": "node scripts/fetch-series.mjs",
+    "test": "node --test scripts/test/*.test.mjs",
+    "check:public": "node scripts/check-public-dist.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.19",

@@ -3,7 +3,9 @@ import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import EpisodeMeta from '../../components/EpisodeMeta.astro';
 import { podcast } from '../../site.config';
-import { getEpisodes, getBrief, audioPath, showChartImages, type Episode } from '../../lib/podcast';
+import LineChart from '../../components/charts/LineChart.astro';
+import BarChart from '../../components/charts/BarChart.astro';
+import { getEpisodes, getBrief, placeCharts, audioPath, type Episode } from '../../lib/podcast';
 
 export async function getStaticPaths() {
   const episodes = await getEpisodes();
@@ -20,7 +22,7 @@ interface Props {
 }
 
 const { episode, newer, older } = Astro.props;
-const { title, headline, tickers, sources } = episode.data;
+const { title, headline, tickers, sources, charts, date } = episode.data;
 const { Content } = await render(episode);
 
 // The full brief, laid out like the emailed brief page: takeaways, through-line, numbers,
@@ -40,6 +42,8 @@ const sourceLabel = (url: string) => {
 const sourcesNum = Number(briefHtml.slice(sourcesAt).match(/^<h2[^>]*>\s*(\d+)\./)?.[1] ?? 0);
 const chartsHeading = sourcesAt >= 0 && sourcesNum > 1 ? `${sourcesNum - 1}. Charts` : 'Charts';
 const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt), briefHtml.slice(sourcesAt)] : [briefHtml, ''];
+// Our original charts (listed in the episode's frontmatter), each under the section it belongs to.
+const pieces = placeCharts(briefMain, charts);
 ---
 <BaseLayout title={title} description={headline} ogType="article">
   <link slot="head" rel="alternate" type="application/rss+xml" title={podcast.title} href="/podcast/rss.xml" />
@@ -58,35 +62,26 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
 
     {brief ? (
       <>
-        <div class="notes brief" set:html={briefMain} />
-        {brief.charts.length > 0 && (
+        <div class="notes brief">
+          {pieces.map((piece) => (
+            <>
+              <Fragment set:html={piece.html} />
+              {piece.charts.map((c) => (c.type === 'line' ? <LineChart spec={c} asOf={date} /> : <BarChart spec={c} />))}
+            </>
+          ))}
+        </div>
+        {brief.sourceCharts.length > 0 && (
           <section class="block" aria-labelledby="charts-heading">
             <h2 id="charts-heading" class="eyebrow">{chartsHeading}</h2>
-            {showChartImages ? (
-            <div class="charts">
-              {brief.charts.map((chart, i) => (
-                <figure>
-                  <a href={`/podcast/${episode.id}/charts/${chart.file}`} target="_blank" rel="noopener">
-                    <img src={`/podcast/${episode.id}/charts/${chart.file}`} alt={chart.caption} loading="lazy" decoding="async" />
-                  </a>
-                  <figcaption>
-                    <span class="n">{String(i + 1).padStart(2, '0')}</span>
-                    {chart.caption}
-                    {chart.url && <> <a href={chart.url} target="_blank" rel="noopener noreferrer">Source</a></>}
-                  </figcaption>
-                </figure>
+            <p class="chart-list-intro">Charts in the original reporting, linked at their source.</p>
+            <ol class="chart-list">
+              {brief.sourceCharts.map((chart) => (
+                <li>
+                  {chart.caption}
+                  {chart.url && <> <a href={chart.url} target="_blank" rel="noopener noreferrer">{sourceLabel(chart.url)}</a></>}
+                </li>
               ))}
-            </div>
-            ) : (
-              <ol class="chart-list">
-                {brief.charts.map((chart) => (
-                  <li>
-                    {chart.caption}
-                    {chart.url && <> <a href={chart.url} target="_blank" rel="noopener noreferrer">{sourceLabel(chart.url)}</a></>}
-                  </li>
-                ))}
-              </ol>
-            )}
+            </ol>
           </section>
         )}
         {briefSources && <div class="notes brief brief-sources" set:html={briefSources} />}
@@ -94,6 +89,7 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
     ) : (
       <div class="notes">
         <Content />
+        {charts.map((c) => (c.type === 'line' ? <LineChart spec={c} asOf={date} /> : <BarChart spec={c} />))}
       </div>
     )}
 
@@ -257,36 +253,7 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
   .brief-sources { font-size: 0.95rem; }
   .brief-sources :global(li) { margin-bottom: 0.45em; line-height: 1.55; }
 
-  .charts {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
-    gap: clamp(10px, 1.6vw, 24px);
-  }
-  .charts figure {
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    min-width: 0;
-    padding: 10px;
-    background: var(--bg-elev);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-  }
-  .charts img {
-    width: 100%;
-    height: auto;
-    border-radius: 2px;
-    background: #fff; /* charts are screenshots on white */
-  }
-  .charts figcaption { font-size: 0.8125rem; line-height: 1.5; color: var(--fg-muted); }
-  .charts figcaption a {
-    color: var(--fg);
-    text-decoration: underline;
-    text-decoration-color: var(--fg-faint);
-    text-underline-offset: 0.2em;
-  }
-  .charts figcaption a:hover { color: var(--accent); }
+  .chart-list-intro { margin: 0 0 12px; font-size: 0.875rem; color: var(--fg-muted); }
   .chart-list { margin: 0; padding-left: 1.4em; font-size: 0.95rem; color: var(--fg-muted); }
   .chart-list li { margin-bottom: 0.6em; line-height: 1.55; }
   .chart-list li::marker { color: var(--fg-faint); font-variant-numeric: tabular-nums; }
@@ -297,7 +264,6 @@ const [briefMain, briefSources] = sourcesAt >= 0 ? [briefHtml.slice(0, sourcesAt
     text-underline-offset: 0.2em;
   }
   .chart-list a:hover { color: var(--accent); }
-  .n { margin-right: 6px; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 500; }
 
   .block {
     margin-top: clamp(36px, 5vw, 56px);

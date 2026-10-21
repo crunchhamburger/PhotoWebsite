@@ -177,7 +177,20 @@ MARKET_BRIEFS_DIR=/path/to/briefs npm run podcast:import
 
 The script reads `daily/*-episode.md` and `weekly/*-episode.md`, validates the frontmatter, and copies each episode to `src/content/podcast/<date>.md` (weekly: `<date>-weekly.md`) and its MP3 to `public/podcast/audio/<same slug>.mp3`. Unchanged files are skipped. A missing MP3 or bad field stops the run before anything is copied. Chart screenshots are never published. Channel title and description are `podcast` in `src/site.config.ts`; the audio cache header is in `vercel.json`.
 
-**Full brief on each episode page.** The import also copies each episode's full brief to `src/content/briefs/`: the published brief page (`daily/<date>-page.html` or `weekly/<date>-page.html`, the page the email links to) as `<slug>.html`, or the Markdown brief as `<slug>.md` when there is no page. The episode page shows everything in it, in the same order (for a daily: Article Takeaways, The Through-Line, Numbers Worth Remembering, Top Takeaways, charts, Sources; the weekly adds its scoreboard and numbered sections). Episodes without a brief fall back to the short show notes. Chart images go to `src/content/briefs/<slug>/charts/`, which is git-ignored: they are screenshots of other publications' graphics, so only `npm run dev` shows them, and the public page lists each chart's caption with a link to its source.
+**Full brief on each episode page.** The import also copies each episode's full brief to `src/content/briefs/`: the published brief page (`daily/<date>-page.html` or `weekly/<date>-page.html`, the page the email links to) as `<slug>.html`, or the Markdown brief as `<slug>.md` when there is no page. The episode page shows everything in it, in the same order (for a daily: Article Takeaways, The Through-Line, Numbers Worth Remembering, Top Takeaways, charts, Sources; the weekly adds its scoreboard and numbered sections). Episodes without a brief fall back to the short show notes. The publishers' charts (FT, WSJ, CNBC, The Information, Ornn) are never published: the page lists each one's caption with a link to its source, and the screenshots stay in the owner-only research view (see below).
+
+**Original charts.** Each episode's frontmatter can list up to four `charts:` (format and rules in `~/Market Briefs/procedures/episode-charts.md`): line charts of public-domain U.S. government data (Treasury yields, the Fed's target rate, EIA oil prices, BLS CPI and unemployment, the trade-weighted dollar) and bar charts of figures confirmed by an official source or two publications. Each chart is drawn at build time as SVG (`src/components/charts/`), ends at the episode's date so old episodes never change, and goes right after the text under the brief heading named in `after`. There are no default charts: an episode with no relevant data has none. Commercial data (Ornn H100, DRAMeXchange) stays off the public site until its licence is verified.
+
+```bash
+npm run series:update   # fetch/validate the government series into src/data/series/ (backfilled from 2000)
+npm test                # unit tests for the series validation
+```
+
+`series:update` reads FRED's public CSVs (no API key). Each update is validated before it replaces the committed file (dates, plausible ranges, no silent rewrites of old history, small recent revisions only); a series that fails keeps its last good data. The list of series is `src/data/series.json`: only add series whose original source is a U.S. government agency.
+
+**Privacy check.** `npm run build` ends with `scripts/check-public-dist.mjs`, which fails the build if `dist/` contains a research page, an image under `podcast/`, a screenshot-like file name, or (on Michael's Mac) any file with the same bytes as a saved screenshot.
+
+**Daily publishing** runs from `~/Market Briefs/scripts/publish-site.mjs` (data → import → build → commit → push, idempotent, logged to `~/Market Briefs/logs/publish-site.log`).
 
 ## Performance notes
 

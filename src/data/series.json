@@ -1,0 +1,107 @@
+{
+  "_about": "Public-domain U.S. government data series for the podcast's original charts. Fetched from FRED (St. Louis Fed) by scripts/fetch-series.mjs into src/data/series/<id>.csv. Only add series whose original source is a U.S. government agency: FRED also carries copyrighted series (S&P, Nasdaq, ICE, etc.) that must not be used. Commercial data (Ornn H100, DRAMeXchange) stays out until its licence is verified.",
+  "start": "2000-01-01",
+  "series": {
+    "DGS10": {
+      "title": "10-year Treasury yield",
+      "short": "10-year",
+      "unit": "%",
+      "decimals": 2,
+      "frequency": "daily",
+      "source": "Federal Reserve Board (H.15), via FRED",
+      "sourceUrl": "https://fred.stlouisfed.org/series/DGS10",
+      "min": -5,
+      "max": 30
+    },
+    "DGS2": {
+      "title": "2-year Treasury yield",
+      "short": "2-year",
+      "unit": "%",
+      "decimals": 2,
+      "frequency": "daily",
+      "source": "Federal Reserve Board (H.15), via FRED",
+      "sourceUrl": "https://fred.stlouisfed.org/series/DGS2",
+      "min": -5,
+      "max": 30
+    },
+    "DFEDTARU": {
+      "title": "Fed funds target range, upper limit",
+      "short": "Fed target (upper)",
+      "unit": "%",
+      "decimals": 2,
+      "frequency": "daily",
+      "source": "Federal Reserve Board, via FRED",
+      "sourceUrl": "https://fred.stlouisfed.org/series/DFEDTARU",
+      "min": 0,
+      "max": 25
+    },
+    "DCOILBRENTEU": {
+      "title": "Brent crude oil, spot price",
+      "short": "Brent spot",
+      "unit": "$/bbl",
+      "decimals": 2,
+      "frequency": "daily",
+      "source": "U.S. Energy Information Administration, via FRED",
+      "sourceUrl": "https://fred.stlouisfed.org/series/DCOILBRENTEU",
+      "note": "EIA spot price. Futures prices quoted in the news can differ, especially when markets are volatile.",
+      "min": -100,
+      "max": 500
+    },
+    "DCOILWTICO": {
+      "title": "WTI crude oil, spot price",
+      "short": "WTI spot",
+      "unit": "$/bbl",
+      "decimals": 2,
+      "frequency": "daily",
+      "source": "U.S. Energy Information Administration, via FRED",
+      "sourceUrl": "https://fred.stlouisfed.org/series/DCOILWTICO",
+      "note": "EIA spot price. Futures prices quoted in the news can differ, especially when markets are volatile.",
+      "min": -100,
+      "max": 500
+    },
+    "CPIAUCSL": {
+      "title": "Consumer prices (CPI-U), all items",
+      "short": "CPI",
+      "unit": "index",
+      "decimals": 3,
+      "frequency": "monthly",
+      "source": "U.S. Bureau of Labor Statistics, via FRED",
+      "sourceUrl": "https://fred.stlouisfed.org/series/CPIAUCSL",
+      "min": 0,
+      "max": 2000
+    },
+    "CPILFESL": {
+      "title": "Consumer prices (CPI-U) excluding food and energy",
+      "short": "Core CPI",
+      "unit": "index",
+      "decimals": 3,
+      "frequency": "monthly",
+      "source": "U.S. Bureau of Labor Statistics, via FRED",
+      "sourceUrl": "https://fred.stlouisfed.org/series/CPILFESL",
+      "min": 0,
+      "max": 2000
+    },
+    "UNRATE": {
+      "title": "Unemployment rate",
+      "short": "Unemployment",
+      "unit": "%",
+      "decimals": 1,
+      "frequency": "monthly",
+      "source": "U.S. Bureau of Labor Statistics, via FRED",
+      "sourceUrl": "https://fred.stlouisfed.org/series/UNRATE",
+      "min": 0,
+      "max": 40
+    },
+    "DTWEXBGS": {
+      "title": "Trade-weighted U.S. dollar index, broad",
+      "short": "Dollar (broad)",
+      "unit": "index",
+      "decimals": 2,
+      "frequency": "daily",
+      "source": "Federal Reserve Board (H.10), via FRED",
+      "sourceUrl": "https://fred.stlouisfed.org/series/DTWEXBGS",
+      "min": 0,
+      "max": 1000
+    }
+  }
+}
