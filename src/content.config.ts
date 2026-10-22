@@ -98,6 +98,11 @@ const podcast = defineCollection({
     headline_zh: z.string().optional(),
     audio_zh: z.string().regex(/\.mp3$/i, 'audio_zh must be an .mp3 file name').optional(),
     duration_zh: z.number().int().positive().optional(),
+    // Optional second Chinese narrator: /zh/podcast shows a switch between the two voices.
+    voice_zh: z.string().optional(), // name of the first Chinese voice, e.g. 央视配音
+    audio_zh_2: z.string().regex(/\.mp3$/i, 'audio_zh_2 must be an .mp3 file name').optional(),
+    duration_zh_2: z.number().int().positive().optional(),
+    voice_zh_2: z.string().optional(),
   }),
 });
 

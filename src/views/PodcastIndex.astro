@@ -2,9 +2,10 @@
 // Rendered by src/pages/podcast/index.astro and src/pages/zh/podcast/index.astro.
 import BaseLayout from '../layouts/BaseLayout.astro';
 import EpisodeMeta from '../components/EpisodeMeta.astro';
+import VoicePlayer from '../components/VoicePlayer.astro';
 import SubscribeForm from '../components/SubscribeForm.astro';
 import { podcast } from '../site.config';
-import { getEpisodes, audioPath, episodeText, episodeHref } from '../lib/podcast';
+import { getEpisodes, audioPath, episodeText, episodeHref, zhVoices } from '../lib/podcast';
 import { langFromUrl, useT } from '../i18n';
 
 const lang = langFromUrl(Astro.url);
@@ -36,7 +37,11 @@ const episodes = await getEpisodes();
                 <h2 class="headline" id={`ep-${ep.id}`}>
                   <a href={href}>{headline}</a>
                 </h2>
-                <audio controls preload="none" src={audioPath(ep, lang)} aria-label={t('podcast.play', { title })}></audio>
+                {lang === 'zh' && zhVoices(ep).length > 0 ? (
+                  <VoicePlayer voices={zhVoices(ep)} label={t('podcast.play', { title })} preload="none" />
+                ) : (
+                  <audio controls preload="none" src={audioPath(ep, lang)} aria-label={t('podcast.play', { title })}></audio>
+                )}
                 <a class="more eyebrow" href={href} aria-label={t('podcast.showNotesFor', { title })}>
                   {t('podcast.showNotes')} <span aria-hidden="true">→</span>
                 </a>

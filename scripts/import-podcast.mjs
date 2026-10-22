@@ -21,6 +21,8 @@
 // Chinese edition (optional): `audio_zh` (an MP3 in audio/, copied to public/podcast/audio/<slug>.zh.mp3)
 // and the Chinese brief page <kind>/<date>-zh.html (copied, tidied, to src/content/briefs/<slug>.zh.html).
 // The site's /zh/podcast pages use them; episodes without them fall back to English there.
+// An optional second Chinese narrator (`audio_zh_2`, `voice_zh`, `voice_zh_2`) is copied to
+// <slug>.zh-2.mp3 and offered as a voice switch on the Chinese pages.
 //
 // The episode's own `charts:` list (original charts of public-domain data, placed under named
 // brief sections) is validated here too; see src/content.config.ts for the format.
@@ -103,6 +105,10 @@ function validate(fm, folderKind, fileDate) {
   if (fm.audio_zh !== undefined && (!isStr(fm.audio_zh) || !/\.mp3$/i.test(fm.audio_zh) || /[\\/]/.test(fm.audio_zh))) {
     errs.push(`audio_zh: expected an .mp3 file name in audio/, got ${JSON.stringify(fm.audio_zh)}`);
   }
+  if (fm.audio_zh_2 !== undefined && (!isStr(fm.audio_zh_2) || !/\.mp3$/i.test(fm.audio_zh_2) || /[\\/]/.test(fm.audio_zh_2))) {
+    errs.push(`audio_zh_2: expected an .mp3 file name in audio/, got ${JSON.stringify(fm.audio_zh_2)}`);
+  }
+  for (const k of ['voice_zh', 'voice_zh_2']) if (fm[k] !== undefined && !isStr(fm[k])) errs.push(`${k}: expected a string`);
   if (fm.duration_zh !== undefined && fm.duration_zh !== null && !(Number.isInteger(fm.duration_zh) && fm.duration_zh > 0)) {
     errs.push(`duration_zh: expected whole seconds, got ${JSON.stringify(fm.duration_zh)}`);
   }
@@ -312,8 +318,16 @@ for (const kind of KINDS) {
         continue;
       }
     }
+    let mp3Zh2 = null;
+    if (fm.audio_zh_2) {
+      mp3Zh2 = join(SRC, 'audio', fm.audio_zh_2);
+      if (!existsSync(mp3Zh2)) {
+        problems.push(`${label}: second Chinese MP3 not found: ${relative(SRC, mp3Zh2)}`);
+        continue;
+      }
+    }
     const slug = kind === 'weekly' ? `${date}-weekly` : date;
-    episodes.push({ label, file, mp3, mp3Zh, slug, kind, date, charts: fm.charts ?? [] });
+    episodes.push({ label, file, mp3, mp3Zh, mp3Zh2, slug, kind, date, charts: fm.charts ?? [] });
   }
 }
 
@@ -351,6 +365,13 @@ for (const ep of episodes) {
     if (!sameFile(ep.mp3Zh, zhDest)) {
       copyFileSync(ep.mp3Zh, zhDest);
       changes.push('Chinese audio');
+    }
+  }
+  if (ep.mp3Zh2) {
+    const zh2Dest = join(AUDIO_DIR, `${ep.slug}.zh-2.mp3`);
+    if (!sameFile(ep.mp3Zh2, zh2Dest)) {
+      copyFileSync(ep.mp3Zh2, zh2Dest);
+      changes.push('second Chinese voice');
     }
   }
   let briefNote = '';

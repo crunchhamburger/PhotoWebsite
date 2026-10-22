@@ -1,0 +1,93 @@
+---
+// An audio player with a narrator switch, for episodes recorded in more than one Chinese voice.
+// The choice is remembered (localStorage) and applied to every player on the site, so a
+// listener who prefers one narrator keeps it from episode to episode.
+interface Props {
+  voices: { name: string; src: string }[];
+  label: string; // accessible label for the audio element
+  preload?: 'none' | 'metadata';
+}
+
+const { voices, label, preload = 'metadata' } = Astro.props;
+---
+<div class="voice-player" data-voice-player>
+  {voices.length > 1 && (
+    <div class="switch" role="group" aria-label="选择配音">
+      {voices.map((v, i) => (
+        <button type="button" data-voice={i} data-src={v.src} aria-pressed={i === 0 ? 'true' : 'false'}>
+          {v.name}
+        </button>
+      ))}
+    </div>
+  )}
+  <audio controls preload={preload} src={voices[0].src} aria-label={label}></audio>
+</div>
+
+<style>
+  .voice-player { display: grid; gap: 10px; }
+  .switch {
+    display: inline-flex;
+    justify-self: start;
+    gap: 4px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+  }
+  .switch button {
+    font: inherit;
+    font-size: 0.8125rem;
+    color: var(--fg-muted);
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    padding: 5px 14px;
+    cursor: pointer;
+    transition: color 0.2s var(--ease), background-color 0.2s var(--ease);
+  }
+  .switch button:hover { color: var(--fg); }
+  .switch button[aria-pressed='true'] { color: var(--bg); background: var(--fg); }
+  .switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  audio { display: block; width: 100%; height: 44px; }
+</style>
+
+<script>
+  const KEY = 'podcast.zhVoice';
+  const read = () => {
+    try {
+      return Number(localStorage.getItem(KEY) ?? 0) || 0;
+    } catch {
+      return 0;
+    }
+  };
+  const save = (i: number) => {
+    try {
+      localStorage.setItem(KEY, String(i));
+    } catch {
+      /* private mode: the choice just isn't remembered */
+    }
+  };
+  function choose(player: HTMLElement, i: number) {
+    const buttons = [...player.querySelectorAll<HTMLButtonElement>('button[data-voice]')];
+    const button = buttons[i] ?? buttons[0];
+    const audio = player.querySelector('audio');
+    if (!button || !audio) return;
+    buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+    const src = button.dataset.src!;
+    if (audio.getAttribute('src') === src) return;
+    const wasPlaying = !audio.paused;
+    audio.src = src;
+    if (wasPlaying) audio.play().catch(() => {});
+  }
+  const saved = read();
+  document.querySelectorAll<HTMLElement>('[data-voice-player]').forEach((player) => {
+    if (!player.querySelector('button[data-voice]')) return;
+    choose(player, saved);
+    player.addEventListener('click', (e) => {
+      const button = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-voice]');
+      if (!button) return;
+      const i = Number(button.dataset.voice);
+      save(i);
+      document.querySelectorAll<HTMLElement>('[data-voice-player]').forEach((p) => choose(p, i));
+    });
+  });
+</script>

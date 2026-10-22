@@ -164,3 +164,12 @@ export function localizeChart<T extends { after: string; title: string; note?: s
   const after = c.after_zh ?? ZH_HEADINGS[headingKey(c.after)] ?? c.after;
   return { ...c, after, title: c.title_zh ?? c.title, note: c.note_zh ?? c.note };
 }
+
+/** The Chinese narrations of an episode, in display order: the main voice and an optional second one. */
+export function zhVoices(ep: Episode): { name: string; src: string; duration?: number }[] {
+  const d = ep.data;
+  if (!hasZh(ep)) return [];
+  const voices = [{ name: d.voice_zh ?? '中文', src: `/podcast/audio/${ep.id}.zh.mp3`, duration: d.duration_zh }];
+  if (d.audio_zh_2) voices.push({ name: d.voice_zh_2 ?? '第二配音', src: `/podcast/audio/${ep.id}.zh-2.mp3`, duration: d.duration_zh_2 });
+  return voices;
+}
