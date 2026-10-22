@@ -15,6 +15,8 @@ export async function GET(context: APIContext) {
     title: podcast.title,
     description: podcast.description,
     site: new URL('/podcast', site).href,
+    // Renders the feed as a readable page when opened in a browser (apps ignore it).
+    stylesheet: '/podcast/rss.xsl',
     // Match the site's URLs: /podcast/2026-10-20, never /podcast/2026-10-20/.
     trailingSlash: false,
     xmlns: { itunes: 'http://www.itunes.com/dtds/podcast-1.0.dtd', atom: 'http://www.w3.org/2005/Atom' },
