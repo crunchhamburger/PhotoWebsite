@@ -78,6 +78,59 @@ const ogUrl = og ? new URL(og.src, Astro.site).href : undefined;
         if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
       } catch (e) {}
     </script>
+    <!-- Page transitions: only navigations into or out of the podcast animate (styles in global.css).
+         Must run before first render, so it is an inline classic script in <head>. -->
+    <script is:inline>
+      (() => {
+        const isPodcast = (url) => {
+          try {
+            const p = new URL(url, location.href);
+            return p.origin === location.origin && /^\/(zh\/)?podcast(\/|\.html|$)/.test(p.pathname);
+          } catch (e) {
+            return false;
+          }
+        };
+        // Remember where a podcast link was clicked so the iris opens from that point.
+        document.addEventListener(
+          'click',
+          (e) => {
+            const a = e.target instanceof Element && e.target.closest('a[href]');
+            if (!a || !isPodcast(a.href) || isPodcast(location.href)) return;
+            try {
+              sessionStorage.setItem(
+                'vt-origin',
+                JSON.stringify({ x: (e.clientX / innerWidth) * 100, y: (e.clientY / innerHeight) * 100 }),
+              );
+            } catch (err) {}
+          },
+          true,
+        );
+        addEventListener('pagereveal', (e) => {
+          const vt = e.viewTransition;
+          if (!vt) return;
+          const from = (window.navigation && navigation.activation && navigation.activation.from && navigation.activation.from.url) || document.referrer;
+          const toPod = isPodcast(location.href);
+          const fromPod = from && isPodcast(from);
+          if (toPod === Boolean(fromPod)) {
+            // Neither page is the podcast, or moving between podcast pages: no page-wide animation.
+            if (!toPod) return vt.skipTransition();
+          }
+          if (toPod && !fromPod) {
+            vt.types.add('to-podcast');
+            try {
+              const o = JSON.parse(sessionStorage.getItem('vt-origin') || 'null');
+              sessionStorage.removeItem('vt-origin');
+              if (o) {
+                document.documentElement.style.setProperty('--vt-x', o.x + '%');
+                document.documentElement.style.setProperty('--vt-y', o.y + '%');
+              }
+            } catch (err) {}
+          } else if (fromPod && !toPod) {
+            vt.types.add('from-podcast');
+          }
+        });
+      })();
+    </script>
     <slot name="head" />
   </head>
   <body>

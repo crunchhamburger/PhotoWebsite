@@ -11,16 +11,30 @@ import { langFromUrl, useT } from '../i18n';
 const lang = langFromUrl(Astro.url);
 const t = useT(lang);
 const episodes = await getEpisodes();
+// Title split for the entrance animation: words in English, characters in Chinese.
+const title = t('podcast.title');
+const titleParts = lang === 'zh' ? [...title] : title.split(' ');
 ---
 <BaseLayout title={t('podcast.eyebrow')} description={t('podcast.description')}>
   <link slot="head" rel="alternate" type="application/rss+xml" title={podcast.title} href="/podcast/rss.xml" />
 
   <section class="podcast container">
     <header class="intro">
-      <p class="eyebrow">{t('podcast.eyebrow')}</p>
-      <h1 class="title">{t('podcast.title')}</h1>
-      <p class="lede">{t('podcast.description')}</p>
-      <SubscribeForm />
+      <p class="eyebrow enter" style="--d: 0.15s">
+        <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        {t('podcast.eyebrow')}
+      </p>
+      <h1 class="title" aria-label={title}>
+        {titleParts.map((part, i) => (
+          <span class="w" aria-hidden="true">
+            <span style={`--i: ${i}`}>{part}</span>
+          </span>
+        ))}
+      </h1>
+      <p class="lede enter" style="--d: 0.75s">{t('podcast.description')}</p>
+      <div class="enter" style="--d: 0.95s">
+        <SubscribeForm />
+      </div>
     </header>
 
     {episodes.length === 0 ? (
@@ -62,12 +76,98 @@ const episodes = await getEpisodes();
     padding-block: clamp(40px, 7vw, 104px) 0;
   }
 
-  .intro .eyebrow { margin: 0 0 18px; }
+  .intro .eyebrow {
+    margin: 0 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
   .title {
     font-size: clamp(2.4rem, 1.4rem + 4.4vw, 5.25rem);
     font-weight: 400;
     letter-spacing: -0.02em;
     line-height: 1.02;
+  }
+
+  /* ---------- Entrance choreography ---------- */
+  /* Title: each word (Chinese: each character) rises from behind a mask, staggered. */
+  .title .w {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: top;
+    padding-bottom: 0.08em; /* keep descenders inside the mask */
+    margin-right: 0.22em;
+  }
+  :global(:lang(zh)) .title .w {
+    margin-right: 0;
+  }
+  .title .w > span {
+    display: inline-block;
+    animation: rise-mask 1.1s cubic-bezier(0.2, 0.75, 0.15, 1) both;
+    animation-delay: calc(0.3s + var(--i) * 0.11s);
+  }
+  @keyframes rise-mask {
+    from {
+      transform: translateY(105%) rotate(4deg);
+      opacity: 0;
+    }
+    40% {
+      opacity: 1;
+    }
+  }
+  /* Everything else in the intro fades up in sequence (--d sets each delay). */
+  .enter {
+    animation: fade-up 0.9s var(--ease) both;
+    animation-delay: var(--d, 0s);
+  }
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+      filter: blur(4px);
+    }
+  }
+  /* A small live equalizer beside the eyebrow. */
+  .eq {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 12px;
+  }
+  .eq i {
+    width: 2px;
+    height: 100%;
+    background: var(--accent);
+    transform-origin: bottom;
+    animation: eq 1.1s ease-in-out infinite alternate;
+  }
+  .eq i:nth-child(1) { animation-duration: 0.9s; }
+  .eq i:nth-child(2) { animation-duration: 1.25s; animation-delay: -0.4s; }
+  .eq i:nth-child(3) { animation-duration: 0.75s; animation-delay: -0.2s; }
+  .eq i:nth-child(4) { animation-duration: 1.1s; animation-delay: -0.6s; }
+  .eq i:nth-child(5) { animation-duration: 0.95s; animation-delay: -0.3s; }
+  @keyframes eq {
+    from { transform: scaleY(0.2); }
+    to { transform: scaleY(1); }
+  }
+  /* Episodes reveal as they scroll into view (scroll-driven animations; elsewhere they just show). */
+  @supports (animation-timeline: view()) {
+    .episodes > li {
+      animation: fade-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .title .w > span,
+    .enter,
+    .episodes > li {
+      animation: none;
+    }
+    .eq i {
+      animation: none;
+      transform: scaleY(0.6);
+    }
   }
   .lede {
     margin: clamp(20px, 2.6vw, 32px) 0 0;

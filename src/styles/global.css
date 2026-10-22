@@ -91,6 +91,67 @@ button {
   letter-spacing: 0.2em;
 }
 
+/* ---------- Page transitions (podcast only) ----------
+   Cross-document View Transitions (Chrome/Edge 126+, Safari 18.2+; others navigate normally).
+   The inline script in BaseLayout skips every navigation that doesn't enter or leave the podcast,
+   tags the rest 'to-podcast' / 'from-podcast', and sets --vt-x/--vt-y to where the visitor clicked. */
+@view-transition {
+  navigation: auto;
+}
+/* The header stays put while the page underneath changes. */
+.site-header {
+  view-transition-name: site-header;
+}
+::view-transition-group(site-header) {
+  animation-duration: 0.6s;
+}
+
+/* Entering the podcast: the new page opens as an iris from the click point while the old one recedes. */
+html:active-view-transition-type(to-podcast)::view-transition-old(root) {
+  animation: vt-recede 1s cubic-bezier(0.7, 0, 0.2, 1) both;
+}
+html:active-view-transition-type(to-podcast)::view-transition-new(root) {
+  animation: vt-iris 1.05s cubic-bezier(0.7, 0, 0.2, 1) both;
+}
+/* Leaving the podcast: a softer rise-and-fade. */
+html:active-view-transition-type(from-podcast)::view-transition-old(root) {
+  animation: vt-fade-out 0.45s var(--ease) both;
+}
+html:active-view-transition-type(from-podcast)::view-transition-new(root) {
+  animation: vt-rise-in 0.7s var(--ease) 0.1s both;
+}
+@keyframes vt-iris {
+  from {
+    clip-path: circle(0% at var(--vt-x, 50%) var(--vt-y, 50%));
+  }
+  to {
+    clip-path: circle(150% at var(--vt-x, 50%) var(--vt-y, 50%));
+  }
+}
+@keyframes vt-recede {
+  to {
+    transform: scale(0.93);
+    filter: brightness(0.35) blur(3px);
+  }
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+}
+@keyframes vt-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
+
 /* ---------- Utilities ---------- */
 .container {
   width: 100%;
