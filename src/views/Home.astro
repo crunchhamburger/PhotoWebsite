@@ -5,12 +5,18 @@ import Hero from '../components/Hero.astro';
 import ProjectGrid from '../components/ProjectGrid.astro';
 import { getProjects, projectCover, heroImages } from '../lib/photos';
 import { site } from '../site.config';
-import { langFromUrl, useT } from '../i18n';
+import { langFromUrl, localize, useT } from '../i18n';
 
 const lang = langFromUrl(Astro.url);
 const t = useT(lang);
 const projects = await getProjects(lang);
 const slides = heroImages(lang);
+// One button per hero slide, in slide order.
+const ctas = [
+  { eyebrow: t('hero.cta.podcastEyebrow'), label: t('hero.cta.podcast'), href: localize('/podcast', lang) },
+  { eyebrow: t('hero.cta.workEyebrow'), label: t('hero.cta.work'), href: localize('/#work', lang) },
+  { eyebrow: t('hero.cta.contactEyebrow'), label: t('hero.cta.contact'), href: `${localize('/about', lang)}#contact` },
+];
 
 // Preload the first hero slide (LCP). Must mirror the AVIF <source> that <Picture> emits in Hero.
 const first = slides[0];
@@ -31,7 +37,7 @@ const ogImage = projects[0] ? projectCover(projects[0]).src : first?.src;
     <p class="eyebrow">{t('home.eyebrow')}</p>
   </div>
 
-  {slides.length > 0 && <Hero images={slides} />}
+  {slides.length > 0 && <Hero images={slides} ctas={ctas} />}
 
   <section id="work" class="work container" aria-labelledby="work-heading">
     <header class="work__head">

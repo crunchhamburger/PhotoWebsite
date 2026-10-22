@@ -50,7 +50,7 @@ const portrait = aboutPortrait(lang);
     </div>
   </section>
 
-  <section class="contact container" aria-labelledby="contact-heading">
+  <section id="contact" class="contact container" aria-labelledby="contact-heading">
     <p class="eyebrow">{t('about.contact')}</p>
     <h2 id="contact-heading">{t('about.getInTouch')}</h2>
     <ContactForm />
@@ -105,6 +105,7 @@ const portrait = aboutPortrait(lang);
   }
 
   .contact {
+    scroll-margin-top: var(--header-h, 88px);
     max-width: 1200px;
     padding-block: clamp(48px, 8vw, 120px);
     border-top: 1px solid var(--line);

@@ -5,13 +5,21 @@ import { Picture } from 'astro:assets';
 import type { Photo } from '../lib/photos';
 import { langFromUrl, useT } from '../i18n';
 
+interface Cta {
+  eyebrow: string;
+  label: string;
+  href: string;
+}
+
 interface Props {
   images: Photo[];
   label?: string;
+  /** One call-to-action per slide (same order as `images`); it fades in with its slide. */
+  ctas?: Cta[];
 }
 
 const t = useT(langFromUrl(Astro.url));
-const { images, label = t('hero.label') } = Astro.props;
+const { images, label = t('hero.label'), ctas = [] } = Astro.props;
 const widths = [640, 960, 1280, 1920, 2400];
 const multi = images.length > 1;
 ---
@@ -42,6 +50,38 @@ const multi = images.length > 1;
       ))
     }
   </div>
+
+  {
+    ctas.length > 0 && (
+      <div class="hero__ctas">
+        {ctas.slice(0, images.length).map((cta, i) => (
+          <div
+            class:list={['hero__cta', { 'is-active': i === 0 }]}
+            aria-hidden={i === 0 ? undefined : 'true'}
+            inert={i === 0 ? undefined : true}
+            data-cta
+          >
+            <p class="hero__cta-eyebrow">
+              <span class="hero__cta-num">{String(i + 1).padStart(2, '0')}</span>
+              <span class="hero__cta-line" aria-hidden="true" />
+              {cta.eyebrow}
+            </p>
+            <a class="hero__cta-btn" href={cta.href}>
+              <span class="hero__cta-label">{cta.label}</span>
+              <span class="hero__cta-arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M4 12h15M13 6l6 6-6 6" />
+                </svg>
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M4 12h15M13 6l6 6-6 6" />
+                </svg>
+              </span>
+            </a>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   {
     multi && (
@@ -146,6 +186,176 @@ const multi = images.length > 1;
     background: linear-gradient(to top, rgb(0 0 0 / 0.45), transparent);
   }
 
+  /* ---------- Per-slide call to action (bottom left, above the controls) ---------- */
+  .hero__ctas {
+    position: absolute;
+    left: var(--gutter);
+    bottom: clamp(76px, 9vw, 120px);
+    z-index: 3;
+    color: #fff;
+  }
+  .hero__cta {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: max-content;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(16px);
+    transition:
+      opacity 0.6s var(--ease),
+      transform 0.6s var(--ease),
+      visibility 0s linear 0.6s;
+  }
+  .hero__cta.is-active {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    /* Rise in a beat after the photo starts to cross-fade. */
+    transition:
+      opacity 0.9s var(--ease) 0.45s,
+      transform 0.9s var(--ease) 0.45s,
+      visibility 0s;
+  }
+  .hero__cta-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 14px;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.85);
+    text-shadow: 0 1px 12px rgb(0 0 0 / 0.5);
+  }
+  .hero__cta-num {
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+  }
+  .hero__cta-line {
+    display: block;
+    width: 28px;
+    height: 1px;
+    background: currentColor;
+    transition: width 0.5s var(--ease);
+  }
+  .hero__cta-btn {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    padding: 13px 14px 13px 28px;
+    border: 1px solid rgb(255 255 255 / 0.55);
+    border-radius: 999px;
+    overflow: hidden;
+    color: #fff;
+    background: rgb(0 0 0 / 0.22);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    font-family: var(--font-display);
+    font-size: clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem);
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    transition:
+      color 0.45s var(--ease),
+      border-color 0.45s var(--ease),
+      letter-spacing 0.5s var(--ease),
+      box-shadow 0.5s var(--ease),
+      transform 0.5s var(--ease);
+  }
+  /* White fill that sweeps in from the left on hover. */
+  .hero__cta-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: #fff;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.55s cubic-bezier(0.7, 0, 0.2, 1);
+  }
+  .hero__cta-arrow {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    overflow: hidden;
+    transition: border-color 0.45s var(--ease);
+  }
+  .hero__cta-arrow svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.5s cubic-bezier(0.7, 0, 0.2, 1);
+  }
+  .hero__cta-arrow svg:last-child {
+    position: absolute;
+    transform: translateX(-160%);
+  }
+  .hero__cta-btn:hover,
+  .hero__cta-btn:focus-visible {
+    color: #0b0b0c;
+    border-color: #fff;
+    letter-spacing: 0.3em;
+    box-shadow: 0 10px 40px -10px rgb(0 0 0 / 0.6);
+    transform: translateY(-2px);
+  }
+  .hero__cta-btn:hover::before,
+  .hero__cta-btn:focus-visible::before {
+    transform: scaleX(1);
+  }
+  /* Arrow swap: the current arrow exits right while a new one slides in from the left. */
+  .hero__cta-btn:hover .hero__cta-arrow svg:first-child,
+  .hero__cta-btn:focus-visible .hero__cta-arrow svg:first-child {
+    transform: translateX(160%);
+  }
+  .hero__cta-btn:hover .hero__cta-arrow svg:last-child,
+  .hero__cta-btn:focus-visible .hero__cta-arrow svg:last-child {
+    transform: none;
+  }
+  .hero__cta:has(.hero__cta-btn:hover) .hero__cta-line,
+  .hero__cta:has(.hero__cta-btn:focus-visible) .hero__cta-line {
+    width: 56px;
+  }
+  .hero__cta-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+  @media (max-width: 560px) {
+    .hero__ctas {
+      bottom: 72px;
+    }
+    .hero__cta-btn {
+      padding: 11px 10px 11px 22px;
+      letter-spacing: 0.2em;
+    }
+    .hero__cta-arrow {
+      width: 32px;
+      height: 32px;
+    }
+  }
+  :global(:lang(zh)) .hero__cta-btn {
+    letter-spacing: 0.3em;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero__cta,
+    .hero__cta.is-active,
+    .hero__cta-btn:hover,
+    .hero__cta-btn:focus-visible {
+      transform: none;
+      transition-delay: 0s;
+    }
+  }
+
   .hero__controls {
     position: absolute;
     left: 0;
@@ -245,6 +455,7 @@ const multi = images.length > 1;
 
   for (const root of document.querySelectorAll<HTMLElement>('[data-hero]')) {
     const slides = [...root.querySelectorAll<HTMLElement>('[data-slide]')];
+    const ctas = [...root.querySelectorAll<HTMLElement>('[data-cta]')];
     const controls = root.querySelector<HTMLElement>('[data-controls]');
     if (slides.length < 2 || !controls) continue;
 
@@ -263,7 +474,9 @@ const multi = images.length > 1;
 
     const show = (next: number) => {
       index = (next + slides.length) % slides.length;
-      slides.forEach((s, i) => {
+      // Each slide's call to action fades in and out with it (hidden ones are inert, so not focusable).
+      [...slides, ...ctas].forEach((s) => {
+        const i = s.hasAttribute('data-cta') ? ctas.indexOf(s) : slides.indexOf(s);
         const active = i === index;
         s.classList.toggle('is-active', active);
         if (active) {
