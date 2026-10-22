@@ -1,0 +1,107 @@
+---
+// A line from the bio, pinned to the screen while its words light up one by one as you scroll
+// (scroll-driven animations). Where those aren't supported, the text is simply shown in full.
+import { site } from '../site.config';
+import { langFromUrl, useT } from '../i18n';
+
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
+const text = t('manifesto.text');
+// Words in English; characters in Chinese (punctuation stays with the character before it).
+const parts = lang === 'zh' ? text.match(/.[，。、——：；！？”’）]*/gu) ?? [...text] : text.split(' ');
+---
+
+<section class="mf" aria-label={t('manifesto.eyebrow')}>
+  <div class="mf__pin container">
+    <p class="eyebrow mf__eyebrow">{t('manifesto.eyebrow')}</p>
+    <blockquote class="mf__quote">
+      <p aria-label={text}>
+        {
+          parts.map((w, i) => (
+            <span class="mf__w" aria-hidden="true" style={`--p: ${(i / parts.length).toFixed(4)}`}>{lang === 'zh' ? w : `${w} `}</span>
+          ))
+        }
+      </p>
+      <footer class="mf__by">— {site.name}</footer>
+    </blockquote>
+  </div>
+</section>
+
+<style>
+  .mf {
+    position: relative;
+    height: 230vh;
+    view-timeline: --manifesto block;
+  }
+  .mf__pin {
+    position: sticky;
+    top: var(--header-h, 88px);
+    height: calc(100svh - var(--header-h, 88px));
+    display: grid;
+    align-content: center;
+    gap: clamp(20px, 3vw, 36px);
+  }
+  .mf__eyebrow {
+    margin: 0;
+  }
+  .mf__quote {
+    margin: 0;
+  }
+  .mf__quote p {
+    margin: 0;
+    max-width: 22ch;
+    font-family: var(--font-display);
+    font-size: clamp(1.9rem, 0.9rem + 3.8vw, 4.6rem);
+    font-weight: 300;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+  }
+  :global(:lang(zh)) .mf__quote p {
+    max-width: 18em;
+    font-size: clamp(1.6rem, 0.9rem + 2.8vw, 3.6rem);
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+  }
+  .mf__by {
+    margin-top: clamp(20px, 3vw, 32px);
+    font-size: 0.8125rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  @supports (animation-timeline: view()) {
+    .mf__w {
+      animation: mf-light linear both;
+      animation-timeline: --manifesto;
+      animation-range: contain calc(var(--p) * 75%) contain calc(var(--p) * 75% + 8%);
+    }
+    @keyframes mf-light {
+      from {
+        opacity: 0.14;
+        filter: blur(1.5px);
+      }
+      to {
+        opacity: 1;
+        filter: blur(0);
+      }
+    }
+  }
+  @media (max-width: 760px) {
+    .mf {
+      height: 190vh;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mf {
+      height: auto;
+      padding-block: clamp(64px, 10vw, 140px);
+    }
+    .mf__pin {
+      position: static;
+      height: auto;
+    }
+    .mf__w {
+      animation: none !important;
+    }
+  }
+</style>

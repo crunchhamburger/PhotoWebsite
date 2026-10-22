@@ -1,0 +1,189 @@
+---
+// Closing statement before the footer: a giant line that rises word by word as it scrolls into view,
+// the email as a large link, contact and Instagram buttons, and an accent glow that follows the cursor.
+import { site } from '../site.config';
+import { langFromUrl, localize, useT } from '../i18n';
+
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
+const title = t('closing.title');
+const words = lang === 'zh' ? [...title] : title.split(' ');
+---
+
+<section class="cl" data-closing>
+  <div class="cl__glow" aria-hidden="true"></div>
+  <div class="container cl__inner">
+    <p class="eyebrow">{t('closing.eyebrow')}</p>
+    <h2 class="cl__title" aria-label={title}>
+      {
+        words.map((w, i) => (
+          <span class="cl__w" aria-hidden="true">
+            <span style={`--i: ${i}`}>{w}</span>
+          </span>
+        ))
+      }
+    </h2>
+    <a class="cl__email" href={`mailto:${site.email}`}>
+      {site.email}
+      <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M6 18L18 6M9 6h9v9" /></svg>
+    </a>
+    <div class="cl__actions">
+      <a class="cl__btn cl__btn--solid" href={`${localize('/about', lang)}#contact`}>
+        {t('closing.contact')} <span aria-hidden="true">→</span>
+      </a>
+      <a class="cl__btn" href={site.instagram} target="_blank" rel="noopener">
+        Instagram <span aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .cl {
+    position: relative;
+    overflow: hidden;
+    margin-top: clamp(80px, 12vw, 180px);
+    padding-block: clamp(80px, 12vw, 180px) clamp(40px, 6vw, 80px);
+    border-top: 1px solid var(--line);
+  }
+  .cl__glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      600px circle at var(--gx, 30%) var(--gy, 40%),
+      color-mix(in srgb, var(--accent) 14%, transparent),
+      transparent 60%
+    );
+    transition: background-position 0.2s;
+  }
+  .cl__inner {
+    position: relative;
+    display: grid;
+    gap: clamp(20px, 3vw, 36px);
+    justify-items: start;
+  }
+  .cl__inner .eyebrow {
+    margin: 0;
+  }
+  .cl__title {
+    margin: 0;
+    max-width: 15ch;
+    font-size: clamp(2.6rem, 0.9rem + 7.2vw, 8.4rem);
+    font-weight: 300;
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+  }
+  :global(:lang(zh)) .cl__title {
+    max-width: 10em;
+    letter-spacing: 0;
+    line-height: 1.15;
+  }
+  .cl__w {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: top;
+    padding-bottom: 0.08em;
+    margin-right: 0.24em;
+  }
+  :global(:lang(zh)) .cl__w {
+    margin-right: 0;
+  }
+  .cl__w > span {
+    display: inline-block;
+    transition: transform 1.1s cubic-bezier(0.2, 0.75, 0.15, 1);
+    transition-delay: calc(var(--i) * 0.06s);
+  }
+  .cl[data-reveal]:not(.is-in) .cl__w > span {
+    transform: translateY(105%);
+  }
+  .cl__email {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--font-display);
+    font-size: clamp(1.15rem, 0.85rem + 1.6vw, 2.2rem);
+    font-weight: 400;
+    padding-bottom: 6px;
+    background: linear-gradient(var(--accent), var(--accent)) no-repeat left bottom / 0 2px,
+      linear-gradient(var(--line), var(--line)) no-repeat left bottom / 100% 1px;
+    transition: background-size 0.6s var(--ease), color 0.3s var(--ease);
+    overflow-wrap: anywhere;
+  }
+  .cl__email svg {
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    transition: transform 0.5s var(--ease);
+  }
+  .cl__email:hover {
+    background-size: 100% 2px, 100% 1px;
+  }
+  .cl__email:hover svg {
+    transform: translate(4px, -4px) rotate(45deg);
+  }
+  .cl__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .cl__btn {
+    display: inline-flex;
+    gap: 10px;
+    padding: 14px 26px;
+    border: 1px solid var(--fg);
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    transition:
+      background-color 0.35s var(--ease),
+      color 0.35s var(--ease),
+      transform 0.35s var(--ease);
+  }
+  .cl__btn:hover {
+    transform: translateY(-2px);
+  }
+  .cl__btn--solid,
+  .cl__btn:not(.cl__btn--solid):hover {
+    background: var(--fg);
+    color: var(--bg);
+  }
+  .cl__btn--solid:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0b0b0c;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cl__w > span {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for (const root of document.querySelectorAll<HTMLElement>('[data-closing]')) {
+    root.addEventListener('pointermove', (e) => {
+      const r = root.getBoundingClientRect();
+      root.style.setProperty('--gx', `${e.clientX - r.left}px`);
+      root.style.setProperty('--gy', `${e.clientY - r.top}px`);
+    });
+    if (reduce || !('IntersectionObserver' in window)) continue;
+    root.dataset.reveal = '';
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        root.classList.add('is-in');
+        io.disconnect();
+      },
+      { threshold: 0.3 },
+    );
+    io.observe(root);
+  }
+</script>

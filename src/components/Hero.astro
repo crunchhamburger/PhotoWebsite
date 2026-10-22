@@ -16,10 +16,12 @@ interface Props {
   label?: string;
   /** One call-to-action per slide (same order as `images`); it fades in with its slide. */
   ctas?: Cta[];
+  /** Where each slide was taken, shown top right (same order as `images`). */
+  places?: string[];
 }
 
 const t = useT(langFromUrl(Astro.url));
-const { images, label = t('hero.label'), ctas = [] } = Astro.props;
+const { images, label = t('hero.label'), ctas = [], places = [] } = Astro.props;
 const widths = [640, 960, 1280, 1920, 2400];
 const multi = images.length > 1;
 ---
@@ -50,6 +52,24 @@ const multi = images.length > 1;
       ))
     }
   </div>
+
+  {
+    places.length > 0 && (
+      <div class="hero__places" aria-hidden="true">
+        {places.slice(0, images.length).map((place, i) => (
+          <p class:list={['hero__place', { 'is-active': i === 0 }]} data-place>
+            <svg viewBox="0 0 24 24" width="12" height="12">
+              <path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z" />
+              <circle cx="12" cy="10" r="2.2" />
+            </svg>
+            {place}
+          </p>
+        ))}
+      </div>
+    )
+  }
+
+  {multi && <div class="hero__progress" aria-hidden="true"><span data-progress /></div>}
 
   {
     ctas.length > 0 && (
@@ -184,6 +204,79 @@ const multi = images.length > 1;
     z-index: 2;
     pointer-events: none;
     background: linear-gradient(to top, rgb(0 0 0 / 0.45), transparent);
+  }
+
+  /* ---------- Where the photo was taken (top right) ---------- */
+  .hero__places {
+    position: absolute;
+    top: clamp(16px, 3vw, 36px);
+    right: var(--gutter);
+    z-index: 3;
+    color: #fff;
+  }
+  .hero__place {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgb(0 0 0 / 0.3);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition:
+      opacity 0.6s var(--ease),
+      transform 0.6s var(--ease);
+  }
+  .hero__place.is-active {
+    opacity: 1;
+    transform: none;
+    transition-delay: 0.5s;
+  }
+  .hero__place svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+  }
+
+  /* ---------- Slide timeline: fills while a slide plays ---------- */
+  .hero__progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    height: 2px;
+    background: rgb(255 255 255 / 0.15);
+  }
+  .hero__progress span {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  .hero__progress span.is-running {
+    animation: hero-progress var(--interval, 6000ms) linear forwards;
+  }
+  .hero:not([data-running]) .hero__progress span {
+    animation-play-state: paused;
+  }
+  @keyframes hero-progress {
+    to {
+      transform: scaleX(1);
+    }
   }
 
   /* ---------- Per-slide call to action (bottom left, above the controls) ---------- */
@@ -456,6 +549,15 @@ const multi = images.length > 1;
   for (const root of document.querySelectorAll<HTMLElement>('[data-hero]')) {
     const slides = [...root.querySelectorAll<HTMLElement>('[data-slide]')];
     const ctas = [...root.querySelectorAll<HTMLElement>('[data-cta]')];
+    const places = [...root.querySelectorAll<HTMLElement>('[data-place]')];
+    const progress = root.querySelector<HTMLElement>('[data-progress]');
+    // Restart the timeline bar for the new slide.
+    const restartProgress = () => {
+      if (!progress) return;
+      progress.classList.remove('is-running');
+      void progress.offsetWidth;
+      progress.classList.add('is-running');
+    };
     const controls = root.querySelector<HTMLElement>('[data-controls]');
     if (slides.length < 2 || !controls) continue;
 
@@ -475,6 +577,8 @@ const multi = images.length > 1;
     const show = (next: number) => {
       index = (next + slides.length) % slides.length;
       // Each slide's call to action fades in and out with it (hidden ones are inert, so not focusable).
+      places.forEach((p, i) => p.classList.toggle('is-active', i === index));
+      restartProgress();
       [...slides, ...ctas].forEach((s) => {
         const i = s.hasAttribute('data-cta') ? ctas.indexOf(s) : slides.indexOf(s);
         const active = i === index;
@@ -499,6 +603,8 @@ const multi = images.length > 1;
     };
     const sync = () => {
       const running = !userPaused && !hovering && !focusWithin && !document.hidden;
+      root.toggleAttribute('data-running', running); // pauses the timeline bar when stopped
+      if (running) restartProgress(); // the interval restarts below, so the bar does too
       stop();
       if (running) timer = window.setInterval(() => show(index + 1), INTERVAL);
       // While playing, announcements would be noisy; when stopped, announce changes politely.

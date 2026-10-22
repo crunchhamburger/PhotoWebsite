@@ -3,7 +3,13 @@ import { getImage } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
 import WorkShowcase from '../components/WorkShowcase.astro';
-import { getProjects, projectCover, heroImages } from '../lib/photos';
+import HomeIntro from '../components/HomeIntro.astro';
+import Manifesto from '../components/Manifesto.astro';
+import Stats from '../components/Stats.astro';
+import PodcastTeaser from '../components/PodcastTeaser.astro';
+import ClosingCta from '../components/ClosingCta.astro';
+import { getProjects, projectCover, projectGallery, heroImages } from '../lib/photos';
+import { getEpisodes } from '../lib/podcast';
 import { site } from '../site.config';
 import { langFromUrl, localize, useT } from '../i18n';
 
@@ -16,6 +22,18 @@ const ctas = [
   { eyebrow: t('hero.cta.podcastEyebrow'), label: t('hero.cta.podcast'), href: localize('/podcast', lang) },
   { eyebrow: t('hero.cta.workEyebrow'), label: t('hero.cta.work'), href: localize('/#work', lang) },
   { eyebrow: t('hero.cta.contactEyebrow'), label: t('hero.cta.contact'), href: `${localize('/about', lang)}#contact` },
+];
+
+// Where each hero slide was taken, in slide order.
+const places = [t('hero.place.0'), t('hero.place.1'), t('hero.place.2')];
+
+const episodes = await getEpisodes();
+// Numbers strip, from the site's own content. Cities photographed: New York, Shanghai, Wuzhen, Tokyo, Athens.
+const stats = [
+  { value: projects.length, label: t('stats.projects') },
+  { value: projects.reduce((n, p) => n + projectGallery(p).length, 0), label: t('stats.photos'), plus: true },
+  { value: 5, label: t('stats.cities') },
+  { value: episodes.length, label: t('stats.episodes') },
 ];
 
 // Preload the first hero slide (LCP). Must mirror the AVIF <source> that <Picture> emits in Hero.
@@ -33,11 +51,15 @@ const ogImage = projects[0] ? projectCover(projects[0]).src : first?.src;
 <BaseLayout description={t('meta.description')} ogImage={ogImage} preloadImage={preloadImage}>
   <h1 class="visually-hidden">{site.name} — {t('home.h1')}</h1>
 
-  <div class="container intro">
-    <p class="eyebrow">{t('home.eyebrow')}</p>
-  </div>
+  <div class="grain" aria-hidden="true"></div>
 
-  {slides.length > 0 && <Hero images={slides} ctas={ctas} />}
+  <HomeIntro />
+
+  {slides.length > 0 && <Hero images={slides} ctas={ctas} places={places} />}
+
+  <Manifesto />
+
+  <Stats stats={stats} />
 
   <section id="work" class="work" aria-labelledby="work-heading">
     <header class="work__head container">
@@ -46,14 +68,40 @@ const ogImage = projects[0] ? projectCover(projects[0]).src : first?.src;
     </header>
     <WorkShowcase projects={projects} />
   </section>
+
+  {episodes[0] && <PodcastTeaser episode={episodes[0]} />}
+
+  <ClosingCta />
 </BaseLayout>
 
 <style>
-  .intro {
-    padding-block: clamp(4px, 1vw, 12px) clamp(20px, 3vw, 36px);
+  /* Fine film grain over the home page (static under reduced motion). */
+  .grain {
+    position: fixed;
+    inset: -50%;
+    z-index: 40;
+    pointer-events: none;
+    /* Overlay leaves true black untouched, so the grain only shows in photos and mid-tones. */
+    mix-blend-mode: overlay;
+    opacity: 0.22;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    animation: grain 0.9s steps(5) infinite;
   }
-  .intro .eyebrow {
-    margin: 0;
+  :global([data-theme='light']) .grain {
+    opacity: 0.12;
+    filter: invert(1);
+  }
+  @keyframes grain {
+    20% { transform: translate(-3%, 2%); }
+    40% { transform: translate(2%, -4%); }
+    60% { transform: translate(-4%, -1%); }
+    80% { transform: translate(3%, 3%); }
+    100% { transform: translate(0, 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .grain {
+      animation: none;
+    }
   }
   .work {
     padding-block: clamp(72px, 10vw, 160px) clamp(80px, 10vw, 160px);

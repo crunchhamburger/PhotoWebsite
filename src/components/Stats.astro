@@ -1,0 +1,100 @@
+---
+// A strip of numbers that count up when they scroll into view. Without JS the final values show.
+interface Props {
+  stats: { value: number; label: string; plus?: boolean }[];
+}
+const { stats } = Astro.props;
+---
+
+<section class="stats container" data-stats>
+  <ul role="list">
+    {
+      stats.map((s) => (
+        <li>
+          <span class="num"><span data-count={s.value}>{s.value}</span>{s.plus && <span class="plus">+</span>}</span>
+          <span class="label">{s.label}</span>
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<style>
+  .stats ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-block: 1px solid var(--line);
+  }
+  @media (max-width: 760px) {
+    .stats ul {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  li {
+    display: grid;
+    gap: 6px;
+    padding: clamp(24px, 4vw, 48px) clamp(12px, 2vw, 28px);
+    border-left: 1px solid var(--line);
+  }
+  li:first-child,
+  li:nth-child(3) {
+    border-left: 0;
+  }
+  @media (min-width: 761px) {
+    li:nth-child(3) {
+      border-left: 1px solid var(--line);
+    }
+  }
+  @media (max-width: 760px) {
+    li:nth-child(n + 3) {
+      border-top: 1px solid var(--line);
+    }
+  }
+  .num {
+    font-family: var(--font-display);
+    font-size: clamp(2.6rem, 1rem + 5.5vw, 6.5rem);
+    font-weight: 200;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .plus {
+    color: var(--accent);
+    font-weight: 400;
+  }
+  .label {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+</style>
+
+<script>
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for (const root of document.querySelectorAll<HTMLElement>('[data-stats]')) {
+    const nums = [...root.querySelectorAll<HTMLElement>('[data-count]')];
+    if (reduce || !('IntersectionObserver' in window)) continue;
+    nums.forEach((n) => (n.textContent = '0'));
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        io.disconnect();
+        const start = performance.now();
+        const dur = 1600;
+        const frame = (now: number) => {
+          const k = Math.min(1, (now - start) / dur);
+          const eased = 1 - Math.pow(1 - k, 4);
+          nums.forEach((n) => (n.textContent = String(Math.round(Number(n.dataset.count) * eased))));
+          if (k < 1) requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(root);
+  }
+</script>

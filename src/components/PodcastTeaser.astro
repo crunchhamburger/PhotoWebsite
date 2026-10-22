@@ -1,0 +1,318 @@
+---
+// "Now playing" card for the latest podcast episode on the home page: a big round play button with a
+// progress ring plays the episode in place (at the listener's saved speed; Chinese pages use their
+// saved narrator), and the equalizer moves while it plays.
+import { langFromUrl, localize, useT } from '../i18n';
+import {
+  audioPath,
+  durationLabel,
+  episodeHref,
+  episodeText,
+  formatEpisodeDate,
+  zhVoices,
+  type Episode,
+} from '../lib/podcast';
+
+interface Props {
+  episode: Episode;
+}
+const { episode } = Astro.props;
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
+const { title, headline, duration } = episodeText(episode, lang);
+const voices = lang === 'zh' ? zhVoices(episode).map((v) => v.src) : [];
+const src = voices[0] ?? audioPath(episode, lang);
+const R = 46;
+const C = (2 * Math.PI * R).toFixed(2);
+// Decorative waveform: deterministic bar heights (same on every build) shaped like speech.
+const bars = Array.from({ length: 56 }, (_, i) => {
+  const h = 0.25 + 0.75 * Math.abs(Math.sin(i * 0.55) * Math.cos(i * 0.23 + 1) + 0.35 * Math.sin(i * 1.7));
+  return Math.min(1, h).toFixed(3);
+});
+---
+
+<section class="pt container" data-teaser>
+  <div class="pt__card">
+    <button
+      type="button"
+      class="pt__play"
+      aria-label={t('teaser.play')}
+      data-label-play={t('teaser.play')}
+      data-label-pause={t('teaser.pause')}
+      data-play
+    >
+      <svg class="pt__ring" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r={R} class="pt__track" />
+        <circle cx="50" cy="50" r={R} class="pt__progress" style={`--c: ${C}`} data-ring />
+      </svg>
+      <svg class="pt__icon pt__icon--play" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+        <path d="M8 5.5v13l11-6.5z" />
+      </svg>
+      <svg class="pt__icon pt__icon--pause" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+        <path d="M8 5h3v14H8zM13 5h3v14h-3z" />
+      </svg>
+    </button>
+
+    <div class="pt__body">
+      <p class="pt__eyebrow">
+        <span class="pt__eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        {t('teaser.eyebrow')}
+      </p>
+      <h2 class="pt__title">
+        <a href={episodeHref(episode, lang)}>{headline}</a>
+      </h2>
+      <p class="pt__meta">
+        {formatEpisodeDate(episode.data.date, lang)}
+        {duration && <span aria-hidden="true">·</span>}
+        {duration && durationLabel(duration, lang)}
+        <span class="visually-hidden">— {title}</span>
+      </p>
+      <a class="pt__all" href={localize('/podcast', lang)}>
+        {t('teaser.all')}
+        <span aria-hidden="true">→</span>
+      </a>
+    </div>
+
+    <div class="pt__wave" aria-hidden="true">
+      {bars.map((h, i) => <i style={`--h: ${h}; --d: ${(i % 7) * -0.13}s`} />)}
+    </div>
+
+    <audio preload="none" src={src} data-audio data-voices={JSON.stringify(voices)}></audio>
+  </div>
+</section>
+
+<style>
+  .pt__card {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(20px, 4vw, 56px);
+    padding: clamp(24px, 4vw, 56px);
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 55%),
+      var(--bg-elev);
+  }
+  @media (max-width: 600px) {
+    .pt__card {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (min-width: 1100px) {
+    .pt__card {
+      grid-template-columns: auto minmax(0, 1.4fr) minmax(0, 1fr);
+    }
+  }
+  /* Decorative waveform on wide screens; it dances while the episode plays. */
+  .pt__wave {
+    display: none;
+    align-items: center;
+    gap: 3px;
+    height: 120px;
+  }
+  @media (min-width: 1100px) {
+    .pt__wave {
+      display: flex;
+    }
+  }
+  .pt__wave i {
+    flex: 1;
+    height: calc(var(--h) * 100%);
+    min-height: 4px;
+    border-radius: 2px;
+    background: var(--fg-faint);
+    opacity: 0.6;
+    transform-origin: center;
+    transition:
+      background-color 0.5s var(--ease),
+      opacity 0.5s var(--ease);
+  }
+  [data-playing] .pt__wave i {
+    background: var(--accent);
+    opacity: 0.85;
+    animation: pt-wave 0.9s ease-in-out infinite alternate;
+    animation-delay: var(--d);
+  }
+  @keyframes pt-wave {
+    from {
+      transform: scaleY(0.35);
+    }
+  }
+  .pt__play {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: clamp(96px, 12vw, 132px);
+    aspect-ratio: 1;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--fg);
+    color: var(--bg);
+    cursor: pointer;
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .pt__play:hover {
+    transform: scale(1.06);
+  }
+  .pt__play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 6px;
+  }
+  .pt__ring {
+    position: absolute;
+    inset: -10px;
+    width: calc(100% + 20px);
+    height: calc(100% + 20px);
+    transform: rotate(-90deg);
+    pointer-events: none;
+  }
+  .pt__ring circle {
+    fill: none;
+    stroke-width: 1.5;
+  }
+  .pt__track {
+    stroke: var(--line);
+  }
+  .pt__progress {
+    stroke: var(--accent);
+    stroke-dasharray: var(--c);
+    stroke-dashoffset: calc(var(--c) * (1 - var(--k, 0)));
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.3s linear;
+  }
+  .pt__icon {
+    fill: currentColor;
+  }
+  .pt__icon--pause,
+  [data-playing] .pt__icon--play {
+    display: none;
+  }
+  [data-playing] .pt__icon--pause {
+    display: block;
+  }
+  .pt__body {
+    display: grid;
+    gap: 12px;
+    justify-items: start;
+  }
+  .pt__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  .pt__eq {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 12px;
+  }
+  .pt__eq i {
+    width: 2px;
+    height: 100%;
+    background: var(--accent);
+    transform: scaleY(0.25);
+    transform-origin: bottom;
+  }
+  [data-playing] .pt__eq i {
+    animation: pt-eq 1s ease-in-out infinite alternate;
+  }
+  [data-playing] .pt__eq i:nth-child(2) { animation-duration: 0.7s; animation-delay: -0.3s; }
+  [data-playing] .pt__eq i:nth-child(3) { animation-duration: 1.2s; animation-delay: -0.5s; }
+  [data-playing] .pt__eq i:nth-child(4) { animation-duration: 0.8s; animation-delay: -0.2s; }
+  [data-playing] .pt__eq i:nth-child(5) { animation-duration: 1.05s; animation-delay: -0.6s; }
+  @keyframes pt-eq {
+    to {
+      transform: scaleY(1);
+    }
+  }
+  .pt__title {
+    margin: 0;
+    max-width: 30ch;
+    font-size: clamp(1.35rem, 1rem + 1.6vw, 2.4rem);
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .pt__title a {
+    background: linear-gradient(currentColor, currentColor) no-repeat left bottom / 0 1px;
+    transition: background-size 0.6s var(--ease);
+  }
+  .pt__title a:hover {
+    background-size: 100% 1px;
+  }
+  .pt__meta {
+    display: flex;
+    gap: 8px;
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--fg-muted);
+  }
+  .pt__all {
+    display: inline-flex;
+    gap: 10px;
+    margin-top: 6px;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    transition: gap 0.3s var(--ease), color 0.3s var(--ease);
+  }
+  .pt__all:hover {
+    gap: 16px;
+    color: var(--accent);
+  }
+</style>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-teaser]')) {
+    const btn = root.querySelector<HTMLButtonElement>('[data-play]')!;
+    const audio = root.querySelector<HTMLAudioElement>('[data-audio]')!;
+    const ring = root.querySelector<SVGCircleElement>('[data-ring]')!;
+    // Use the listener's saved narrator (Chinese) and playback speed from the podcast pages.
+    try {
+      const voices: string[] = JSON.parse(audio.dataset.voices || '[]');
+      const v = voices[Number(localStorage.getItem('podcast.zhVoice') ?? 0)];
+      if (v) audio.src = v;
+    } catch {}
+    const rate = () => {
+      try {
+        const r = Number(localStorage.getItem('podcast.speed'));
+        return r >= 0.5 && r <= 3 ? r : 1;
+      } catch {
+        return 1;
+      }
+    };
+    const set = (playing: boolean) => {
+      btn.toggleAttribute('data-playing', playing);
+      root.toggleAttribute('data-playing', playing);
+      btn.setAttribute('aria-label', (playing ? btn.dataset.labelPause : btn.dataset.labelPlay) ?? '');
+    };
+    btn.addEventListener('click', () => {
+      if (audio.paused) {
+        audio.defaultPlaybackRate = audio.playbackRate = rate();
+        audio.play().catch(() => set(false));
+      } else {
+        audio.pause();
+      }
+    });
+    audio.addEventListener('play', () => set(true));
+    audio.addEventListener('pause', () => set(false));
+    audio.addEventListener('ended', () => set(false));
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration) ring.style.setProperty('--k', String(audio.currentTime / audio.duration));
+    });
+  }
+</script>
