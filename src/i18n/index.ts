@@ -52,6 +52,7 @@ const dict = {
     'podcast.title': 'Market Brief',
     'podcast.description':
       'A short spoken summary of the day in AI infrastructure, chips and markets: the main signal, the takeaways and the numbers worth remembering, with links to the original reporting. News summary, not investment advice.',
+    'podcast.rss': 'Subscribe with RSS',
     'podcast.empty': 'No episodes yet.',
     'podcast.listLabel': 'Episodes, newest first',
     'podcast.play': 'Play: {title}',
@@ -169,6 +170,7 @@ const dict = {
     'podcast.title': '市场简报',
     'podcast.description':
       '每天几分钟，用语音梳理AI基础设施、芯片与市场：当天的主线、核心结论和值得记住的数字，并附原始报道链接。新闻摘要，不构成投资建议。',
+    'podcast.rss': 'RSS 订阅（英文）',
     'podcast.empty': '暂无节目。',
     'podcast.listLabel': '节目列表，最新在前',
     'podcast.play': '播放：{title}',
