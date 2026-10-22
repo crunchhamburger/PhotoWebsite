@@ -1,6 +1,6 @@
 ---
 title: "Not Just an Observer"
-order: 7
+order: 8
 year: 2025
 date: "March 2025"
 location: "CGPS"

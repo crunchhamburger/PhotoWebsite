@@ -1,6 +1,6 @@
 ---
 title: "Scholastic Awards"
-order: 9
+order: 3
 year: 2024
 date: "2024 Scholastic"
 location: "Wuzhen, China · NYC (C train) · Athens, Greece"

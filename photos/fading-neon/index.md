@@ -1,6 +1,6 @@
 ---
 title: "Fading Neon"
-order: 6
+order: 7
 year: 2025
 date: "Ongoing project"
 location: "NYC"

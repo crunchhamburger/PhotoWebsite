@@ -1,6 +1,6 @@
 ---
 title: "Pop-Up Pulse"
-order: 8
+order: 9
 year: 2025
 date: "July 2025"
 location: "NYC"

@@ -1,6 +1,6 @@
 ---
 title: "Cultural China: The Unseen Stories of Shanghai and Wuzhen"
-order: 3
+order: 5
 year: 2024
 date: "July 2024"
 location: "Shanghai & Wuzhen, China"

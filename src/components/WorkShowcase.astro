@@ -1,0 +1,720 @@
+---
+// Home page work section.
+// - The first `featuredCount` projects are full-screen cards that stack as you scroll: each new card
+//   opens from a rounded inset to full bleed while its photo settles (scroll-driven animations).
+// - The rest form an asymmetric editorial layout in a five-slot rhythm (large landscape, offset
+//   portrait, portrait, offset landscape, panorama). Photos reveal with a curtain wipe as they enter
+//   the viewport, drift with a little parallax, and show a cursor-following "View" bubble on hover.
+// - A giant outlined "Selected work" line slides sideways behind the section as you scroll.
+// Works without JS (everything visible, filters hidden); reduced motion turns the motion off.
+import { Picture } from 'astro:assets';
+import { categories } from '../site.config';
+import { projectCover, type Project } from '../lib/photos';
+import { langFromUrl, localize, useT, type Key } from '../i18n';
+
+interface Props {
+  projects: Project[];
+  featuredCount?: number;
+}
+
+const { projects, featuredCount = 3 } = Astro.props;
+const lang = langFromUrl(Astro.url);
+const t = useT(lang);
+const used = categories.filter((c) => projects.some((p) => p.data.categories.includes(c)));
+const featured = projects.slice(0, featuredCount);
+const rest = projects.slice(featuredCount);
+const pad = (n: number) => String(n).padStart(2, '0');
+const catLabel = (c: string) => t(`cat.${c}` as Key);
+const meta = (p: Project) =>
+  [p.data.year, p.data.location, ...p.data.categories.map(catLabel)].filter(Boolean).join(' · ');
+// Never ask for widths larger than the original.
+const fit = (widths: number[], max: number) => [...new Set([...widths.filter((w) => w < max), Math.min(max, widths.at(-1)!)])];
+---
+
+<div class="showcase" data-showcase>
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee__track">
+      {Array.from({ length: 6 }, () => <span>{t('grid.marquee')}<i>✦</i></span>)}
+    </div>
+  </div>
+
+  <div class="container bar">
+    {
+      used.length > 1 && (
+        <div class="filters" role="group" aria-label={t('grid.filterLabel')} data-filters hidden>
+          <button type="button" class="filter" data-filter="all" aria-pressed="true">
+            {t('grid.all')}
+          </button>
+          {used.map((c) => (
+            <button type="button" class="filter" data-filter={c} aria-pressed="false">
+              {catLabel(c)}
+            </button>
+          ))}
+        </div>
+      )
+    }
+    <p class="count">{t('grid.count', { n: projects.length })}</p>
+  </div>
+
+  <p
+    class="visually-hidden"
+    aria-live="polite"
+    data-status
+    data-template={t('grid.status')}
+    data-one={t('grid.project')}
+    data-many={t('grid.projects')}
+    data-all-label={t('grid.allCategories')}
+  >
+  </p>
+
+  <ol class="features" role="list">
+    {
+      featured.map((p, i) => {
+        const cover = projectCover(p);
+        return (
+          <li class="feature" data-item data-categories={p.data.categories.join('|')}>
+            <a class="feature__link" href={localize(`/projects/${p.id}`, lang)}>
+              <div class="feature__media">
+                <Picture
+                  src={cover.src}
+                  alt={cover.alt}
+                  formats={['webp']}
+                  fallbackFormat="webp"
+                  widths={fit([640, 960, 1280, 1920, 2400], cover.src.width)}
+                  sizes="100vw"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <div class="feature__shade" aria-hidden="true" />
+              <div class="feature__content container">
+                <p class="feature__num">
+                  <b>{pad(i + 1)}</b>
+                  <span aria-hidden="true">/ {pad(featured.length)}</span>
+                  <span class="feature__tag">{t('grid.featured')}</span>
+                </p>
+                <h3 class="feature__title">{p.data.title}</h3>
+                <p class="feature__meta">{meta(p)}</p>
+                <span class="feature__cta">
+                  {t('grid.view')}
+                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                    <path d="M4 12h15M13 6l6 6-6 6" />
+                  </svg>
+                </span>
+              </div>
+            </a>
+          </li>
+        );
+      })
+    }
+  </ol>
+
+  {
+    rest.length > 0 && (
+      <div class="container archive">
+        <p class="eyebrow archive__label">{t('grid.index')}</p>
+        <ol class="tiles" role="list">
+          {rest.map((p, i) => {
+            const cover = projectCover(p);
+            return (
+              <li class="tile" data-item data-categories={p.data.categories.join('|')} data-slot={i % 5}>
+                <a class="tile__link" href={localize(`/projects/${p.id}`, lang)}>
+                  <div class="tile__media" data-cursor>
+                    <div class="tile__parallax">
+                      <Picture
+                        src={cover.src}
+                        alt={cover.alt}
+                        formats={['webp']}
+                        fallbackFormat="webp"
+                        widths={fit([480, 800, 1200, 1600, 2000], cover.src.width)}
+                        sizes="(max-width: 760px) calc(100vw - 32px), (max-width: 1400px) 60vw, 900px"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                    <span class="tile__view" aria-hidden="true">
+                      {t('grid.view')}
+                    </span>
+                  </div>
+                  <div class="tile__caption">
+                    <span class="tile__num" aria-hidden="true">
+                      {pad(featured.length + i + 1)}
+                    </span>
+                    <h3 class="tile__title">
+                      <span>{p.data.title}</span>
+                    </h3>
+                    <span class="tile__meta">{meta(p)}</span>
+                  </div>
+                </a>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    )
+  }
+</div>
+
+<style>
+  .showcase {
+    position: relative;
+  }
+
+  /* ---------- Marquee ---------- */
+  .marquee {
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+    margin-bottom: clamp(8px, 2vw, 24px);
+  }
+  .marquee__track {
+    display: flex;
+    width: max-content;
+    animation: drift 80s linear infinite;
+  }
+  .marquee__track span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    padding-right: 0.35em;
+    font-family: var(--font-display);
+    font-size: clamp(3.5rem, 1rem + 11vw, 12rem);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: transparent;
+    -webkit-text-stroke: 1px var(--fg-faint);
+  }
+  .marquee__track i {
+    font-style: normal;
+    font-size: 0.35em;
+    color: var(--accent);
+    -webkit-text-stroke: 0;
+  }
+  @keyframes drift {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  /* Where supported, the marquee is tied to scroll instead of time. */
+  @supports (animation-timeline: view()) {
+    .marquee__track {
+      animation: slide linear both;
+      animation-timeline: view();
+      animation-range: cover;
+    }
+    @keyframes slide {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(-40%);
+      }
+    }
+  }
+
+  /* ---------- Filter bar ---------- */
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: clamp(28px, 4vw, 48px);
+  }
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 4px;
+  }
+  .filters[hidden] {
+    display: none;
+  }
+  .filter {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 9px 16px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: none;
+    color: var(--fg-muted);
+    cursor: pointer;
+    transition:
+      color 0.25s var(--ease),
+      border-color 0.25s var(--ease),
+      background-color 0.25s var(--ease);
+  }
+  .filter:hover {
+    color: var(--fg);
+  }
+  .filter[aria-pressed='true'] {
+    color: var(--fg);
+    border-color: var(--line);
+    background: var(--bg-elev);
+  }
+  .count {
+    margin: 0;
+    font-size: 0.8125rem;
+    letter-spacing: 0.1em;
+    color: var(--fg-faint);
+  }
+
+  /* ---------- Featured: stacking full-screen cards ---------- */
+  .features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .feature {
+    position: sticky;
+    top: var(--header-h, 88px);
+    height: calc(100svh - var(--header-h, 88px));
+    min-height: 520px;
+    view-timeline: --feature block;
+    /* Dwell: each card holds, fully readable, for this much scroll before the next one slides over it. */
+    margin-bottom: 55svh;
+  }
+  .feature:last-child {
+    margin-bottom: 30svh;
+  }
+  .feature[hidden] {
+    display: none;
+  }
+  .feature__link {
+    position: relative;
+    display: block;
+    height: 100%;
+    overflow: hidden;
+    color: #fff;
+    background: #000;
+  }
+  .feature__media {
+    position: absolute;
+    inset: 0;
+  }
+  .feature__media :global(picture) {
+    display: contents;
+  }
+  .feature__media :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 1.4s var(--ease);
+  }
+  .feature__link:hover .feature__media :global(img) {
+    transform: scale(1.04);
+  }
+  .feature__shade {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to top, rgb(0 0 0 / 0.82) 0%, rgb(0 0 0 / 0.25) 45%, transparent 70%),
+      linear-gradient(to right, rgb(0 0 0 / 0.35), transparent 60%);
+  }
+  .feature__content {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: clamp(28px, 6vw, 84px);
+    display: grid;
+    justify-items: start;
+    gap: clamp(10px, 1.4vw, 18px);
+  }
+  .feature__num {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 0.8125rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.75);
+  }
+  .feature__num b {
+    font-size: 1.6em;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #fff;
+  }
+  .feature__tag {
+    margin-left: 6px;
+    padding: 4px 10px;
+    border: 1px solid rgb(255 255 255 / 0.4);
+    border-radius: 999px;
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+  }
+  .feature__title {
+    margin: 0;
+    max-width: 16ch;
+    font-size: clamp(2.6rem, 1.2rem + 7vw, 8.5rem);
+    font-weight: 300;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+  :global(:lang(zh)) .feature__title {
+    letter-spacing: 0;
+    line-height: 1.1;
+  }
+  .feature__meta {
+    margin: 0;
+    font-size: 0.9375rem;
+    color: rgb(255 255 255 / 0.8);
+  }
+  .feature__cta {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 6px;
+    padding: 12px 22px;
+    border: 1px solid rgb(255 255 255 / 0.6);
+    border-radius: 999px;
+    overflow: hidden;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition:
+      color 0.45s var(--ease),
+      letter-spacing 0.5s var(--ease);
+  }
+  .feature__cta::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: #fff;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.55s cubic-bezier(0.7, 0, 0.2, 1);
+  }
+  .feature__cta svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.5s var(--ease);
+  }
+  .feature__link:hover .feature__cta,
+  .feature__link:focus-visible .feature__cta {
+    color: #0b0b0c;
+    letter-spacing: 0.3em;
+  }
+  .feature__link:hover .feature__cta::before,
+  .feature__link:focus-visible .feature__cta::before {
+    transform: scaleX(1);
+  }
+  .feature__link:hover .feature__cta svg {
+    transform: translateX(4px);
+  }
+  .feature__link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -6px;
+  }
+  /* Each card opens from a rounded inset to full bleed as it scrolls in, photo settling, text rising. */
+  @supports (animation-timeline: view()) {
+    .feature__link {
+      animation: feature-open linear both;
+      animation-timeline: --feature;
+      animation-range: entry 0% entry 100%;
+    }
+    .feature__media :global(img) {
+      animation: feature-settle linear both;
+      animation-timeline: --feature;
+      animation-range: entry 0% entry 100%;
+    }
+    .feature__content > * {
+      animation: feature-text linear both;
+      animation-timeline: --feature;
+      animation-range: entry 55% entry 100%;
+    }
+    .feature__content > :nth-child(2) {
+      animation-range: entry 60% entry 100%;
+    }
+    .feature__content > :nth-child(3),
+    .feature__content > :nth-child(4) {
+      animation-range: entry 70% entry 100%;
+    }
+    @keyframes feature-open {
+      from {
+        clip-path: inset(10% 7% 0 7% round 28px);
+      }
+      to {
+        clip-path: inset(0 0 0 0 round 0);
+      }
+    }
+    @keyframes feature-settle {
+      from {
+        transform: scale(1.3);
+      }
+      to {
+        transform: scale(1);
+      }
+    }
+    @keyframes feature-text {
+      from {
+        opacity: 0;
+        transform: translateY(48px);
+      }
+    }
+  }
+
+  /* ---------- Archive: asymmetric editorial layout ---------- */
+  .archive {
+    position: relative;
+    padding-top: clamp(72px, 10vw, 150px);
+  }
+  .archive__label {
+    margin: 0 0 clamp(32px, 5vw, 64px);
+  }
+  .tiles {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: clamp(16px, 3vw, 48px);
+    row-gap: clamp(56px, 8vw, 128px);
+    align-items: start;
+  }
+  .tile[hidden] {
+    display: none;
+  }
+  /* Five-slot rhythm; data-slot is recomputed for the visible tiles when filtering. */
+  .tile[data-slot='0'] { grid-column: 1 / span 7; --ratio: 4 / 3; }
+  .tile[data-slot='1'] { grid-column: 9 / span 4; --ratio: 4 / 5; margin-top: clamp(80px, 14vw, 220px); }
+  .tile[data-slot='2'] { grid-column: 2 / span 4; --ratio: 4 / 5; }
+  .tile[data-slot='3'] { grid-column: 7 / span 6; --ratio: 3 / 2; margin-top: clamp(60px, 10vw, 160px); }
+  .tile[data-slot='4'] { grid-column: 1 / -1; --ratio: 21 / 9; }
+  @media (max-width: 760px) {
+    .tile[data-slot] {
+      grid-column: 1 / -1;
+      margin-top: 0;
+    }
+    .tile[data-slot='1'],
+    .tile[data-slot='2'] {
+      --ratio: 4 / 5;
+    }
+    .tile[data-slot='4'] {
+      --ratio: 16 / 10;
+    }
+  }
+  .tile__link {
+    display: block;
+    color: inherit;
+  }
+  .tile__media {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: var(--ratio, 4 / 3);
+    background: var(--bg-elev);
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 1.3s cubic-bezier(0.7, 0, 0.2, 1);
+  }
+  .tile__parallax {
+    position: absolute;
+    inset: -8% 0;
+  }
+  .tile__parallax :global(picture) {
+    display: contents;
+  }
+  .tile__parallax :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 1.6s cubic-bezier(0.2, 0.7, 0.1, 1);
+  }
+  .tile__link:hover .tile__parallax :global(img) {
+    transform: scale(1.05);
+  }
+  @supports (animation-timeline: view()) {
+    .tile__parallax {
+      animation: parallax linear both;
+      animation-timeline: view();
+      animation-range: cover;
+    }
+    @keyframes parallax {
+      from {
+        transform: translateY(-6%);
+      }
+      to {
+        transform: translateY(6%);
+      }
+    }
+  }
+  /* Cursor-following "View" bubble (mouse only). */
+  .tile__view {
+    position: absolute;
+    left: var(--mx, 50%);
+    top: var(--my, 50%);
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 104px;
+    height: 104px;
+    border-radius: 50%;
+    background: #fff;
+    color: #0b0b0c;
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-align: center;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .tile__link:hover .tile__view {
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+  .tile__caption {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 18px;
+    row-gap: 4px;
+    align-items: baseline;
+    margin-top: 18px;
+    transition:
+      opacity 0.9s var(--ease) 0.35s,
+      transform 0.9s var(--ease) 0.35s;
+  }
+  .tile__num {
+    grid-row: 1 / span 2;
+    font-family: var(--font-display);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .tile__title {
+    margin: 0;
+    font-size: clamp(1.25rem, 0.95rem + 1.1vw, 2rem);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+  .tile__title span {
+    background: linear-gradient(currentColor, currentColor) no-repeat left bottom / 0 1px;
+    transition: background-size 0.6s var(--ease);
+  }
+  .tile__link:hover .tile__title span,
+  .tile__link:focus-visible .tile__title span {
+    background-size: 100% 1px;
+  }
+  .tile__meta {
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  :global(:lang(zh)) .tile__meta {
+    letter-spacing: 0.06em;
+  }
+
+  /* Scroll reveal (all browsers, via IntersectionObserver): curtain wipe, photo settle, caption rise. */
+  .showcase[data-reveal] .tile:not(.is-in) .tile__media {
+    clip-path: inset(100% 0 0 0);
+  }
+  .showcase[data-reveal] .tile:not(.is-in) .tile__parallax :global(img) {
+    transform: scale(1.3);
+  }
+  .showcase[data-reveal] .tile:not(.is-in) .tile__caption {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee__track,
+    .feature__link,
+    .feature__media :global(img),
+    .feature__content > *,
+    .tile__parallax {
+      animation: none !important;
+    }
+  }
+</style>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-showcase]')) {
+    const items = [...root.querySelectorAll<HTMLElement>('[data-item]')];
+    const tiles = [...root.querySelectorAll<HTMLElement>('.tile')];
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Scroll reveal for the archive tiles.
+    if (!reduce && 'IntersectionObserver' in window) {
+      root.dataset.reveal = '';
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (!e.isIntersecting) continue;
+            e.target.classList.add('is-in');
+            io.unobserve(e.target);
+          }
+        },
+        { rootMargin: '0px 0px -10% 0px', threshold: 0.12 },
+      );
+      tiles.forEach((t) => io.observe(t));
+    }
+
+    // Cursor-following "View" bubble.
+    for (const media of root.querySelectorAll<HTMLElement>('[data-cursor]')) {
+      media.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const r = media.getBoundingClientRect();
+        media.style.setProperty('--mx', `${e.clientX - r.left}px`);
+        media.style.setProperty('--my', `${e.clientY - r.top}px`);
+      });
+    }
+
+    // Category filter.
+    const bar = root.querySelector<HTMLElement>('[data-filters]');
+    if (!bar) continue;
+    const buttons = [...bar.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+    const status = root.querySelector<HTMLElement>('[data-status]');
+    bar.hidden = false;
+
+    const apply = (filter: string) => {
+      let shown = 0;
+      for (const item of items) {
+        const match = filter === 'all' || item.dataset.categories!.split('|').includes(filter);
+        item.hidden = !match;
+        if (match) shown++;
+      }
+      // Keep the editorial rhythm unbroken for whatever is visible.
+      tiles.filter((t) => !t.hidden).forEach((t, i) => (t.dataset.slot = String(i % 5)));
+      for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.filter === filter));
+      if (status) {
+        // Strings come from data attributes so the same script works on the English and Chinese pages.
+        const d = status.dataset;
+        const btn = buttons.find((b) => b.dataset.filter === filter);
+        const label = filter === 'all' ? d.allLabel : btn?.textContent?.trim() || filter;
+        status.textContent = (d.template ?? '')
+          .replace('{n}', String(shown))
+          .replace('{projects}', (shown === 1 ? d.one : d.many) ?? '')
+          .replace('{label}', label ?? '');
+      }
+    };
+
+    bar.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-filter]');
+      if (btn) apply(btn.dataset.filter!);
+    });
+  }
+</script>

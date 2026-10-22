@@ -1,6 +1,6 @@
 ---
 title: "Columbia Lunar New Year Event"
-order: 1
+order: 4
 year: 2025
 date: "January 2025"
 location: "Columbia University"

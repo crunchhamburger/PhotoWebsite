@@ -2,7 +2,7 @@
 import { getImage } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
-import ProjectGrid from '../components/ProjectGrid.astro';
+import WorkShowcase from '../components/WorkShowcase.astro';
 import { getProjects, projectCover, heroImages } from '../lib/photos';
 import { site } from '../site.config';
 import { langFromUrl, localize, useT } from '../i18n';
@@ -39,12 +39,12 @@ const ogImage = projects[0] ? projectCover(projects[0]).src : first?.src;
 
   {slides.length > 0 && <Hero images={slides} ctas={ctas} />}
 
-  <section id="work" class="work container" aria-labelledby="work-heading">
-    <header class="work__head">
+  <section id="work" class="work" aria-labelledby="work-heading">
+    <header class="work__head container">
       <p class="eyebrow">{t('home.selected')}</p>
       <h2 id="work-heading" class="work__title">{t('home.work')}</h2>
     </header>
-    <ProjectGrid projects={projects} />
+    <WorkShowcase projects={projects} />
   </section>
 </BaseLayout>
 
