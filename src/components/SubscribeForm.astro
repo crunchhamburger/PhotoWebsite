@@ -1,9 +1,9 @@
 ---
 /**
  * Email sign-up for the Market Brief, handled by Buttondown (buttondown.com/michaelwang8111).
- * Buttondown keeps the list, sends the confirmation email (double opt-in), emails every new
- * episode from the podcast RSS feed, and adds one-click unsubscribe to each email.
- * Subscribers are tagged by the page's language (english / chinese).
+ * Buttondown keeps the list, sends the confirmation email (double opt-in) and adds one-click
+ * unsubscribe; the brief pipeline creates each episode's email through Buttondown's API.
+ * (Tags by language need Buttondown's paid plan, so every subscriber gets the bilingual email.)
  * Without JavaScript the form does a normal POST and Buttondown shows its own confirmation page.
  */
 import { site } from '../site.config';
@@ -13,7 +13,6 @@ import { langFromUrl, useT } from '../i18n';
 
 const lang = langFromUrl(Astro.url);
 const t = useT(lang);
-const tag = lang === 'zh' ? 'chinese' : 'english';
 ---
 
 {
@@ -29,7 +28,6 @@ const tag = lang === 'zh' ? 'chinese' : 'english';
       data-msg-error={t('subscribe.error', { email: site.email })}
     >
       <input type="hidden" name="embed" value="1" />
-      <input type="hidden" name="tag" value={tag} />
 
       <p class="heading">{t('subscribe.heading')}</p>
       <div class="row">
