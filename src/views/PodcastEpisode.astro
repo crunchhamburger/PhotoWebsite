@@ -9,6 +9,7 @@ import { podcast } from '../site.config';
 import LineChart from '../components/charts/LineChart.astro';
 import BarChart from '../components/charts/BarChart.astro';
 import VoicePlayer from '../components/VoicePlayer.astro';
+import SpeedControl from '../components/SpeedControl.astro';
 import { getBrief, placeCharts, audioPath, episodeText, episodeHref, hasZh, localizeChart, zhVoices, type Episode } from '../lib/podcast';
 import { langFromUrl, useT } from '../i18n';
 
@@ -68,6 +69,7 @@ const back = lang === 'zh' ? '/zh/podcast' : '/podcast';
         ) : (
           <audio controls preload="metadata" src={audioPath(episode, briefLang)} aria-label={t('podcast.play', { title })}></audio>
         )}
+        <SpeedControl />
       </div>
     </header>
 

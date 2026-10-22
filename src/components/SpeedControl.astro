@@ -1,0 +1,182 @@
+---
+// Playback-speed switch for the podcast. One preference for the whole site: picking a speed applies
+// it to every <audio> on the page (including VoicePlayer's), keeps it when a player changes source
+// (e.g. switching narrator), and remembers it in localStorage for the next episode. Browsers keep the
+// voice's pitch natural at any rate. Without JS the switch stays hidden and audio plays at 1×.
+import { langFromUrl, useT } from '../i18n';
+
+const t = useT(langFromUrl(Astro.url));
+const speeds = [0.75, 1, 1.25, 1.5, 1.75, 2];
+---
+
+<div class="speed" role="group" aria-label={t('podcast.speed')} data-speed-control hidden>
+  <span class="label" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+      <path d="M12 21a9 9 0 1 1 9-9" />
+      <path d="M12 12l5-4" />
+    </svg>
+    {t('podcast.speed')}
+  </span>
+  <div class="options">
+    <span class="thumb" aria-hidden="true"></span>
+    {
+      speeds.map((s) => (
+        <button
+          type="button"
+          data-speed={s}
+          aria-pressed={s === 1 ? 'true' : 'false'}
+          aria-label={t('podcast.speedAt', { s })}
+        >
+          {s}×
+        </button>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .speed {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+  }
+  .speed[hidden] {
+    display: none;
+  }
+  .label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  .label svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+  .options {
+    position: relative;
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+  }
+  /* Highlight that glides to the selected speed (position set by the script). */
+  .thumb {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 0;
+    width: var(--w, 0px);
+    transform: translateX(var(--x, 0px));
+    border-radius: 999px;
+    background: var(--fg);
+    transition:
+      transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+      width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  button {
+    position: relative;
+    z-index: 1;
+    min-width: 44px;
+    padding: 6px 10px;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg-muted);
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.3s var(--ease);
+  }
+  button:hover {
+    color: var(--fg);
+  }
+  button[aria-pressed='true'] {
+    color: var(--bg);
+  }
+  button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @media (max-width: 420px) {
+    button {
+      min-width: 0;
+      padding: 6px 8px;
+    }
+  }
+</style>
+
+<script>
+  const KEY = 'podcast.speed';
+  const SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
+  const read = () => {
+    try {
+      const v = Number(localStorage.getItem(KEY));
+      return SPEEDS.includes(v) ? v : 1;
+    } catch {
+      return 1;
+    }
+  };
+  const save = (rate: number) => {
+    try {
+      localStorage.setItem(KEY, String(rate));
+    } catch {
+      /* private mode: the speed just isn't remembered */
+    }
+  };
+
+  let rate = read();
+  const controls = [...document.querySelectorAll<HTMLElement>('[data-speed-control]')];
+
+  const setAudio = (a: HTMLMediaElement) => {
+    a.defaultPlaybackRate = rate;
+    a.playbackRate = rate;
+  };
+  const moveThumb = (control: HTMLElement) => {
+    const active = control.querySelector<HTMLElement>(`button[data-speed="${rate}"]`);
+    const thumb = control.querySelector<HTMLElement>('.thumb');
+    if (!active || !thumb) return;
+    thumb.style.setProperty('--x', `${active.offsetLeft}px`);
+    thumb.style.setProperty('--w', `${active.offsetWidth}px`);
+  };
+  const apply = () => {
+    document.querySelectorAll('audio').forEach(setAudio);
+    for (const control of controls) {
+      control.querySelectorAll<HTMLButtonElement>('button[data-speed]').forEach((b) => {
+        b.setAttribute('aria-pressed', String(Number(b.dataset.speed) === rate));
+      });
+      moveThumb(control);
+    }
+  };
+
+  if (controls.length) {
+    controls.forEach((c) => (c.hidden = false));
+    apply();
+    // Changing src (e.g. a narrator switch) resets the rate, so re-apply whenever media loads or plays.
+    for (const type of ['loadedmetadata', 'play']) {
+      document.addEventListener(type, (e) => e.target instanceof HTMLMediaElement && setAudio(e.target), true);
+    }
+    for (const control of controls) {
+      control.addEventListener('click', (e) => {
+        const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-speed]');
+        if (!b) return;
+        rate = Number(b.dataset.speed);
+        save(rate);
+        apply();
+      });
+    }
+    // Keep the highlight aligned if fonts load late or the layout changes.
+    document.fonts?.ready.then(() => controls.forEach(moveThumb));
+    addEventListener('resize', () => controls.forEach(moveThumb));
+  }
+</script>

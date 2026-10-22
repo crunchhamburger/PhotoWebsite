@@ -3,6 +3,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import EpisodeMeta from '../components/EpisodeMeta.astro';
 import VoicePlayer from '../components/VoicePlayer.astro';
+import SpeedControl from '../components/SpeedControl.astro';
 import SubscribeForm from '../components/SubscribeForm.astro';
 import { podcast } from '../site.config';
 import { getEpisodes, audioPath, episodeText, episodeHref, zhVoices } from '../lib/podcast';
@@ -43,6 +44,12 @@ const titleParts = lang === 'zh' ? [...title] : title.split(' ');
         <SubscribeForm />
       </div>
     </header>
+
+    {episodes.length > 0 && (
+      <div class="toolbar">
+        <SpeedControl />
+      </div>
+    )}
 
     {episodes.length === 0 ? (
       <p class="empty">{t('podcast.empty')}</p>
@@ -200,6 +207,14 @@ const titleParts = lang === 'zh' ? [...title] : title.split(' ');
   .rss svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
   .rss circle { fill: currentColor; stroke: none; }
 
+  .toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: clamp(32px, 5vw, 56px);
+  }
+  .toolbar + .episodes {
+    margin-top: 18px;
+  }
   .episodes {
     list-style: none;
     margin: clamp(40px, 6vw, 72px) 0 0;
