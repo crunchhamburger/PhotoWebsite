@@ -32,11 +32,6 @@ const fit = (widths: number[], max: number) => [...new Set([...widths.filter((w)
 ---
 
 <div class="showcase" data-showcase>
-  <div class="marquee" aria-hidden="true">
-    <div class="marquee__track">
-      {Array.from({ length: 6 }, () => <span>{t('grid.marquee')}<i>✦</i></span>)}
-    </div>
-  </div>
 
   <div class="container bar">
     {
@@ -160,61 +155,6 @@ const fit = (widths: number[], max: number) => [...new Set([...widths.filter((w)
     position: relative;
   }
 
-  /* ---------- Marquee ---------- */
-  .marquee {
-    overflow: hidden;
-    pointer-events: none;
-    user-select: none;
-    margin-bottom: clamp(8px, 2vw, 24px);
-  }
-  .marquee__track {
-    display: flex;
-    width: max-content;
-    animation: drift 80s linear infinite;
-  }
-  .marquee__track span {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35em;
-    padding-right: 0.35em;
-    font-family: var(--font-display);
-    font-size: clamp(3.5rem, 1rem + 11vw, 12rem);
-    font-weight: 600;
-    line-height: 1;
-    letter-spacing: -0.02em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    color: transparent;
-    -webkit-text-stroke: 1px var(--fg-faint);
-  }
-  .marquee__track i {
-    font-style: normal;
-    font-size: 0.35em;
-    color: var(--accent);
-    -webkit-text-stroke: 0;
-  }
-  @keyframes drift {
-    to {
-      transform: translateX(-50%);
-    }
-  }
-  /* Where supported, the marquee is tied to scroll instead of time. */
-  @supports (animation-timeline: view()) {
-    .marquee__track {
-      animation: slide linear both;
-      animation-timeline: view();
-      animation-range: cover;
-    }
-    @keyframes slide {
-      from {
-        transform: translateX(0);
-      }
-      to {
-        transform: translateX(-40%);
-      }
-    }
-  }
-
   /* ---------- Filter bar ---------- */
   .bar {
     display: flex;
@@ -277,10 +217,10 @@ const fit = (widths: number[], max: number) => [...new Set([...widths.filter((w)
     min-height: 520px;
     view-timeline: --feature block;
     /* Dwell: each card holds, fully readable, for this much scroll before the next one slides over it. */
-    margin-bottom: 55svh;
+    margin-bottom: 15svh;
   }
   .feature:last-child {
-    margin-bottom: 30svh;
+    margin-bottom: 0;
   }
   .feature[hidden] {
     display: none;
@@ -475,7 +415,7 @@ const fit = (widths: number[], max: number) => [...new Set([...widths.filter((w)
   /* ---------- Archive: asymmetric editorial layout ---------- */
   .archive {
     position: relative;
-    padding-top: clamp(72px, 10vw, 150px);
+    padding-top: clamp(56px, 7vw, 96px);
   }
   .archive__label {
     margin: 0 0 clamp(32px, 5vw, 64px);
@@ -487,7 +427,7 @@ const fit = (widths: number[], max: number) => [...new Set([...widths.filter((w)
     display: grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));
     column-gap: clamp(16px, 3vw, 48px);
-    row-gap: clamp(56px, 8vw, 128px);
+    row-gap: clamp(40px, 5vw, 80px);
     align-items: start;
   }
   .tile[hidden] {
@@ -495,9 +435,9 @@ const fit = (widths: number[], max: number) => [...new Set([...widths.filter((w)
   }
   /* Five-slot rhythm; data-slot is recomputed for the visible tiles when filtering. */
   .tile[data-slot='0'] { grid-column: 1 / span 7; --ratio: 4 / 3; }
-  .tile[data-slot='1'] { grid-column: 9 / span 4; --ratio: 4 / 5; margin-top: clamp(80px, 14vw, 220px); }
+  .tile[data-slot='1'] { grid-column: 9 / span 4; --ratio: 4 / 5; margin-top: clamp(40px, 7vw, 110px); }
   .tile[data-slot='2'] { grid-column: 2 / span 4; --ratio: 4 / 5; }
-  .tile[data-slot='3'] { grid-column: 7 / span 6; --ratio: 3 / 2; margin-top: clamp(60px, 10vw, 160px); }
+  .tile[data-slot='3'] { grid-column: 7 / span 6; --ratio: 3 / 2; margin-top: clamp(30px, 5vw, 80px); }
   .tile[data-slot='4'] { grid-column: 1 / -1; --ratio: 21 / 9; }
   @media (max-width: 760px) {
     .tile[data-slot] {
@@ -641,7 +581,6 @@ const fit = (widths: number[], max: number) => [...new Set([...widths.filter((w)
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .marquee__track,
     .feature__link,
     .feature__media :global(img),
     .feature__content > *,

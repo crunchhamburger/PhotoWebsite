@@ -71,6 +71,8 @@ const multi = images.length > 1;
 
   {multi && <div class="hero__progress" aria-hidden="true"><span data-progress /></div>}
 
+  <div class="hero__bottom">
+  {Astro.slots.has('default') && <div class="hero__statement"><slot /></div>}
   {
     ctas.length > 0 && (
       <div class="hero__ctas">
@@ -102,6 +104,7 @@ const multi = images.length > 1;
       </div>
     )
   }
+  </div>
 
   {
     multi && (
@@ -155,19 +158,13 @@ const multi = images.length > 1;
     background: var(--bg-elev);
     overflow: hidden;
   }
+  /* Full-height cinematic opener. */
   .hero__viewport {
     position: relative;
     width: 100%;
-    aspect-ratio: 16 / 9;
-    max-height: calc(100svh - var(--header-h, 88px));
-    min-height: 420px;
-  }
-  @media (max-width: 760px) {
-    .hero__viewport {
-      aspect-ratio: 4 / 5;
-      min-height: 0;
-      max-height: none;
-    }
+    height: calc(100svh - var(--header-h, 88px));
+    min-height: 560px;
+    max-height: 1100px;
   }
   .hero__slide {
     position: absolute;
@@ -195,15 +192,53 @@ const multi = images.length > 1;
     object-fit: cover;
     object-position: center;
   }
-  /* Soft vignette at the bottom so the controls stay legible over bright frames. */
+  /* Slow push-in on the photo while its slide is showing. */
+  .hero__slide.is-active :global(img) {
+    animation: hero-push 9s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  }
+  @keyframes hero-push {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.08);
+    }
+  }
+  /* Vignette so the statement and controls stay legible over bright frames. */
   .hero__viewport::after {
     content: '';
     position: absolute;
-    inset: auto 0 0 0;
-    height: 28%;
+    inset: 0;
     z-index: 2;
     pointer-events: none;
-    background: linear-gradient(to top, rgb(0 0 0 / 0.45), transparent);
+    background:
+      linear-gradient(to top, rgb(0 0 0 / 0.72) 0%, rgb(0 0 0 / 0.25) 38%, transparent 62%),
+      linear-gradient(to right, rgb(0 0 0 / 0.35), transparent 55%);
+  }
+
+  /* ---------- Bottom overlay: statement (left) and the slide's button (right) ---------- */
+  .hero__bottom {
+    position: absolute;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: clamp(72px, 8vw, 104px);
+    z-index: 3;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px 48px;
+    color: #fff;
+    pointer-events: none;
+  }
+  .hero__bottom > * {
+    pointer-events: auto;
+  }
+  @media (max-width: 760px) {
+    .hero__bottom {
+      flex-direction: column;
+      align-items: flex-start;
+      bottom: 72px;
+    }
   }
 
   /* ---------- Where the photo was taken (top right) ---------- */
@@ -280,17 +315,20 @@ const multi = images.length > 1;
   }
 
   /* ---------- Per-slide call to action (bottom left, above the controls) ---------- */
+  /* All slides' buttons share one grid cell, so the row never jumps as they swap. */
   .hero__ctas {
-    position: absolute;
-    left: var(--gutter);
-    bottom: clamp(76px, 9vw, 120px);
-    z-index: 3;
+    display: grid;
+    justify-items: end;
+    flex: none;
     color: #fff;
   }
+  @media (max-width: 760px) {
+    .hero__ctas {
+      justify-items: start;
+    }
+  }
   .hero__cta {
-    position: absolute;
-    left: 0;
-    bottom: 0;
+    grid-area: 1 / 1;
     width: max-content;
     opacity: 0;
     visibility: hidden;
@@ -424,9 +462,6 @@ const multi = images.length > 1;
     outline-offset: 4px;
   }
   @media (max-width: 560px) {
-    .hero__ctas {
-      bottom: 72px;
-    }
     .hero__cta-btn {
       padding: 11px 10px 11px 22px;
       letter-spacing: 0.2em;

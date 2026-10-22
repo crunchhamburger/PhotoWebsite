@@ -3,12 +3,9 @@ import { getImage } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
 import WorkShowcase from '../components/WorkShowcase.astro';
-import HomeIntro from '../components/HomeIntro.astro';
-import Manifesto from '../components/Manifesto.astro';
-import Stats from '../components/Stats.astro';
 import PodcastTeaser from '../components/PodcastTeaser.astro';
 import ClosingCta from '../components/ClosingCta.astro';
-import { getProjects, projectCover, projectGallery, heroImages } from '../lib/photos';
+import { getProjects, projectCover, heroImages } from '../lib/photos';
 import { getEpisodes } from '../lib/podcast';
 import { site } from '../site.config';
 import { langFromUrl, localize, useT } from '../i18n';
@@ -28,13 +25,8 @@ const ctas = [
 const places = [t('hero.place.0'), t('hero.place.1'), t('hero.place.2')];
 
 const episodes = await getEpisodes();
-// Numbers strip, from the site's own content. Cities photographed: New York, Shanghai, Wuzhen, Tokyo, Athens.
-const stats = [
-  { value: projects.length, label: t('stats.projects') },
-  { value: projects.reduce((n, p) => n + projectGallery(p).length, 0), label: t('stats.photos'), plus: true },
-  { value: 5, label: t('stats.cities') },
-  { value: episodes.length, label: t('stats.episodes') },
-];
+// Opening statement laid over the hero photos.
+const lines = [t('intro.l1'), t('intro.l2'), t('intro.l3')];
 
 // Preload the first hero slide (LCP). Must mirror the AVIF <source> that <Picture> emits in Hero.
 const first = slides[0];
@@ -53,13 +45,27 @@ const ogImage = projects[0] ? projectCover(projects[0]).src : first?.src;
 
   <div class="grain" aria-hidden="true"></div>
 
-  <HomeIntro />
+  {
+    slides.length > 0 && (
+      <Hero images={slides} ctas={ctas} places={places}>
+        <p class="statement" aria-label={lines.join(' ')}>
+          {lines.map((line, i) => (
+            <span class:list={['statement__line', `statement__line--${i}`]} aria-hidden="true">
+              <span style={`--i: ${i}`}>{line}</span>
+            </span>
+          ))}
+        </p>
+        <p class="statement__meta">
+          <span class="statement__live" aria-hidden="true" />
+          {t('intro.based')}
+          <span aria-hidden="true">·</span>
+          <time data-clock data-locale={lang === 'zh' ? 'zh-CN' : 'en-US'} />
+        </p>
+      </Hero>
+    )
+  }
 
-  {slides.length > 0 && <Hero images={slides} ctas={ctas} places={places} />}
-
-  <Manifesto />
-
-  <Stats stats={stats} />
+  {episodes[0] && <PodcastTeaser episode={episodes[0]} />}
 
   <section id="work" class="work" aria-labelledby="work-heading">
     <header class="work__head container">
@@ -69,12 +75,92 @@ const ogImage = projects[0] ? projectCover(projects[0]).src : first?.src;
     <WorkShowcase projects={projects} />
   </section>
 
-  {episodes[0] && <PodcastTeaser episode={episodes[0]} />}
-
   <ClosingCta />
 </BaseLayout>
 
 <style>
+  /* ---------- Statement over the hero ---------- */
+  .statement {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(2.6rem, 0.9rem + 5.6vw, 7.2rem);
+    font-weight: 300;
+    line-height: 0.92;
+    letter-spacing: -0.04em;
+    text-shadow: 0 2px 30px rgb(0 0 0 / 0.35);
+  }
+  :global(:lang(zh)) .statement {
+    letter-spacing: 0;
+    line-height: 1.1;
+    font-weight: 400;
+  }
+  .statement__line {
+    display: block;
+    overflow: hidden;
+    padding-bottom: 0.06em;
+  }
+  .statement__line > span {
+    display: inline-block;
+    animation: statement-rise 1.2s cubic-bezier(0.2, 0.75, 0.15, 1) both;
+    animation-delay: calc(0.2s + var(--i) * 0.14s);
+  }
+  .statement__line--1 > span {
+    color: transparent;
+    -webkit-text-stroke: 1.5px #fff;
+  }
+  .statement__line--2 > span {
+    padding-left: clamp(0px, 5vw, 96px);
+  }
+  @keyframes statement-rise {
+    from {
+      transform: translateY(105%) skewY(6deg);
+    }
+  }
+  .statement__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    margin: clamp(16px, 2vw, 24px) 0 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.8);
+    animation: statement-fade 1s var(--ease) 0.8s both;
+  }
+  .statement__meta time {
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+  .statement__live {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: statement-pulse 2s ease-out infinite;
+  }
+  @keyframes statement-pulse {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 10px transparent;
+    }
+  }
+  @keyframes statement-fade {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .statement__line > span,
+    .statement__meta,
+    .statement__live {
+      animation: none;
+    }
+  }
+
   /* Fine film grain over the home page (static under reduced motion). */
   .grain {
     position: fixed;
@@ -104,7 +190,7 @@ const ogImage = projects[0] ? projectCover(projects[0]).src : first?.src;
     }
   }
   .work {
-    padding-block: clamp(72px, 10vw, 160px) clamp(80px, 10vw, 160px);
+    padding-block: clamp(48px, 6vw, 96px) 0;
     scroll-margin-top: var(--header-h, 88px);
   }
   .work__head {
@@ -122,3 +208,21 @@ const ogImage = projects[0] ? projectCover(projects[0]).src : first?.src;
     letter-spacing: -0.01em;
   }
 </style>
+
+<script>
+  // Live New York time in the hero statement, updated every 15 s.
+  for (const el of document.querySelectorAll<HTMLTimeElement>('[data-clock]')) {
+    const fmt = new Intl.DateTimeFormat(el.dataset.locale, {
+      timeZone: 'America/New_York',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+    const tick = () => {
+      const now = new Date();
+      el.textContent = fmt.format(now);
+      el.dateTime = now.toISOString();
+    };
+    tick();
+    setInterval(tick, 15000);
+  }
+</script>
