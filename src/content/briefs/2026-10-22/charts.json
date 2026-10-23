@@ -1,0 +1,17 @@
+[
+  {
+    "file": "ft-01-meta-shares-slide.png",
+    "caption": "Meta share price, Sep 10-Oct 22: from a ~$770 peak to ~$645 after results (FactSet)",
+    "url": "https://www.ft.com/content/6e318b81-a771-4842-9754-e265fef2852f"
+  },
+  {
+    "file": "prices-01-h100-3m.png",
+    "caption": "Ornn H100 index, 3 months: $3.15/hr, +17.54%, four straight gains back toward the mid-Oct peak (~$3.21)",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "ft-02-brent-crude-2026.png",
+    "caption": "Brent crude in 2026: ~$60 in January, ~$118 peaks in Mar-Apr, back to ~$113 (LSEG)",
+    "url": "https://www.ft.com/content/6e318b81-a771-4842-9754-e265fef2852f"
+  }
+]
