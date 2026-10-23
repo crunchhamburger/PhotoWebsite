@@ -1,0 +1,17 @@
+[
+  {
+    "file": "wsj-02-pension-ai-share.png",
+    "caption": "Share of US equity in 15 AI-linked stocks at CalPERS, CalSTRS, NYS CRF, NYS TRS and the 13-fund total, Dec 2022 vs June 2026 (~12% to ~27%)",
+    "url": "https://www.wsj.com/finance/investing/politicians-are-turning-against-ai-but-your-pension-is-riding-on-it-6764d852"
+  },
+  {
+    "file": "prices-01-h100-1m.png",
+    "caption": "Ornn H100 index, 1 month (Sep 23–Oct 22): last point $3.15/hr, +14.96% w/w",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "wsj-01-france-10y-yields.png",
+    "caption": "10-year government bond yields for France, Germany and Japan since 2020: France now above 5% (FactSet)",
+    "url": "https://www.wsj.com/finance/investing/frances-debt-crisis-deepens-as-foreign-investors-look-for-the-exit-e6ef398c"
+  }
+]
