@@ -227,10 +227,10 @@ export function buildPet(kind) {
 // repaints the generated texture in the character's flat colours: the generator bakes shadows
 // in and invents colours (grey-blue bands, green smears) on the sides the photo didn't show.
 export const GLB_PETS = {
-  nailong: { target: 2.15, yaw: 0, paint: { body: '#f7b52c', dark: 22 }, belly: { color: '#fff4e2', cy: 0.68, rx: 0.36, ry: 0.44 } },
-  naiwa: { target: 2.2, yaw: 1.1 },
-  naidan: { target: 1.6, yaw: 0, paint: { body: '#f2cf38' } },
-  laoshu: { target: 2.05, yaw: 0 },
+  nailong: { target: 2.15, yaw: 0, paint: { body: '#f7b52c', dark: 22 }, belly: { color: '#fff4e2', cy: 0.68, rx: 0.36, ry: 0.44 }, face: { mouthDrop: 0.1 } },
+  naiwa: { target: 2.2, yaw: 1.1, face: { mouthDrop: 0.07 } },
+  naidan: { target: 1.6, yaw: 0, paint: { body: '#f2cf38' }, face: { mouthDrop: 0.1, lidSize: 3.8, mouthSize: 1.4 } },
+  laoshu: { target: 2.05, yaw: 0, face: { mouthDrop: 0.19, lidSize: 4.2, mouthSize: 1.5 } },
 };
 
 let gltfLoader = null;
@@ -241,7 +241,7 @@ const glbCache = new Map();
  * `paint` repaints the generated texture with the character's own flat palette (the generator
  * bakes in shadows and invents colours on the sides it never saw): { body, belly?, dark? }.
  */
-export function loadGLBPet(kind, { url = new URL(`../models/${kind}.glb`, import.meta.url).href, target = 2.15, yaw = 0, paint = null, belly = null } = {}) {
+export function loadGLBPet(kind, { url = new URL(`../models/${kind}.glb`, import.meta.url).href, target = 2.15, yaw = 0, paint = null, belly = null, face = null } = {}) {
   if (!glbCache.has(url)) {
     glbCache.set(url, (async () => {
       const head = await fetch(url, { method: 'HEAD' }).catch(() => null);
@@ -252,7 +252,7 @@ export function loadGLBPet(kind, { url = new URL(`../models/${kind}.glb`, import
       return gltf;
     })().catch(() => null));
   }
-  return glbCache.get(url).then((gltf) => (gltf ? petFromGLTF(kind, gltf, target, yaw, belly) : null));
+  return glbCache.get(url).then((gltf) => (gltf ? petFromGLTF(kind, gltf, target, yaw, belly, face) : null));
 }
 
 const hexRGB = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -309,7 +309,7 @@ function bellyWeights(geo, { cx = 0, cy, rx, ry }) {
   geo.setAttribute('aBelly', new THREE.BufferAttribute(w, 1));
 }
 
-function petFromGLTF(kind, gltf, target, yaw, belly) {
+function petFromGLTF(kind, gltf, target, yaw, belly, face) {
   const src = gltf.scene;
   src.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(src);
@@ -350,11 +350,161 @@ function petFromGLTF(kind, gltf, target, yaw, belly) {
     return g;
   };
   const p = { name: kind, height: target, gait: kind === 'naidan' || kind === 'laoshu' ? 'hop' : 'waddle', body, eyes: [], mouthOpen: dummy(), mouthClosed: dummy(), glb: true, uniforms };
+  if (face) p.face = buildFace(body, target, face);
   p.kind = kind;
   p.squash = group(p.body);
   p.root = group(p.squash);
   p.rest = new Map();
   return p;
+}
+
+// ---------- Face pieces for generated models ----------
+// The face of a generated model is painted on, so to laugh, blink or sleep it gets small pieces laid
+// over the face: eyelids ("^ ^" happy or "‿ ‿" closed, in the pet's own skin colour) and an open
+// mouth. Eyes are found automatically: the darkest texels on the front of the upper body.
+
+function readTexture(map, size = 256) {
+  const img = map?.image;
+  if (!img) return null;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, size, size);
+  return { size, data: g.getImageData(0, 0, size, size).data };
+}
+
+function texel(tex, u, v) {
+  const x = Math.min(tex.size - 1, Math.max(0, Math.round(u * (tex.size - 1))));
+  const y = Math.min(tex.size - 1, Math.max(0, Math.round(v * (tex.size - 1))));
+  const i = (y * tex.size + x) * 4;
+  return [tex.data[i], tex.data[i + 1], tex.data[i + 2]];
+}
+const lumOf = ([r, g, b]) => 0.3 * r + 0.59 * g + 0.11 * b;
+
+/** Finds both eyes (centre, radius) and the skin colour around them. */
+function findEyes(meshes, h) {
+  const dark = [];
+  const skin = [];
+  for (const m of meshes) {
+    const tex = readTexture(m.material.map);
+    if (!tex) continue;
+    const { position: P, normal: N, uv: UV } = m.geometry.attributes;
+    if (!UV) continue;
+    for (let i = 0; i < P.count; i++) {
+      const y = P.getY(i);
+      if (N.getZ(i) < 0.35 || y < h * 0.45) continue;
+      const c = texel(tex, UV.getX(i), UV.getY(i));
+      const l = lumOf(c);
+      if (l < 45) dark.push([P.getX(i), y]);
+      else if (l > 90 && c[0] - c[2] > 45) skin.push([P.getX(i), y, c]); // saturated: skin, not white eye rims
+    }
+  }
+  const side = (s) => {
+    const pts = dark.filter(([x]) => (s < 0 ? x < 0 : x >= 0));
+    if (pts.length < 3) return null;
+    const top = Math.max(...pts.map((p) => p[1]));
+    const eye = pts.filter((p) => p[1] > top - h * 0.07);
+    const cx = eye.reduce((a, p) => a + p[0], 0) / eye.length;
+    const cy = eye.reduce((a, p) => a + p[1], 0) / eye.length;
+    const r = Math.max(...eye.map((p) => Math.hypot(p[0] - cx, p[1] - cy)));
+    return { x: cx, y: cy, r: Math.min(h * 0.07, Math.max(h * 0.028, r * 1.25)) };
+  };
+  let L = side(-1);
+  let R = side(1);
+  if (!L && !R) return null;
+  L ??= { ...R, x: -R.x };
+  R ??= { ...L, x: -L.x };
+  // Skin colour: front texels in a ring around the eyes.
+  const near = skin.filter(([x, y]) => [L, R].some((e) => { const d = Math.hypot(x - e.x, y - e.y); return d > e.r * 1.4 && d < e.r * 3; }));
+  const avg = [0, 1, 2].map((k) => Math.round(near.reduce((a, p) => a + p[2][k], 0) / Math.max(1, near.length)));
+  return { L, R, skin: near.length ? `rgb(${avg.join(',')})` : '#f2c23c' };
+}
+
+function faceTexture(draw) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  draw(c.getContext('2d'));
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+function lidTexture(skin, happy) {
+  return faceTexture((g) => {
+    const grad = g.createRadialGradient(64, 64, 40, 64, 64, 62);
+    grad.addColorStop(0, skin);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = skin;
+    g.beginPath();
+    g.arc(64, 64, 48, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 128, 128);
+    g.strokeStyle = '#2a1a10';
+    g.lineWidth = 11;
+    g.lineCap = 'round';
+    g.beginPath();
+    if (happy) g.arc(64, 82, 30, Math.PI * 1.15, Math.PI * 1.85); // ∩ : squeezed shut, smiling
+    else g.arc(64, 44, 30, Math.PI * 0.18, Math.PI * 0.82); // ‿ : closed
+    g.stroke();
+  });
+}
+
+function mouthTexture() {
+  return faceTexture((g) => {
+    // Open laughing mouth: a wide "D" with a tongue.
+    g.beginPath();
+    g.moveTo(14, 38);
+    g.quadraticCurveTo(64, 26, 114, 38);
+    g.quadraticCurveTo(110, 112, 64, 114);
+    g.quadraticCurveTo(18, 112, 14, 38);
+    g.closePath();
+    g.fillStyle = '#5b1610';
+    g.fill();
+    g.save();
+    g.clip();
+    g.fillStyle = '#ff7f97';
+    g.beginPath();
+    g.ellipse(64, 104, 34, 24, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    g.lineWidth = 6;
+    g.strokeStyle = '#3a0e0a';
+    g.stroke();
+  });
+}
+
+/** Lays a flat piece on the model surface at (x, y), facing out along the surface normal. */
+function stick(meshes, x, y, w, hgt, material, h, lift = 0.006) {
+  const ray = new THREE.Raycaster(new THREE.Vector3(x, y, h * 3), new THREE.Vector3(0, 0, -1));
+  const hit = ray.intersectObjects(meshes, false)[0];
+  if (!hit) return null;
+  // Lean the piece towards the viewer so parts under a snout or chin still show.
+  const n = hit.face.normal.clone().normalize().add(new THREE.Vector3(0, 0, 1.2)).normalize();
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, hgt), material);
+  m.position.copy(hit.point).addScaledVector(n, h * lift);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
+  m.renderOrder = 2;
+  m.visible = false;
+  return m;
+}
+
+function buildFace(body, h, { mouthDrop = 0.1, lidSize = 2.7, mouthSize = 1 } = {}) {
+  body.updateMatrixWorld(true);
+  const meshes = body.children.filter((o) => o.isMesh);
+  const eyes = findEyes(meshes, h);
+  if (!eyes) return null;
+  const decal = (map) => new THREE.MeshStandardMaterial({ map, transparent: true, depthWrite: false, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -4 });
+  const happy = lidTexture(eyes.skin, true);
+  const closed = lidTexture(eyes.skin, false);
+  const lidMat = decal(closed);
+  const lids = [eyes.L, eyes.R].map((e) => stick(meshes, e.x, e.y, e.r * lidSize, e.r * lidSize, lidMat, h)).filter(Boolean);
+  const r = (eyes.L.r + eyes.R.r) / 2;
+  const mouth = stick(meshes, (eyes.L.x + eyes.R.x) / 2, (eyes.L.y + eyes.R.y) / 2 - h * mouthDrop, r * 3 * mouthSize, r * 2.4 * mouthSize, decal(mouthTexture()), h, 0.02);
+  const parts = [...lids, mouth].filter(Boolean);
+  for (const m of parts) body.add(m);
+  return { lids, mouth, lidMat, happy, closed };
 }
 
 /**

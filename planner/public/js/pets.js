@@ -432,8 +432,15 @@ function update(dt, now) {
     st.blinkAt = now + rand(2200, 5500) * (Math.random() < 0.2 ? 0.15 : 1);
   }
 
+  // Tickling: keep petting it and it bursts out laughing.
+  if (st.hoverSince && now - st.hoverSince > 3200 && now - (st.tickledAt || 0) > 8000 && st.mode !== 'drag' && st.mode !== 'sleep' && st.reaction?.name !== 'laugh') {
+    st.tickledAt = now;
+    start('laugh');
+    setTimeout(() => say(pick(['好痒!', '哈哈别挠了', '痒痒痒'])), 1600);
+    addMood(3);
+  }
   // Petting: hover still on the pet for a moment.
-  if (st.hoverSince && now - st.hoverSince > 700 && now - st.pettedAt > 2600 && st.mode !== 'drag' && st.mode !== 'sleep') {
+  else if (st.hoverSince && now - st.hoverSince > 700 && now - st.pettedAt > 2600 && st.mode !== 'drag' && st.mode !== 'sleep') {
     st.pettedAt = now;
     hearts(4);
     say(pick(['嘿嘿', '好舒服~', '再摸摸', '♡', '呼噜呼噜']));
@@ -554,7 +561,7 @@ const REACT = {
   hearts: {
     dur: 1800,
     start() { hearts(7); sound('happy'); },
-    pose(k, e, p) { p.eyes = 0.25; p.roll += Math.sin(e * 5) * 0.08; p.faceCam = 1; },
+    pose(k, e, p) { p.eyes = 0.25; p.eyeStyle = 'happy'; p.roll += Math.sin(e * 5) * 0.08; p.faceCam = 1; },
   },
   dance: {
     dur: 2600,
@@ -567,6 +574,8 @@ const REACT = {
       p.armRz += 1.6 + Math.sin(e * 6 + 1) * 0.5;
       p.eyes = 0.35;
       p.mouth = Math.sin(e * 6) > 0;
+      p.mouthAmt = 0.6;
+      p.eyeStyle = 'happy';
     },
   },
   dizzy: {
@@ -597,7 +606,7 @@ const REACT = {
     // Eating a task or treat.
     dur: 1400,
     start() { sound('pop'); },
-    pose(k, e, p) { p.faceCam = 1; p.mouth = Math.sin(e * 14) > 0; p.sqY *= 1 + Math.sin(e * 14) * 0.035; p.eyes = 0.4; },
+    pose(k, e, p) { p.faceCam = 1; p.mouth = true; p.mouthAmt = 0.3 + 0.7 * Math.abs(Math.sin(e * 7)); p.sqY *= 1 + Math.sin(e * 14) * 0.035; p.eyes = 0.4; p.eyeStyle = 'happy'; },
   },
 
   // ---- signatures ----
@@ -661,21 +670,41 @@ const REACT = {
     },
   },
   laugh: {
-    // 美团老鼠 meme: eyes squeezed shut, mouth wide, body bouncing with laughter.
-    dur: 2800,
-    start() { say(pick(['你的外卖我偷吃了😋', '哈哈哈哈哈', '嘿嘿嘿嘿']), { long: true }); sound('happy'); haha(); },
+    // Belly laugh: eyes squeezed shut (^ ^), mouth popping open with each "ha", leaning back,
+    // bouncing on each chuckle, then doubling over before catching its breath.
+    dur: 3200,
+    start() {
+      const lines = {
+        nailong: ['哈哈哈哈哈!', '笑死我了', '嘿嘿嘿嘿'],
+        naiwa: ['呱哈哈哈', '噗……哈哈', '哈哈哈'],
+        naidan: ['咕哈哈哈', '蛋都笑裂了', '哈哈哈'],
+        laoshu: ['你的外卖我偷吃了😋', '哈哈哈哈哈', '嘿嘿嘿嘿'],
+      };
+      say(pick(lines[pet.kind] || ['哈哈哈哈']), { long: true });
+      sound('happy');
+      haha();
+      setTimeout(() => sound('pop'), 900);
+      setTimeout(() => sound('happy'), 1700);
+    },
     pose(k, e, p) {
-      const u = clamp(k * 6, 0, 1) * clamp((1 - k) * 5, 0, 1);
+      const u = clamp(k * 6, 0, 1) * clamp((1 - k) * 5, 0, 1); // in and out
+      const beat = Math.abs(Math.sin(e * 8.5)); // one "ha" per half-cycle
+      const fold = clamp((k - 0.5) / 0.2, 0, 1) * clamp((0.9 - k) / 0.15, 0, 1); // doubles over
       p.faceCam = 1;
       p.eyes = 1 - 0.9 * u;
-      p.mouth = u > 0.2;
-      p.headPitch -= 0.25 * u;
-      p.lift += Math.abs(Math.sin(e * 9)) * 0.05 * u; // chuckle bounce instead of a fast shake
-      p.roll += Math.sin(e * 9) * 0.04 * u;
-      p.earL += Math.sin(e * 9) * 0.25 * u;
-      p.earR += Math.sin(e * 9 + 1) * 0.25 * u;
-      p.armLx += Math.sin(e * 9) * 0.2 * u;
-      p.armRx += Math.sin(e * 9) * 0.2 * u;
+      p.eyeStyle = 'happy';
+      p.mouth = u > 0.15;
+      p.mouthAmt = 0.45 + 0.55 * beat;
+      p.headPitch -= 0.25 * u * (1 - fold);
+      p.lean += (-0.1 * (1 - fold) + 0.22 * fold) * u;
+      p.lift += beat * 0.07 * u;
+      p.sqY *= 1 + (beat - 0.5) * 0.06 * u;
+      p.roll += Math.sin(e * 4.2) * 0.07 * u;
+      p.earL += Math.sin(e * 8.5) * 0.25 * u;
+      p.earR += Math.sin(e * 8.5 + 1) * 0.25 * u;
+      p.armLx += Math.sin(e * 8.5) * 0.2 * u;
+      p.armRx += Math.sin(e * 8.5) * 0.2 * u;
+      p.tailY += Math.sin(e * 12) * 0.5 * u;
     },
   },
   headshake: {
@@ -726,16 +755,16 @@ function start(name) {
 
 // Generated models have no separate eyes/arms/tongue: their signatures use whole-body moves.
 const GLB_SIGNATURE = {
-  nailong: ['headshake', 'dance', 'nod'],
-  naiwa: ['sideeye', 'bellybounce', 'bellybounce'],
-  naidan: ['wobble', 'flip', 'wobble'],
+  nailong: ['laugh', 'headshake', 'dance'],
+  naiwa: ['sideeye', 'bellybounce', 'laugh'],
+  naidan: ['wobble', 'flip', 'laugh'],
   laoshu: ['laugh', 'laugh', 'hops'],
 };
 const signatures = () => (pet.glb ? GLB_SIGNATURE[pet.kind] : KINDS[pet.kind].signature);
 
 let lastReaction = '';
 function react() {
-  const generic = pet.glb ? ['jump', 'spin', 'curious', 'hearts', 'dance', 'dizzy'] : ['jump', 'spin', 'wave', 'curious', 'hearts', 'dance', 'dizzy'];
+  const generic = pet.glb ? ['jump', 'spin', 'curious', 'hearts', 'dance', 'dizzy', 'laugh'] : ['jump', 'spin', 'wave', 'curious', 'hearts', 'dance', 'dizzy', 'laugh'];
   let name;
   do name = Math.random() < 0.5 ? pick(signatures()) : pick(generic);
   while (name === lastReaction);
@@ -758,6 +787,7 @@ function basePose() {
     armLx: 0, armLz: 0, armRx: 0, armRz: 0, legLx: 0, legRx: 0,
     tailX: 0, tailY: 0, earL: 0, earR: 0,
     eyes: 1, eyesWide: 1, lookX: 0, lookY: 0, mouth: false, tongue: 0,
+    eyeStyle: 'closed', mouthAmt: 0.8, // for generated models' face pieces
   };
 }
 
@@ -828,6 +858,7 @@ function computePose(now, t, dt) {
   // Being petted: eyes close happily.
   if (st.hoverSince && now - st.hoverSince > 350 && st.mode !== 'drag') {
     p.eyes = Math.min(p.eyes, 0.35);
+    p.eyeStyle = 'happy';
     p.roll += Math.sin(t * 2.5) * 0.03;
   }
 
@@ -912,6 +943,20 @@ function applyPose(p) {
   if (P.tongue) {
     const s = Math.max(0.001, p.tongue);
     P.tongue.scale.set(s, s, s * 0.55);
+  }
+  if (P.face) {
+    // Generated models: eyelids over the painted eyes when they close (blink, sleep, ^ ^ when
+    // happy) and an open mouth that pops with each laugh.
+    const shut = p.eyes < 0.45;
+    for (const lid of P.face.lids) lid.visible = shut;
+    if (shut) {
+      const map = p.eyeStyle === 'happy' ? P.face.happy : P.face.closed;
+      if (P.face.lidMat.map !== map) P.face.lidMat.map = map;
+    }
+    if (P.face.mouth) {
+      P.face.mouth.visible = !!p.mouth;
+      P.face.mouth.scale.set(0.85 + 0.15 * p.mouthAmt, Math.max(0.2, p.mouthAmt), 1);
+    }
   }
   const lift = st.lift + p.lift;
   shadow.scale.setScalar((pet.kind === 'laoshu' ? 1.15 : 1) * (1 - Math.min(0.5, lift * 0.25)));
@@ -1484,6 +1529,7 @@ function openPetMenu(at) {
     { label: st.stay ? '🚶 Roam again' : '🪑 Stay here', onclick: () => toggleStay() },
     { label: '💤 Nap', onclick: () => { st.reaction = null; sleep(performance.now()); } },
     { label: '💃 Dance', onclick: () => start('dance') },
+    { label: '😂 Laugh', onclick: () => start('laugh') },
     { label: '✨ Signature move', onclick: () => start(pick(signatures())) },
     'hr',
     sizes,
@@ -1549,7 +1595,7 @@ function updateControl() {
   ctl.img.dataset.thumb = c.kind;
   ctl.name.textContent = c.on ? petName(c.kind) : '休息中';
   ctl.cur.classList.toggle('off', !c.on);
-  ctl.cur.title = c.on ? `${petName(c.kind)} · 心情 ${mood()}% · click to hide, right-click the pet for more` : 'Click to bring your pet back';
+  ctl.cur.title = c.on ? `${petName(c.kind)} · 心情 ${mood()}% · click to switch pets` : 'Pet is hidden: click to bring it back';
 }
 
 function cycle(dir) {
@@ -1561,11 +1607,19 @@ function cycle(dir) {
 }
 ctl.prev.addEventListener('click', () => cycle(-1));
 ctl.next.addEventListener('click', () => cycle(1));
-ctl.cur.addEventListener('click', () => {
-  setCfg({ on: !cfg().on }, { quiet: false });
-  syncPet();
-});
-document.getElementById('pets-btn').addEventListener('click', (e) => openPanel(e.currentTarget));
+// The pet chip and the paw both open the pet picker (a second click closes it). Show/hide lives in
+// the panel and the right-click menu.
+let panelAnchor = null;
+function togglePanel(anchor) {
+  if (panelAnchor === anchor && !document.getElementById('popover').hidden) {
+    closeFloats();
+    panelAnchor = null;
+    return;
+  }
+  openPanel(anchor);
+}
+ctl.cur.addEventListener('click', (e) => togglePanel(e.currentTarget));
+document.getElementById('pets-btn').addEventListener('click', (e) => togglePanel(e.currentTarget));
 
 function openPanel(anchor) {
   const c = cfg();
@@ -1633,7 +1687,8 @@ function openPanel(anchor) {
     h('p.help', { style: { marginTop: '8px' } },
       'Click: reaction · double-click: signature move · hover: pet it · drag: pick up (flick to toss) · right-click: menu · drop a task on it to complete it · P: come here · Shift+P: follow. It keeps you company during focus sessions.'),
   );
-  popover(anchor, content);
+  popover(anchor, content, () => { if (panelAnchor === anchor) panelAnchor = null; });
+  panelAnchor = anchor;
 }
 
 /** For tests and the console. */
