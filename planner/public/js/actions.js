@@ -4,13 +4,23 @@ import { nextDue } from './parse.js';
 import { calendar, markCanvasDone, defaultEstimate, startOfDay, sameDay } from './feeds.js';
 import { gcal } from './gcal.js';
 import { h, toast, popover, closeFloats, fmtDue, fmtTime, toLocalInput, fmtEst } from './ui.js';
+import * as fx from './motion.js';
 
 // ---------- Items ----------
 
-export function toggleItem(id) {
+/** `from` is the checkbox that was clicked: the confetti comes out of it. */
+export function toggleItem(id, from) {
   const f = findItem(store.state, id);
   if (!f) return;
   const it = f.item;
+  if (!it.done) {
+    if (from) {
+      const r = from.getBoundingClientRect();
+      fx.confetti(r.left + r.width / 2, r.top + r.height / 2, { count: 18, power: 4.8, colors: [f.list.color, f.list.color, '#ffffff'], size: 4, gravity: 0.16 });
+      fx.ripple(r.left + r.width / 2, r.top + r.height / 2, f.list.color, 46);
+    }
+    fx.queue(`item:${id}`, { type: it.repeat && it.due ? 'land' : 'check', burstDone: !!from });
+  } else fx.queue(`item:${id}`, { type: 'uncheck' });
   if (!it.done && it.repeat && it.due) {
     const next = nextDue(new Date(it.due), it.repeat);
     store.update((s) => {
@@ -44,7 +54,7 @@ export function deleteItem(id) {
   toast('Task deleted', { action: 'Undo', onAction: () => store.undoLast() });
 }
 
-/** Adds a parsed quick-add result. A #tag that matches no list creates one. Returns the list id. */
+/** Adds a parsed quick-add result. A #tag that matches no list creates one. Returns { listId, itemId }. */
 export function addParsed(p, fallbackListId) {
   if (!p.text) return null;
   let list = listByTag(store.state, p.list) || (fallbackListId && findCard(store.state, fallbackListId)) || lists(store.state)[0];
@@ -69,7 +79,7 @@ export function addParsed(p, fallbackListId) {
     const l = findCard(s, list.id);
     l.items.push(item);
   });
-  return list.id;
+  return { listId: list.id, itemId: item.id };
 }
 
 /** A free place on the board to the right of everything. */
@@ -255,9 +265,20 @@ function stopFocus(silent) {
   logFocus();
   clearInterval(timer.tick);
   timer.tick = null;
-  document.getElementById('timer').hidden = true;
-  if (!silent) document.title = 'Planner';
+  const el = document.getElementById('timer');
+  const hide = () => {
+    el.hidden = true;
+    el.replaceChildren();
+  };
+  if (silent) hide();
+  else {
+    const a = fx.play(el, [{ opacity: 1, transform: 'translate(-50%, 0) scale(1)' }, { opacity: 0, transform: 'translate(-50%, 30px) scale(.92)' }], { duration: 260, easing: fx.EASE_IN });
+    a ? (a.onfinish = hide) : hide();
+    document.title = 'Planner';
+  }
 }
+
+const RING = 2 * Math.PI * 15;
 
 function renderTimer() {
   const el = document.getElementById('timer');
@@ -266,28 +287,47 @@ function renderTimer() {
     const wasFocus = timer.mode === 'focus';
     logFocus();
     notify(wasFocus ? 'Focus session done — take 5.' : 'Break over. Back to it?');
+    const r = el.getBoundingClientRect();
+    fx.celebrate(r, wasFocus ? '#5ee0b0' : undefined);
     timer.mode = wasFocus ? 'break' : 'focus';
     timer.endsAt = Date.now() + (wasFocus ? BREAK : FOCUS) * 60000;
     timer.startedAt = Date.now();
     return renderTimer();
   }
+  // Built once, then only the numbers and the ring update each tick.
+  if (!el.firstChild) {
+    el.replaceChildren(
+      h('span.ring', svgRing()),
+      h('span.t'),
+      h('span.what'),
+      h('button.btn.small.pause', { onclick: () => {
+        if (timer.paused) { timer.endsAt = Date.now() + timer.left; timer.startedAt = Date.now(); timer.paused = false; }
+        else { logFocus(); timer.left = timer.endsAt - Date.now(); timer.paused = true; }
+        renderTimer();
+      } }),
+      h('button.btn.small', { onclick: () => stopFocus() }, 'Stop'),
+    );
+    el.hidden = false;
+    fx.play(el, [{ opacity: 0, transform: 'translate(-50%, 40px) scale(.9)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)' }], fx.SPRING_BOUNCY);
+  }
+  const total = (timer.mode === 'focus' ? FOCUS : BREAK) * 60000;
   const m = Math.floor(left / 60000);
   const s = Math.floor((left % 60000) / 1000);
   const t = `${m}:${String(s).padStart(2, '0')}`;
   const it = findItem(store.state, timer.itemId)?.item;
   document.title = `${t} · ${timer.mode === 'focus' ? it?.text ?? 'Focus' : 'Break'}`;
-  el.className = `timer${timer.mode === 'break' ? ' break' : ''}`;
-  el.replaceChildren(
-    h('span.t', t),
-    h('span.what', timer.mode === 'focus' ? it?.text ?? 'Focus' : 'Break'),
-    h('button.btn.small', { onclick: () => {
-      if (timer.paused) { timer.endsAt = Date.now() + timer.left; timer.startedAt = Date.now(); timer.paused = false; }
-      else { logFocus(); timer.left = timer.endsAt - Date.now(); timer.paused = true; }
-      renderTimer();
-    } }, timer.paused ? 'Resume' : 'Pause'),
-    h('button.btn.small', { onclick: () => stopFocus() }, 'Stop'),
-  );
-  el.hidden = false;
+  el.className = `timer${timer.mode === 'break' ? ' break' : ''}${timer.paused ? ' paused' : ''}`;
+  el.querySelector('.t').textContent = t;
+  el.querySelector('.what').textContent = timer.mode === 'focus' ? it?.text ?? 'Focus' : 'Break';
+  el.querySelector('.pause').textContent = timer.paused ? 'Resume' : 'Pause';
+  el.querySelector('.ring-fg').style.strokeDashoffset = String(RING * (1 - left / total));
+}
+
+function svgRing() {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', '0 0 36 36');
+  s.innerHTML = `<circle class="ring-bg" cx="18" cy="18" r="15"/><circle class="ring-fg" cx="18" cy="18" r="15" stroke-dasharray="${RING}" stroke-dashoffset="0"/>`;
+  return s;
 }
 
 export function notify(text) {

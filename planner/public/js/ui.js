@@ -1,4 +1,5 @@
 // Small DOM helpers shared by the board and the side panel.
+import * as fx from './motion.js';
 
 /** h('div.card#x', { onclick, style: {...}, dataset: {...} }, ...children) */
 export function h(tag, props, ...children) {
@@ -92,12 +93,25 @@ export function toLocalInput(iso) {
 
 // ---------- Toasts ----------
 
+/** Toasts spring in, show a countdown bar (paused while hovered) and slide out. */
 export function toast(text, { action, onAction, kind = '', ms = 4500 } = {}) {
   const box = document.getElementById('toasts');
-  const el = h(`div.toast${kind ? '.' + kind : ''}`, h('span', text));
-  if (action) el.append(h('button', { onclick: () => { onAction?.(); el.remove(); } }, action));
+  const bar = h('i.toast-bar', { style: { animationDuration: ms + 'ms' } });
+  const el = h(`div.toast${kind ? '.' + kind : ''}`, h('span', text), bar);
+  let gone = false;
+  const dismiss = () => {
+    if (gone) return;
+    gone = true;
+    const a = fx.play(el, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(40px) scale(.96)' }], { duration: 220, easing: fx.EASE_IN });
+    a ? (a.onfinish = () => el.remove()) : el.remove();
+  };
+  if (action) el.append(h('button', { onclick: () => { onAction?.(); dismiss(); } }, action));
   box.append(el);
-  setTimeout(() => el.remove(), ms);
+  // Keep at most 4 on screen.
+  while (box.children.length > 4) box.firstElementChild.remove();
+  fx.play(el, [{ opacity: 0, transform: 'translateY(16px) scale(.9)' }, { opacity: 1, transform: 'none' }], fx.SPRING_BOUNCY);
+  if (fx.reduced()) setTimeout(dismiss, ms);
+  else bar.addEventListener('animationend', dismiss);
 }
 
 // ---------- Floating menu / popover ----------
@@ -121,6 +135,12 @@ function place(el, anchor) {
   if (y < 8) y = 8;
   el.style.left = x + 'px';
   el.style.top = y + 'px';
+  // Grow out of the anchor.
+  el.style.transformOrigin = `${Math.min(w, Math.max(0, r.left - x + 12))}px ${y < r.top ? hgt : 0}px`;
+  fx.play(el, [{ opacity: 0, transform: `translateY(${y < r.top ? 6 : -6}px) scale(.94)` }, { opacity: 1, transform: 'none' }], { duration: 260, easing: fx.EASE_OUT });
+  [...el.children].forEach((c, i) => {
+    if (el.id === 'menu' && i < 10) fx.play(c, [{ opacity: 0, transform: 'translateX(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, delay: 20 + i * 18, easing: fx.EASE_OUT, fill: 'backwards' });
+  });
 }
 
 function openFloating(el, anchor, onClose) {

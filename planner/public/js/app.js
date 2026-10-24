@@ -3,9 +3,10 @@ import { store, findCard, lists, listByTag } from './store.js';
 import { calendar } from './feeds.js';
 import { parseQuickAdd } from './parse.js';
 import { h, fmtDue, fmtEst, toast } from './ui.js';
-import { initBoard, render, addList, addNote, fit, zoomBy, resetZoom, setFilter, revealFirstMatch, reveal, getLastListId, isTyping, viewCenter } from './board.js';
-import { renderSide, showTab } from './sidebar.js';
+import { initBoard, render, addList, addNote, fit, zoomBy, resetZoom, setFilter, revealFirstMatch, reveal, isVisible, getLastListId, isTyping, viewCenter } from './board.js';
+import { renderSide, showTab, moveInk } from './sidebar.js';
 import { addParsed, notify } from './actions.js';
+import * as fx from './motion.js';
 
 const SIDE_KEY = 'planner.side';
 const SYNC_EVERY = 15 * 60000;
@@ -49,9 +50,31 @@ document.getElementById('add-note').addEventListener('click', () => addNote());
 document.getElementById('zoom-in').addEventListener('click', () => zoomBy(1.2));
 document.getElementById('zoom-out').addEventListener('click', () => zoomBy(1 / 1.2));
 document.getElementById('zoom-level').addEventListener('click', resetZoom);
-document.getElementById('zoom-fit').addEventListener('click', fit);
-document.getElementById('theme-btn').addEventListener('click', () =>
-  store.update((s) => (s.settings.theme = s.settings.theme === 'light' ? 'dark' : 'light'), { undoable: false }));
+document.getElementById('zoom-fit').addEventListener('click', () => fit());
+document.getElementById('theme-btn').addEventListener('click', (e) => toggleTheme(e.currentTarget));
+addEventListener('resize', moveInk);
+document.fonts?.ready.then(moveInk);
+
+/** Light/dark with a circular reveal spreading from the button (View Transitions). */
+function toggleTheme(btn) {
+  const flip = () => {
+    store.update((s) => (s.settings.theme = s.settings.theme === 'light' ? 'dark' : 'light'), { undoable: false, quiet: true });
+    applyTheme();
+  };
+  if (!document.startViewTransition || fx.reduced()) return flip();
+  const r = btn.getBoundingClientRect();
+  const x = r.left + r.width / 2;
+  const y = r.top + r.height / 2;
+  const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  const t = document.startViewTransition(flip);
+  t.ready.then(() => {
+    document.documentElement.animate(
+      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+      { duration: 700, easing: 'cubic-bezier(.65, 0, .35, 1)', pseudoElement: '::view-transition-new(root)' },
+    );
+  });
+  fx.play(btn, [{ transform: 'rotate(0) scale(1)' }, { transform: 'rotate(-200deg) scale(.7)' }, { transform: 'rotate(-360deg) scale(1)' }], { duration: 700, easing: fx.EASE_OUT });
+}
 
 function applyTheme() {
   document.documentElement.dataset.theme = store.state.settings.theme === 'light' ? 'light' : 'dark';
@@ -85,9 +108,22 @@ const preview = document.getElementById('quick-preview');
 
 function openQuick() {
   qi.value = '';
+  prevChips = new Set();
   renderPreview();
   dlg.showModal();
   qi.focus();
+  fx.play(dlg, [{ opacity: 0, transform: 'translateY(-14px) scale(.96)', filter: 'blur(4px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], fx.SPRING);
+}
+
+// Chips that weren't in the preview a keystroke ago pop in.
+let prevChips = new Set();
+function popNewChips() {
+  const now = new Set();
+  [...preview.children].forEach((c) => {
+    now.add(c.textContent);
+    if (!prevChips.has(c.textContent)) fx.popIn(c, { from: 0.5 });
+  });
+  prevChips = now;
 }
 
 function targetFor(p) {
@@ -111,18 +147,29 @@ function renderPreview() {
   if (p.priority) chips.push(h(`span.chip.p${p.priority}`, '!'.repeat(p.priority)));
   if (p.repeat) chips.push(h('span.chip', `↻ ${p.repeat}`));
   preview.replaceChildren(...chips);
+  popNewChips();
 }
 
 qi.addEventListener('input', renderPreview);
 document.getElementById('quick-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const p = parseQuickAdd(qi.value);
+  const from = qi.getBoundingClientRect();
   qi.value = '';
   dlg.close();
   if (!p.text) return;
-  const listId = addParsed(p, getLastListId());
+  const { listId, itemId } = addParsed(p, getLastListId());
   const l = findCard(store.state, listId);
   toast(`Added to ${l.title}`, { action: 'Show', onAction: () => reveal(listId) });
+  // The task flies from the input to its place in the list (gliding there first if it's off screen).
+  const launch = () => {
+    const target = document.querySelector(`.card [data-item="${itemId}"]`);
+    if (target) fx.flyChip(p.text, { left: from.left + 18, top: from.top + 14 }, target, l.color);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (isVisible(listId)) launch();
+    else reveal(listId, { pulse: false }).then(launch);
+  }));
 });
 // Chrome can leave focus on the input of a closed <dialog>, which would swallow shortcuts.
 // The close event is async: skip it if quick add was already reopened.

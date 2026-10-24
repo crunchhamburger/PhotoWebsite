@@ -3,10 +3,12 @@ import { store, uid, findCard, findItem, COLORS } from './store.js';
 import { parseQuickAdd } from './parse.js';
 import { h, svg, ICONS, fmtDue, fmtEst, fmtTime, menu, toast } from './ui.js';
 import { toggleItem, openDetails, moveItem, startFocus, scheduleNext, addParsed } from './actions.js';
+import * as fx from './motion.js';
 
 const board = document.getElementById('board');
 const world = document.getElementById('world');
 const linksSvg = document.getElementById('links');
+const glow = document.getElementById('board-glow');
 const GRID = 10;
 const MIN_Z = 0.25;
 const MAX_Z = 2;
@@ -26,9 +28,22 @@ export const getLastListId = () => lastListId;
 function applyView() {
   world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
   const g = 22 * view.zoom;
-  board.style.backgroundSize = `${g}px ${g}px`;
-  board.style.backgroundPosition = `${view.x}px ${view.y}px`;
+  board.style.backgroundSize = glow.style.backgroundSize = `${g}px ${g}px`;
+  board.style.backgroundPosition = glow.style.backgroundPosition = `${view.x}px ${view.y}px`;
   document.getElementById('zoom-level').textContent = `${Math.round(view.zoom * 100)}%`;
+}
+
+// Glides the camera to a target view. Any wheel/drag cancels it.
+let cancelGlide = () => {};
+function glideTo(target, duration = 650) {
+  cancelGlide();
+  const from = { ...view };
+  // Interpolate the zoom in log space and keep the screen-space motion of the target consistent.
+  cancelGlide = fx.tween(duration, (t) => {
+    const z = from.zoom * Math.pow(target.zoom / from.zoom, t);
+    view = { zoom: z, x: from.x + (target.x - from.x) * t, y: from.y + (target.y - from.y) * t };
+    applyView();
+  }, { onDone: saveView });
 }
 
 let viewSaveTimer = null;
@@ -49,16 +64,20 @@ function zoomAt(factor, cx, cy) {
   saveView();
 }
 
+/** Animated zoom around the center of the board. */
 export function zoomBy(f) {
   const r = board.getBoundingClientRect();
-  zoomAt(f, r.left + r.width / 2, r.top + r.height / 2);
+  const z = Math.min(MAX_Z, Math.max(MIN_Z, view.zoom * f));
+  const px = r.width / 2;
+  const py = r.height / 2;
+  glideTo({ zoom: z, x: px - ((px - view.x) * z) / view.zoom, y: py - ((py - view.y) * z) / view.zoom }, 420);
 }
 
 export function resetZoom() {
   zoomBy(1 / view.zoom);
 }
 
-export function fit() {
+export function fit(instant = false) {
   const cs = store.state.cards;
   if (!cs.length) return;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -72,21 +91,41 @@ export function fit() {
   const r = board.getBoundingClientRect();
   const pad = 48;
   const z = Math.min(1.1, Math.max(MIN_Z, Math.min((r.width - pad * 2) / (x1 - x0), (r.height - pad * 2) / (y1 - y0))));
-  view = { zoom: z, x: (r.width - (x1 - x0) * z) / 2 - x0 * z, y: (r.height - (y1 - y0) * z) / 2 - y0 * z };
-  applyView();
-  saveView();
+  const target = { zoom: z, x: (r.width - (x1 - x0) * z) / 2 - x0 * z, y: (r.height - (y1 - y0) * z) / 2 - y0 * z };
+  if (instant) {
+    view = target;
+    applyView();
+    saveView();
+  } else glideTo(target, 800);
 }
 
-/** Pans so a card is centered (used by search). */
-export function reveal(cardId) {
+/** Glides so a card is centered (used by search and quick add). Resolves when it arrives. */
+export function reveal(cardId, { pulse = true } = {}) {
   const c = findCard(store.state, cardId);
   const el = cardEls.get(cardId);
-  if (!c || !el) return;
+  if (!c || !el) return Promise.resolve();
   const r = board.getBoundingClientRect();
-  view.x = r.width / 2 - (c.x + el.offsetWidth / 2) * view.zoom;
-  view.y = r.height / 2 - (c.y + Math.min(el.offsetHeight, 300) / 2) * view.zoom;
-  applyView();
-  saveView();
+  const target = { zoom: view.zoom, x: r.width / 2 - (c.x + el.offsetWidth / 2) * view.zoom, y: r.height / 2 - (c.y + Math.min(el.offsetHeight, 300) / 2) * view.zoom };
+  const far = Math.hypot(target.x - view.x, target.y - view.y);
+  return new Promise((resolve) => {
+    const done = () => {
+      if (pulse) cardEls.get(cardId)?.classList.add('pulse');
+      setTimeout(() => cardEls.get(cardId)?.classList.remove('pulse'), 1200);
+      resolve();
+    };
+    if (far < 4) return done();
+    glideTo(target, Math.min(900, 380 + far * 0.4));
+    setTimeout(done, fx.reduced() ? 0 : Math.min(900, 380 + far * 0.4));
+  });
+}
+
+/** True when most of a card is on screen. */
+export function isVisible(cardId) {
+  const el = cardEls.get(cardId);
+  if (!el) return false;
+  const a = el.getBoundingClientRect();
+  const b = board.getBoundingClientRect();
+  return a.left >= b.left - 20 && a.right <= b.right + 20 && a.top >= b.top - 20 && a.top < b.bottom - 80;
 }
 
 /** Screen point -> world point. */
@@ -123,12 +162,39 @@ const snap = (v) => Math.round(v / GRID) * GRID;
 
 // ---------- Rendering ----------
 
+let rendered = false;
+const progress = new Map(); // list id -> last completion ratio
+const knownLinks = new Set();
+
 export function render() {
   const s = store.state;
   // Keep focus/caret in an input across re-renders (typing in "Add item", for instance).
   const ae = document.activeElement;
   const keep = ae && world.contains(ae) && ae.dataset.keep ? { key: ae.dataset.keep, value: ae.value, start: ae.selectionStart } : null;
 
+  const animate = rendered && !fx.reduced();
+  const oldItems = animate ? fx.snapshot(world, '.item[data-item]', 'data-item') : null;
+  const oldCards = animate ? fx.snapshot(world, '.card[data-id]', 'data-id') : null;
+
+  paint(s);
+
+  if (keep) {
+    const el = world.querySelector(`[data-keep="${keep.key}"]`);
+    if (el) {
+      el.value = keep.value;
+      el.focus();
+      try { el.setSelectionRange(keep.start, keep.start); } catch {}
+    }
+  }
+
+  if (!rendered) entrance();
+  else if (animate) animateChanges(oldItems, oldCards);
+  animateProgress();
+  playQueued();
+  rendered = true;
+}
+
+function paint(s) {
   const seen = new Set();
   for (const c of s.cards) {
     seen.add(c.id);
@@ -143,15 +209,154 @@ export function render() {
   for (const c of s.cards) world.append(cardEls.get(c.id));
   drawLinks();
   applyFilter();
+}
 
-  if (keep) {
-    const el = world.querySelector(`[data-keep="${keep.key}"]`);
-    if (el) {
-      el.value = keep.value;
-      el.focus();
-      try { el.setSelectionRange(keep.start, keep.start); } catch {}
+// ---------- Animations ----------
+
+/** First paint: cards rise in one after another, their items trail behind. */
+function entrance() {
+  if (fx.reduced()) return;
+  const cards = [...cardEls.values()].sort((a, b) => parseFloat(a.style.left) - parseFloat(b.style.left) || parseFloat(a.style.top) - parseFloat(b.style.top));
+  cards.forEach((el, i) => {
+    const delay = 80 + i * 70;
+    fx.play(el, [{ opacity: 0, transform: 'translateY(26px) scale(.94)', filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { ...fx.SPRING_SOFT, delay, fill: 'backwards' });
+    el.querySelectorAll('.item').forEach((it, j) =>
+      fx.play(it, [{ opacity: 0, transform: 'translateX(-10px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: delay + 160 + j * 45, easing: fx.EASE_OUT, fill: 'backwards' }));
+    const bar = el.querySelector('.card-progress span');
+    if (bar) fx.play(bar, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 900, delay: delay + 200, easing: fx.EASE_OUT, fill: 'backwards' });
+  });
+  linksSvg.querySelectorAll('path.link').forEach((p) => drawOn(p, 600));
+  fx.play(board, [{ backgroundColor: 'var(--bg)', opacity: 0.6 }, { opacity: 1 }], { duration: 700 });
+}
+
+/**
+ * Every change re-renders the board, so animations are FLIP-style: compare where keyed elements
+ * were with where they are now, then play the difference.
+ */
+function animateChanges(oldItems, oldCards) {
+  const z = view.zoom;
+  const newCards = new Map([...world.querySelectorAll('.card[data-id]')].map((el) => [el.dataset.id, el]));
+  const newItems = new Map([...world.querySelectorAll('.item[data-item]')].map((el) => [el.dataset.item, el]));
+
+  // 1. Space for removed items collapses; new items grow in. Done first so they shape the layout
+  //    the remaining items are measured against.
+  let enterIndex = 0;
+  for (const [id, info] of oldItems) {
+    if (newItems.has(id)) continue;
+    const body = newCards.get(info.group)?.querySelector('.card-body');
+    if (body) fx.collapseSpace(body, info.next ? body.querySelector(`[data-item="${info.next}"]`) : body.querySelector('.drop-line'), info.rect.height / z);
+    fx.exit(info, { scale: z, to: 'translateX(24px)' });
+  }
+  for (const [id, el] of newItems) {
+    if (oldItems.has(id)) continue;
+    fx.growIn(el, { delay: enterIndex++ * 50 });
+  }
+  // Items that moved to another list leave a gap in the old one: close it smoothly.
+  for (const [id, info] of oldItems) {
+    const el = newItems.get(id);
+    if (!el || el.closest('.card')?.dataset.id === info.group) continue;
+    const body = newCards.get(info.group)?.querySelector('.card-body');
+    if (body) fx.collapseSpace(body, info.next ? body.querySelector(`[data-item="${info.next}"]`) : null, info.rect.height / z);
+  }
+
+  // 2. Measure everything, then animate (so early animations don't skew later measurements).
+  const cardMoves = [];
+  for (const [id, el] of newCards) {
+    const old = oldCards.get(id);
+    if (!old) continue;
+    const r = el.getBoundingClientRect();
+    cardMoves.push([el, old.rect.left - r.left, old.rect.top - r.top]);
+  }
+  const itemMoves = [];
+  const flights = [];
+  for (const [id, el] of newItems) {
+    const old = oldItems.get(id);
+    if (!old) continue;
+    const card = el.closest('.card');
+    if (card.dataset.id !== old.group) {
+      flights.push([old, el]);
+      continue;
+    }
+    const r = el.getBoundingClientRect();
+    const cr = card.getBoundingClientRect();
+    // Relative to the card, so a card moving doesn't double-move its items.
+    itemMoves.push([el, (old.rect.left - old.groupRect.left) - (r.left - cr.left), (old.rect.top - old.groupRect.top) - (r.top - cr.top)]);
+  }
+
+  for (const [el, dx, dy] of cardMoves) fx.flipFrom(el, dx, dy, { scale: z, timing: fx.SPRING_SOFT });
+  for (const [el, dx, dy] of itemMoves) fx.flipFrom(el, dx, dy, { scale: z, timing: fx.SPRING });
+  for (const [old, el] of flights) fx.fly(old, el, { scale: z });
+
+  for (const [id, el] of newCards) {
+    if (oldCards.has(id)) continue;
+    fx.popIn(el, { from: 0.8 });
+    const r = el.getBoundingClientRect();
+    fx.ripple(r.left + r.width / 2, r.top + 30, el.style.getPropertyValue('--c'), 260);
+  }
+  for (const [id, info] of oldCards) {
+    if (newCards.has(id)) continue;
+    fx.exit(info, { scale: z, to: 'translateY(30px) rotate(-6deg)', duration: 420 });
+  }
+}
+
+function animateProgress() {
+  for (const c of store.state.cards) {
+    if (c.kind !== 'list') continue;
+    const total = c.items.length;
+    const ratio = total ? c.items.filter((i) => i.done).length / total : 0;
+    const prev = progress.get(c.id);
+    progress.set(c.id, ratio);
+    if (prev === undefined || prev === ratio || !rendered) continue;
+    const el = cardEls.get(c.id);
+    const bar = el?.querySelector('.card-progress span');
+    if (!bar) continue;
+    bar.style.width = `${prev * 100}%`;
+    bar.getBoundingClientRect();
+    bar.style.width = `${ratio * 100}%`;
+    if (ratio > prev) bar.classList.add('shine');
+    if (ratio === 1 && prev < 1 && total > 1) {
+      fx.celebrate(el.getBoundingClientRect(), c.color);
+      el.classList.add('complete');
+      setTimeout(() => el.classList.remove('complete'), 1600);
     }
   }
+}
+
+/** Effects queued by actions (checking an item, settling a dragged card). */
+function playQueued() {
+  for (const key of fx.pendingKeys()) {
+    const [kind, id] = key.split(':');
+    if (kind === 'item') {
+      const el = world.querySelector(`[data-item="${id}"]`);
+      if (!el) continue;
+      const e = fx.take(key);
+      if (e.type === 'check') {
+        el.classList.add('just-done');
+        const cb = el.querySelector('.check').getBoundingClientRect();
+        const color = el.closest('.card').style.getPropertyValue('--c');
+        if (!e.burstDone) {
+          fx.confetti(cb.left + cb.width / 2, cb.top + cb.height / 2, { count: 16, power: 4.5, colors: [color, color, '#ffffff'], size: 4, gravity: 0.16 });
+          fx.ripple(cb.left + cb.width / 2, cb.top + cb.height / 2, color, 46);
+        }
+      } else if (e.type === 'uncheck') el.classList.add('just-undone');
+      else if (e.type === 'land') fx.flash(el, el.closest('.card').style.getPropertyValue('--c'));
+    } else if (kind === 'card') {
+      const el = cardEls.get(id);
+      if (!el) continue;
+      const e = fx.take(key);
+      if (e.type === 'settle') {
+        fx.play(el, [{ rotate: `${e.rot}deg`, scale: '1.035' }, { rotate: '0deg', scale: '1' }], fx.SPRING_BOUNCY);
+        const r = el.getBoundingClientRect();
+        fx.ripple(r.left + r.width / 2, r.top + r.height / 2, el.style.getPropertyValue('--c'), Math.max(r.width, r.height) * 1.3);
+      }
+    }
+  }
+}
+
+function drawOn(path, delay = 0) {
+  const len = path.getTotalLength?.() || 0;
+  if (!len) return;
+  fx.play(path, [{ strokeDasharray: `${len}`, strokeDashoffset: `${len}` }, { strokeDasharray: `${len}`, strokeDashoffset: '0' }], { duration: 700, delay, easing: fx.EASE_OUT, fill: 'backwards' });
 }
 
 function cardShell(c, extraClass, children) {
@@ -166,7 +371,7 @@ function cardShell(c, extraClass, children) {
 function renderList(c) {
   const total = c.items.length;
   const done = c.items.filter((i) => i.done).length;
-  const body = h('div.card-body', { dataset: { list: c.id }, style: c.h ? {} : { maxHeight: '560px' } },
+  const body = h('div.card-body', { dataset: { list: c.id, flipGroup: c.id }, style: c.h ? {} : { maxHeight: '560px' } },
     c.items.length ? c.items.map((it) => renderItem(it, c)) : h('div.empty-hint', c.source === 'canvas' ? 'Add your Canvas calendar feed in Settings to fill this list automatically.' : 'Nothing here yet.'),
   );
   return cardShell(c, c.collapsed ? '.collapsed' : '', [
@@ -211,7 +416,7 @@ function renderItem(it, list) {
   if (it.url) chips.push(h('a.chip', { href: it.url, target: '_blank', rel: 'noopener noreferrer', title: it.url, onpointerdown: (e) => e.stopPropagation() }, svg(ICONS.link), 'Open'));
 
   const row = h(`div.item${it.done ? '.done' : ''}`, { draggable: true, dataset: { item: it.id } },
-    h('input.check', { type: 'checkbox', checked: it.done, 'aria-label': 'Done', onchange: () => toggleItem(it.id) }),
+    h('input.check', { type: 'checkbox', checked: it.done, 'aria-label': 'Done', onchange: (e) => toggleItem(it.id, e.currentTarget) }),
     h('div.item-main',
       h('span.item-text', { onclick: (e) => editItemText(e.currentTarget, it.id) }, it.text),
       chips.length ? h('div.chips', chips) : null,
@@ -405,6 +610,10 @@ function drawLinks() {
     }));
     g.querySelector('.link-hit').appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'title')).textContent = 'Click to remove';
     linksSvg.append(g);
+    if (!knownLinks.has(l.id)) {
+      knownLinks.add(l.id);
+      if (rendered) drawOn(g.querySelector('path.link'));
+    }
   }
 }
 
@@ -447,11 +656,14 @@ function startDragCard(e, id, mode) {
   const sy = e.clientY;
   const ox = c.x, oy = c.y, ow = el.offsetWidth, oh = el.offsetHeight;
   let moved = false;
-  el.setPointerCapture(e.pointerId);
-  // Bring to front
+  let rot = 0;
+  let lastX = e.clientX;
+  // Bring to front first: moving the node after setPointerCapture would release the capture.
   if (mode === 'move' && store.state.cards[store.state.cards.length - 1].id !== id) {
     world.append(el);
   }
+  // Listen on window so the drag always ends, even if the capture is lost.
+  try { el.setPointerCapture(e.pointerId); } catch {}
   const move = (ev) => {
     const dx = (ev.clientX - sx) / view.zoom;
     const dy = (ev.clientY - sy) / view.zoom;
@@ -461,6 +673,13 @@ function startDragCard(e, id, mode) {
       el.classList.add('dragging');
       el.style.left = (ev.altKey ? ox + dx : snap(ox + dx)) + 'px';
       el.style.top = (ev.altKey ? oy + dy : snap(oy + dy)) + 'px';
+      // Tilt with horizontal speed, like picking up a card by its top edge.
+      if (!fx.reduced()) {
+        const vx = ev.clientX - lastX;
+        lastX = ev.clientX;
+        rot += (Math.max(-7, Math.min(7, vx * 0.45)) - rot) * 0.22;
+        el.style.rotate = `${rot.toFixed(2)}deg`;
+      }
     } else {
       el.style.width = Math.max(220, snap(ow + dx)) + 'px';
       el.style.height = Math.max(c.kind === 'note' ? 100 : 120, snap(oh + dy)) + 'px';
@@ -468,11 +687,13 @@ function startDragCard(e, id, mode) {
     drawLinksLive(id, el);
   };
   const up = () => {
-    el.removeEventListener('pointermove', move);
-    el.removeEventListener('pointerup', up);
-    el.removeEventListener('pointercancel', up);
+    removeEventListener('pointermove', move);
+    removeEventListener('pointerup', up);
+    removeEventListener('pointercancel', up);
     el.classList.remove('dragging');
+    el.style.rotate = '';
     if (!moved) return;
+    if (mode === 'move') fx.queue(`card:${id}`, { type: 'settle', rot });
     store.update((s) => {
       const i = s.cards.findIndex((x) => x.id === id);
       const card = s.cards[i];
@@ -486,9 +707,9 @@ function startDragCard(e, id, mode) {
       }
     });
   };
-  el.addEventListener('pointermove', move);
-  el.addEventListener('pointerup', up);
-  el.addEventListener('pointercancel', up);
+  addEventListener('pointermove', move);
+  addEventListener('pointerup', up);
+  addEventListener('pointercancel', up);
 }
 
 function drawLinksLive(id, el) {
@@ -502,6 +723,7 @@ function drawLinksLive(id, el) {
 }
 
 function startPan(e) {
+  cancelGlide();
   const sx = e.clientX - view.x;
   const sy = e.clientY - view.y;
   board.classList.add('panning');
@@ -554,8 +776,23 @@ board.addEventListener('pointerdown', (e) => {
 
 board.addEventListener('dblclick', (e) => {
   if (!isBackground(e.target)) return;
+  fx.ripple(e.clientX, e.clientY, 'var(--accent)', 180);
   addList(toWorld(e.clientX, e.clientY));
 });
+
+// Spotlight: the dot grid lights up around the cursor.
+let glowFrame = 0;
+board.addEventListener('pointermove', (e) => {
+  if (glowFrame) return;
+  glowFrame = requestAnimationFrame(() => {
+    glowFrame = 0;
+    const r = board.getBoundingClientRect();
+    board.style.setProperty('--mx', `${e.clientX - r.left}px`);
+    board.style.setProperty('--my', `${e.clientY - r.top}px`);
+  });
+  board.classList.add('lit');
+});
+board.addEventListener('pointerleave', () => board.classList.remove('lit'));
 
 board.addEventListener('wheel', (e) => {
   // Let lists scroll their own items.
@@ -563,6 +800,7 @@ board.addEventListener('wheel', (e) => {
   if (body && !e.ctrlKey && !e.metaKey && body.scrollHeight > body.clientHeight) return;
   e.preventDefault();
   hideHint();
+  cancelGlide();
   if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.01)), e.clientX, e.clientY);
   else {
     view.x -= e.deltaX;
@@ -655,5 +893,5 @@ export function initBoard() {
   view = { ...store.state.view };
   applyView();
   render();
-  if (!store.state.view || (store.state.view.x === 0 && store.state.view.y === 0 && store.state.view.zoom === 1)) requestAnimationFrame(fit);
+  if (!store.state.view || (store.state.view.x === 0 && store.state.view.y === 0 && store.state.view.zoom === 1)) requestAnimationFrame(() => fit(true));
 }

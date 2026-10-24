@@ -1,0 +1,184 @@
+/* Motion for the planner. Springs come from motion.js (--spring, --spring-bouncy); every effect
+   here is switched off under prefers-reduced-motion (see styles.css). */
+:root { --spring: cubic-bezier(.34, 1.4, .64, 1); --spring-bouncy: cubic-bezier(.34, 1.8, .64, 1); }
+
+/* ---------- Side panel slides open/closed ---------- */
+.side { overflow: hidden; transition: width .55s var(--ease), border-color .3s; }
+.side > * { min-width: var(--side-w); }
+.tabs { position: relative; }
+.tab-ink {
+  position: absolute; bottom: -1px; height: 2px; border-radius: 2px; background: var(--accent);
+  box-shadow: 0 0 12px var(--accent); transition: left .45s var(--spring), width .45s var(--spring);
+}
+.tabs button { transition: color .2s; }
+.tabs button:hover { color: var(--fg); }
+
+/* ---------- Board spotlight: the dot grid lights up around the cursor ---------- */
+.board-glow {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s;
+  background-image: radial-gradient(color-mix(in srgb, var(--accent) 85%, transparent) 1.3px, transparent 1.5px);
+  -webkit-mask-image: radial-gradient(240px circle at var(--mx, -999px) var(--my, -999px), #000 0%, rgb(0 0 0 / .35) 45%, transparent 75%);
+  mask-image: radial-gradient(240px circle at var(--mx, -999px) var(--my, -999px), #000 0%, rgb(0 0 0 / .35) 45%, transparent 75%);
+}
+.board::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .6s;
+  background: radial-gradient(520px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%);
+}
+.board.lit .board-glow, .board.lit::before { opacity: 1; }
+.board.panning .board-glow { opacity: .5; }
+
+/* ---------- Cards ---------- */
+.card { transition: opacity .3s, box-shadow .35s, border-color .35s, scale .25s var(--spring); }
+.card:hover {
+  border-color: color-mix(in srgb, var(--c) 45%, var(--line));
+  box-shadow: var(--shadow), 0 0 0 1px color-mix(in srgb, var(--c) 14%, transparent), 0 22px 60px -22px color-mix(in srgb, var(--c) 55%, transparent);
+}
+.card.dragging {
+  scale: 1.035; opacity: .96; cursor: grabbing;
+  box-shadow: 0 30px 70px -10px rgb(0 0 0 / .55), 0 0 0 1px color-mix(in srgb, var(--c) 50%, transparent), 0 0 40px -6px color-mix(in srgb, var(--c) 45%, transparent);
+}
+.card.pulse { animation: card-pulse 1.1s var(--ease); }
+@keyframes card-pulse {
+  0% { box-shadow: var(--shadow), 0 0 0 0 color-mix(in srgb, var(--c) 70%, transparent); }
+  100% { box-shadow: var(--shadow), 0 0 0 22px transparent; }
+}
+.card.complete { animation: card-complete 1.5s var(--ease); }
+@keyframes card-complete {
+  0% { box-shadow: var(--shadow), 0 0 0 0 var(--c); }
+  30% { box-shadow: var(--shadow), 0 0 0 3px var(--c), 0 0 60px 6px color-mix(in srgb, var(--c) 60%, transparent); }
+  100% { box-shadow: var(--shadow), 0 0 0 0 transparent; }
+}
+.swatch { transition: transform .3s var(--spring-bouncy), box-shadow .3s; }
+.swatch:hover { transform: scale(1.35) rotate(45deg); box-shadow: 0 0 12px var(--c); }
+
+/* Progress grows with a light sweep */
+.card-progress span { position: relative; overflow: hidden; transform-origin: left; transition: width .9s var(--ease); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 60%, transparent); }
+.card-progress span.shine::after {
+  content: ''; position: absolute; inset: 0; width: 60%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / .85), transparent);
+  animation: shine 1s .25s var(--ease) both;
+}
+@keyframes shine { from { transform: translateX(-120%); } to { transform: translateX(260%); } }
+
+/* ---------- Items ---------- */
+.item { transition: background-color .2s; }
+.item-actions { transform: translateX(6px); transition: opacity .18s, transform .3s var(--spring); }
+.item:hover .item-actions, .item:focus-within .item-actions { transform: none; }
+.item-actions .icon-btn { transition: transform .25s var(--spring-bouncy), background-color .15s, color .15s; }
+.item-actions .icon-btn:hover { transform: scale(1.18); color: var(--c, var(--accent)); }
+.check { transition: transform .25s var(--spring-bouncy), background-color .2s, border-color .2s, box-shadow .2s; }
+.check:hover { transform: scale(1.12); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c, var(--accent)) 18%, transparent); }
+.check:active { transform: scale(.82); }
+
+/* Just completed: the box pops, the tick draws, the strike sweeps, the row glows */
+.item.just-done .check { animation: check-pop .55s var(--spring-bouncy); }
+@keyframes check-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.item.just-done .check::after { animation: tick .35s .08s var(--ease) both; }
+@keyframes tick { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.item.just-done .item-text { animation: strike .5s .12s var(--ease) both, fade-done .6s .15s both; }
+@keyframes strike { from { background-size: 0 1.5px; } to { background-size: 100% 1.5px; } }
+@keyframes fade-done { from { color: var(--fg); } }
+.item.just-done { animation: done-glow 1s var(--ease); }
+@keyframes done-glow { 0% { background: color-mix(in srgb, var(--c) 22%, transparent); } 100% { background: transparent; } }
+.item.just-undone .item-text { animation: unstrike .35s var(--ease); }
+@keyframes unstrike { from { background-size: 100% 1.5px; } to { background-size: 0 1.5px; } }
+
+/* Chips */
+.chip { transition: transform .25s var(--spring-bouncy), border-color .2s, color .2s; }
+.chip.overdue { animation: overdue 2.4s ease-in-out infinite; }
+@keyframes overdue { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent), 0 0 12px color-mix(in srgb, var(--danger) 30%, transparent); } }
+a.chip:hover { transform: translateY(-1px); }
+
+/* Connectors: marching dashes */
+.links path.link { stroke-dasharray: 7 6; animation: march 1.1s linear infinite; transition: stroke .2s; }
+@keyframes march { to { stroke-dashoffset: -26; } }
+.links path.link:hover { stroke-width: 2.5; }
+
+/* ---------- FX overlay ---------- */
+.fx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 80; }
+.fx-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 90; }
+.fx-ripple { position: fixed; border: 2px solid var(--accent); border-radius: 50%; pointer-events: none; }
+.fx-chip {
+  position: fixed; padding: 6px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 500; white-space: nowrap;
+  background: var(--c); color: #0b0b0c; box-shadow: 0 10px 30px -6px color-mix(in srgb, var(--c) 70%, transparent);
+  max-width: 280px; overflow: hidden; text-overflow: ellipsis; will-change: transform;
+}
+.fx-ghost { background: var(--bg-elev); border-radius: 8px; box-shadow: 0 10px 30px rgb(0 0 0 / .3); list-style: none; }
+.fx-ghost.flying { box-shadow: 0 24px 50px -10px rgb(0 0 0 / .5), 0 0 0 1px color-mix(in srgb, var(--c, var(--accent)) 50%, transparent); }
+.flip-spacer { pointer-events: none; }
+
+/* ---------- Buttons ---------- */
+.btn, .icon-btn { transition: background .15s, border-color .15s, color .15s, transform .25s var(--spring-bouncy), box-shadow .25s; }
+.btn:active, .icon-btn:active { transform: scale(.94); }
+.btn.primary { position: relative; overflow: hidden; }
+.btn.primary::after {
+  content: ''; position: absolute; inset: 0; transform: translateX(-120%);
+  background: linear-gradient(105deg, transparent 30%, rgb(255 255 255 / .55) 50%, transparent 70%);
+}
+.btn.primary:hover { box-shadow: 0 6px 24px -6px var(--accent); transform: translateY(-1px); }
+.btn.primary:hover::after { animation: shine .9s var(--ease); }
+.brand-mark { transition: transform .8s var(--spring); }
+.brand:hover .brand-mark { transform: rotate(270deg) scale(1.1); }
+.save-dot.ok { animation: saved .8s var(--ease); }
+@keyframes saved { 0% { box-shadow: 0 0 0 0 #5ee0b0; } 100% { box-shadow: 0 0 0 7px transparent; } }
+
+/* ---------- Quick add ---------- */
+dialog.quick[open]::backdrop { animation: backdrop-in .3s var(--ease); }
+@keyframes backdrop-in { from { background: rgb(0 0 0 / 0); backdrop-filter: blur(0); } }
+dialog.quick { box-shadow: 0 30px 80px rgb(0 0 0 / .5), 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent), 0 0 60px -20px var(--accent); }
+
+/* ---------- Side panel bits ---------- */
+.row { transition: background-color .2s; }
+.day { transition: transform .3s var(--spring-bouncy), box-shadow .25s, border-color .2s; }
+.day:hover { transform: scale(1.08); z-index: 1; box-shadow: 0 6px 18px -6px rgb(0 0 0 / .5); }
+.day.today::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; border: 1.5px solid var(--accent);
+  animation: today-ring 2.6s ease-out infinite; pointer-events: none;
+}
+@keyframes today-ring { 0% { opacity: .9; transform: scale(1); } 70%, 100% { opacity: 0; transform: scale(1.35); } }
+.day.drop { transform: scale(1.12); }
+.meter.over { animation: over-glow 2.2s ease-in-out infinite; }
+@keyframes over-glow { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent), 0 0 30px -6px color-mix(in srgb, var(--danger) 50%, transparent); } }
+.blk { transition: box-shadow .2s; }
+.blk:hover { box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--accent) 70%, transparent); }
+.drop-ghost { animation: ghost-breathe 1.2s ease-in-out infinite; }
+@keyframes ghost-breathe { 50% { background: color-mix(in srgb, var(--accent) 22%, transparent); } }
+.now-line::before { animation: now-pulse 2s ease-out infinite; }
+@keyframes now-pulse { 0% { box-shadow: 0 0 0 0 var(--danger); } 100% { box-shadow: 0 0 0 9px transparent; } }
+
+/* ---------- Toasts: countdown bar, paused on hover ---------- */
+.toast { position: relative; overflow: hidden; }
+.toast-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: currentColor; opacity: .35; transform-origin: left; animation: toast-bar linear forwards; }
+.toast:hover .toast-bar { animation-play-state: paused; }
+@keyframes toast-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* ---------- Focus timer ---------- */
+.timer { padding-left: 8px; box-shadow: var(--shadow), 0 0 40px -12px var(--accent); }
+.timer .ring { width: 34px; height: 34px; display: grid; place-items: center; }
+.timer .ring svg { width: 34px; height: 34px; transform: rotate(-90deg); overflow: visible; }
+.timer .ring circle { fill: none; stroke-width: 3.5; }
+.timer .ring-bg { stroke: var(--line); }
+.timer .ring-fg { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .5s linear; filter: drop-shadow(0 0 4px var(--accent)); }
+.timer.break .ring-fg { stroke: #5ee0b0; filter: drop-shadow(0 0 4px #5ee0b0); }
+.timer:not(.paused) .ring { animation: breathe 3s ease-in-out infinite; }
+.timer.paused .t { opacity: .5; }
+@keyframes breathe { 50% { transform: scale(1.08); } }
+
+/* ---------- Theme switch (View Transitions circle reveal) ---------- */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(root) { z-index: 2; }
+
+/* ---------- Menus ---------- */
+.menu button { transition: background-color .15s, padding-left .2s var(--ease); }
+.menu button:hover { padding-left: 14px; }
+.menu .swatches button { transition: transform .25s var(--spring-bouncy); }
+.menu .swatches button:hover { transform: scale(1.25); }
+.menu .swatches button:hover, .menu .swatches button:hover:active { padding-left: 0; }
+
+@media (max-width: 860px) {
+  .side { transition: transform .5s var(--ease); width: min(var(--side-w), 100vw); }
+  body.side-closed .side { width: min(var(--side-w), 100vw); transform: translateX(105%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-glow, .board::before, .toast-bar { display: none; }
+}

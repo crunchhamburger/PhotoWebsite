@@ -5,20 +5,43 @@ import { gcal } from './gcal.js';
 import { h, fill, svg, ICONS, fmtDue, fmtDay, fmtMonth, fmtHours, fmtTime, fmtEst, toast } from './ui.js';
 import { toggleItem, openDetails, scheduleNext, createBlock, updateBlock, deleteBlock } from './actions.js';
 import { dragItemId, reveal } from './board.js';
+import * as fx from './motion.js';
 
 const panes = { today: document.getElementById('pane-today'), calendar: document.getElementById('pane-calendar'), settings: document.getElementById('pane-settings') };
+const TABS = ['today', 'calendar', 'settings'];
 let tab = 'today';
 let month = startOfDay(new Date());
 month.setDate(1);
 let selected = startOfDay(new Date());
 const HOUR_PX = 44;
+let fresh = true; // next render of the pane is a fresh entrance (tab switch), not an update
+let monthDir = 0; // -1/1 when the month just changed, 2 for a fresh calendar
+let meterPrev = null;
 
 export function showTab(name) {
+  const dir = Math.sign(TABS.indexOf(name) - TABS.indexOf(tab));
+  const changed = name !== tab;
   tab = name;
   for (const b of document.querySelectorAll('.tabs [role=tab]')) b.setAttribute('aria-selected', String(b.dataset.tab === name));
   for (const [k, el] of Object.entries(panes)) el.hidden = k !== name;
   document.body.classList.remove('side-closed');
+  moveInk();
+  fresh = true;
+  if (name === 'calendar') monthDir = 2;
+  if (name === 'today') meterPrev = null;
   renderSide();
+  if (changed) fx.play(panes[name], [{ opacity: 0, transform: `translateX(${dir * 18}px)` }, { opacity: 1, transform: 'none' }], { duration: 380, easing: fx.EASE_OUT });
+}
+
+/** The sliding underline under the active tab. */
+export function moveInk() {
+  const nav = document.querySelector('.tabs');
+  const on = nav.querySelector('[aria-selected="true"]');
+  let ink = nav.querySelector('.tab-ink');
+  if (!ink) nav.append((ink = h('span.tab-ink')));
+  if (!on) return;
+  ink.style.left = on.offsetLeft + 'px';
+  ink.style.width = on.offsetWidth + 'px';
 }
 
 export function renderSide() {
@@ -27,6 +50,7 @@ export function renderSide() {
   const ae = document.activeElement;
   const keep = ae && pane.contains(ae) && ae.dataset.keep ? { key: ae.dataset.keep, value: ae.value } : null;
   const scroll = pane.scrollTop;
+  const before = fresh || daySwitch || monthDir || fx.reduced() ? null : fx.snapshot(pane, '[data-key]', 'data-key');
   if (tab === 'today') renderToday(pane);
   else if (tab === 'calendar') renderCalendar(pane);
   else renderSettings(pane);
@@ -35,6 +59,57 @@ export function renderSide() {
     const el = pane.querySelector(`[data-keep="${keep.key}"]`);
     if (el) { el.value = keep.value; el.focus(); }
   }
+  if (fresh) staggerIn(pane);
+  else if (before) morph(pane, before);
+  animateMeter(pane);
+  fresh = false;
+}
+
+/** Meter segments grow from their previous widths; the meter shakes when you tip into overcommitted. */
+function animateMeter(pane) {
+  const m = pane.querySelector('.meter[data-meter]');
+  if (!m) return;
+  const spans = [...m.querySelectorAll('.meter-bar span')];
+  const now = { widths: spans.map((s) => s.style.width), over: m.classList.contains('over') };
+  const prev = meterPrev ?? { widths: spans.map(() => '0%'), over: false };
+  spans.forEach((s, i) => {
+    if (prev.widths[i] !== now.widths[i]) fx.play(s, [{ width: prev.widths[i] }, { width: now.widths[i] }], { duration: 900, delay: meterPrev ? 0 : 250 + i * 90, easing: fx.EASE_OUT, fill: 'backwards' });
+  });
+  if (now.over && !prev.over) {
+    fx.play(m, [{ transform: 'none' }, { transform: 'translateX(-7px) rotate(-.6deg)' }, { transform: 'translateX(6px) rotate(.5deg)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(2px)' }, { transform: 'none' }], { duration: 520, delay: meterPrev ? 0 : 600, easing: 'ease-out' });
+  }
+  meterPrev = now;
+}
+
+/** Rows cascade in when a tab opens. */
+function staggerIn(pane) {
+  [...pane.querySelectorAll('[data-key], h3, .meter')].slice(0, 30).forEach((el, i) =>
+    fx.play(el, [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 60 + i * 28, easing: fx.EASE_OUT, fill: 'backwards' }));
+}
+
+/** On updates: rows that moved slide, new rows grow in, removed rows slide out to the right. */
+function morph(pane, before) {
+  const now = new Map([...pane.querySelectorAll('[data-key]')].map((el) => [el.dataset.key, el]));
+  let n = 0;
+  for (const [key, info] of before) {
+    if (now.has(key)) continue;
+    const next = info.next && now.get(info.next);
+    if (next) fx.collapseSpace(next.parentElement, next, info.rect.height);
+    fx.exit(info, { to: 'translateX(40px)' });
+  }
+  for (const [key, el] of now) {
+    if (before.has(key)) continue;
+    if (el.classList.contains('blk')) fx.popIn(el, { delay: n++ * 60, from: 0.7 });
+    else fx.growIn(el, { delay: n++ * 40 });
+  }
+  const moves = [];
+  for (const [key, el] of now) {
+    const old = before.get(key);
+    if (!old) continue;
+    const r = el.getBoundingClientRect();
+    moves.push([el, old.rect.left - r.left, old.rect.top - r.top]);
+  }
+  for (const [el, dx, dy] of moves) fx.flipFrom(el, dx, dy, { timing: fx.SPRING });
 }
 
 // ---------- Shared rows ----------
@@ -49,8 +124,8 @@ function taskRow({ item, list }, { showList = true } = {}) {
     blk ? h('span', { style: { color: 'var(--accent)' } }, ` · blocked ${fmtTime(new Date(blk.start))}`) : null,
     item.course ? ` · ${item.course}` : null,
   ];
-  return h(`div.row${item.done ? '.done' : ''}`, { draggable: true, ondragstart: (e) => { e.dataTransfer.setData('application/x-planner-item', item.id); setSideDrag(item.id); }, ondragend: () => setSideDrag(null) },
-    h('input.check', { type: 'checkbox', checked: item.done, style: { '--c': list.color }, 'aria-label': 'Done', onchange: () => toggleItem(item.id) }),
+  return h(`div.row${item.done ? '.done' : ''}`, { dataset: { key: item.id }, draggable: true, ondragstart: (e) => { e.dataTransfer.setData('application/x-planner-item', item.id); setSideDrag(item.id); }, ondragend: () => setSideDrag(null) },
+    h('input.check', { type: 'checkbox', checked: item.done, style: { '--c': list.color }, 'aria-label': 'Done', onchange: (e) => toggleItem(item.id, e.currentTarget) }),
     h('div', h('div.title', { style: { cursor: 'pointer' }, onclick: () => reveal(list.id) }, item.priority ? h('span', { style: { color: ['', '#7cc7ff', 'var(--warn)', 'var(--danger)'][item.priority] } }, '!'.repeat(item.priority) + ' ') : null, item.text), h('div.sub', meta)),
     h('div.row-actions',
       blk ? null : h('button.icon-btn', { title: 'Block time today', 'aria-label': 'Block time today', onclick: () => scheduleNext(item.id) }, svg(ICONS.cal)),
@@ -78,7 +153,7 @@ function meter(day) {
   const w = workload(day);
   const total = Math.max(w.room + w.events, w.events + w.blocks + w.tasks, 1);
   const pct = (v) => `${(v / total) * 100}%`;
-  return h(`div.meter${w.over ? '.over' : ''}`,
+  return h(`div.meter${w.over ? '.over' : ''}`, { dataset: { meter: '1' } },
     h('div.inline', { style: { justifyContent: 'space-between' } },
       h('strong', w.over ? 'Overcommitted' : w.busy === 0 ? 'Wide open' : w.level >= 3 ? 'Busy day' : 'Manageable'),
       h('span.small.muted', `${fmtHours(Math.max(0, w.free - w.tasks))} free focus time`),
@@ -127,7 +202,7 @@ function renderToday(pane) {
     section('Due today', dueToday, 'Nothing due today.'),
     blockedOnly.length ? section('Also blocked today', blockedOnly) : null,
     agenda.length ? h('h3', 'Schedule', h('span.count', agenda.length)) : null,
-    ...agenda.map((a) => h('div.row', { style: { gridTemplateColumns: '64px 1fr' } },
+    ...agenda.map((a) => h('div.row', { dataset: { key: `ag:${a.start.getTime()}:${a.title}` }, style: { gridTemplateColumns: '64px 1fr' } },
       h('span.small.muted', fmtTime(a.start)),
       h('div', h('div.title', h('span', { style: { display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', background: a.color, marginRight: '7px' } }), a.title), h('div.sub', `${fmtTime(a.start)}–${fmtTime(a.end)}${a.block ? ' · time block' : ''}`)),
     )),
@@ -175,7 +250,7 @@ function renderCalendar(pane) {
     const cls = ['day', d.getMonth() !== month.getMonth() && 'other', sameDay(d, today) && 'today', sameDay(d, selected) && 'sel', w.level && `l${w.level}`].filter(Boolean).join('.');
     const cell = h(`button.${cls}`, {
       title: `${fmtDay(d)}: ${fmtHours(w.events)} events, ${fmtHours(w.blocks)} blocked, ${w.due.length} due (${fmtHours(w.tasks)} est.)`,
-      onclick: () => { selected = d; renderSide(); },
+      onclick: () => { selected = d; daySwitch = true; renderSide(); },
       ondragover: (e) => { if (draggingId()) { e.preventDefault(); cell.classList.add('drop'); } },
       ondragleave: () => cell.classList.remove('drop'),
       ondrop: (e) => {
@@ -197,16 +272,35 @@ function renderCalendar(pane) {
       h('h2', fmtMonth(month)),
       h('div.inline', { style: { gap: '2px' } },
         syncButton(),
-        h('button.icon-btn', { 'aria-label': 'Previous month', onclick: () => { month = new Date(month.getFullYear(), month.getMonth() - 1, 1); renderSide(); } }, '‹'),
-        h('button.btn.small.ghost', { onclick: () => { month = startOfDay(new Date()); month.setDate(1); selected = startOfDay(new Date()); renderSide(); } }, 'Today'),
-        h('button.icon-btn', { 'aria-label': 'Next month', onclick: () => { month = new Date(month.getFullYear(), month.getMonth() + 1, 1); renderSide(); } }, '›'),
+        h('button.icon-btn', { 'aria-label': 'Previous month', onclick: () => { month = new Date(month.getFullYear(), month.getMonth() - 1, 1); monthDir = -1; renderSide(); } }, '‹'),
+        h('button.btn.small.ghost', { onclick: () => { month = startOfDay(new Date()); month.setDate(1); selected = startOfDay(new Date()); monthDir = 2; renderSide(); } }, 'Today'),
+        h('button.icon-btn', { 'aria-label': 'Next month', onclick: () => { month = new Date(month.getFullYear(), month.getMonth() + 1, 1); monthDir = 1; renderSide(); } }, '›'),
       ),
     ),
     h('div.month', ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d) => h('div.dow', d)), cells),
     h('div.heat-legend', 'Light', h('span'), h('span.l1'), h('span.l2'), h('span.l3'), h('span.l4'), 'Heavy'),
     dayView(selected),
   );
+
+  // Month change / fresh open: the heatmap washes in as a diagonal wave.
+  if (monthDir) {
+    const days = [...pane.querySelectorAll('.month .day')];
+    days.forEach((el, i) => {
+      const wave = (i % 7) + Math.floor(i / 7);
+      const dx = monthDir === 2 ? 0 : monthDir * 22;
+      fx.play(el, [{ opacity: 0, transform: `translate(${dx}px, ${monthDir === 2 ? 10 : 0}px) scale(.6)` }, { opacity: 1, transform: 'none' }], { ...fx.SPRING, delay: wave * 28, fill: 'backwards' });
+    });
+    if (monthDir !== 2) fx.play(pane.querySelector('.month-head h2'), [{ opacity: 0, transform: `translateX(${monthDir * 16}px)` }, { opacity: 1, transform: 'none' }], { duration: 380, easing: fx.EASE_OUT });
+    monthDir = 0;
+  }
+  if (daySwitch) {
+    daySwitch = false;
+    fx.play(pane.querySelector('.day.sel'), [{ transform: 'scale(.82)' }, { transform: 'none' }], fx.SPRING_BOUNCY);
+    fx.play(pane.querySelector('.day-view'), [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 360, easing: fx.EASE_OUT });
+  }
 }
+
+let daySwitch = false;
 
 function dayView(day) {
   const { workStart, workEnd } = store.state.settings;
@@ -237,7 +331,7 @@ function dayView(day) {
     const s = Date.parse(b.start);
     const en = Date.parse(b.end);
     const it = b.itemId ? findItem(store.state, b.itemId)?.item : null;
-    const el = h(`div.blk${it?.done ? '.done' : ''}`, { style: { top: top(s) + 'px', height: Math.max(18, top(en) - top(s) - 2) + 'px' }, title: 'Drag to move · drag the bottom edge to resize' },
+    const el = h(`div.blk${it?.done ? '.done' : ''}`, { dataset: { key: b.id }, style: { top: top(s) + 'px', height: Math.max(18, top(en) - top(s) - 2) + 'px' }, title: 'Drag to move · drag the bottom edge to resize' },
       b.title, h('small', `${fmtTime(new Date(s))}–${fmtTime(new Date(en))}${b.gcalId ? ' · on Google' : ''}`),
       h('button.x', { 'aria-label': 'Remove block', onclick: (e) => { e.stopPropagation(); deleteBlock(b.id); toast('Time block removed', { action: 'Undo', onAction: () => store.undoLast() }); } }, '×'),
       h('div.grow'),
@@ -291,7 +385,7 @@ function dayView(day) {
     toast(`Blocked ${fmtTime(new Date(s))} for “${it.text.slice(0, 30)}”`, { action: 'Undo', onAction: () => deleteBlock(b.id) });
   });
 
-  return h('div',
+  return h('div.day-view',
     h('h3', fmtDay(day), h('span.count', `${fmtHours(w.events + w.blocks)} scheduled · ${w.due.length} due`)),
     h('p.small.faint', { style: { margin: '-4px 0 10px' } }, 'Drag tasks here to block time. Drop them on a date above to change the due date.'),
     allDay.length ? h('div.allday', allDay.map((e) => h('div', { style: { '--c': e.color || '#ff9e7a' }, title: e.summary }, e.source === 'canvas' ? `📘 ${e.summary}` : e.summary))) : null,
@@ -360,7 +454,7 @@ function renderSettings(pane) {
   const set = (patch, opts) => store.update((st) => Object.assign(st.settings, patch), opts);
 
   const feeds = s.feeds.map((f) =>
-    h('div.feed',
+    h('div.feed', { dataset: { key: f.id } },
       h('button.swatch', { style: { '--c': f.color }, title: 'Change color', onclick: () => set({ feeds: s.feeds.map((x) => (x.id === f.id ? { ...x, color: COLORS[(COLORS.indexOf(x.color) + 1) % COLORS.length] } : x)) }) }),
       h('div',
         h('div.name', f.name, h('span.faint.small', ` · ${f.kind === 'canvas' ? 'Canvas' : f.kind === 'google' ? 'Google (read-only)' : 'iCal'}`)),
@@ -441,7 +535,7 @@ function renderSettings(pane) {
 
     h('h3', 'Archive', h('span.count', store.state.archive.length || '')),
     store.state.archive.length
-      ? h('div', store.state.archive.slice(0, 25).map((a) => h('div.archive-row', h('span', a.text, h('span.faint', ` · ${a.listTitle || ''}`)), h('button.btn.small.ghost', { onclick: () => restore(a.id) }, 'Restore'))),
+      ? h('div', store.state.archive.slice(0, 25).map((a) => h('div.archive-row', { dataset: { key: a.id } }, h('span', a.text, h('span.faint', ` · ${a.listTitle || ''}`)), h('button.btn.small.ghost', { onclick: () => restore(a.id) }, 'Restore'))),
           store.state.archive.length > 25 ? h('p.small.faint', `…and ${store.state.archive.length - 25} more`) : null)
       : h('p.small.faint', 'Completed tasks you archive (or finished repeating tasks) show up here.'),
 
