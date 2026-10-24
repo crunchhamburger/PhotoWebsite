@@ -228,7 +228,8 @@ export function buildPet(kind) {
 // in and invents colours (grey-blue bands, green smears) on the sides the photo didn't show.
 export const GLB_PETS = {
   nailong: { target: 2.15, yaw: 0, paint: { body: '#f7b52c', dark: 22 }, belly: { color: '#fff4e2', cy: 0.68, rx: 0.36, ry: 0.44 }, face: { mouthDrop: 0.1 } },
-  naiwa: { target: 2.2, yaw: 1.1, face: { mouthDrop: 0.07 } },
+  // 奶蛙 laughs like its meme: thin squeezed eyes and a huge toothy mouth.
+  naiwa: { target: 2.2, yaw: 1.1, face: { mouthDrop: 0.1, mouthSize: 1.9, mouthAspect: 1.55, mouthStyle: 'teeth', lidLine: 7, lidSize: 3.4 } },
   naidan: { target: 1.6, yaw: 0, paint: { body: '#f2cf38' }, face: { mouthDrop: 0.1, lidSize: 3.8, mouthSize: 1.4 } },
   laoshu: { target: 2.05, yaw: 0, face: { mouthDrop: 0.19, lidSize: 4.2, mouthSize: 1.5 } },
 };
@@ -430,7 +431,7 @@ function faceTexture(draw) {
   return t;
 }
 
-function lidTexture(skin, happy) {
+function lidTexture(skin, happy, lineWidth = 11) {
   return faceTexture((g) => {
     const grad = g.createRadialGradient(64, 64, 40, 64, 64, 62);
     grad.addColorStop(0, skin);
@@ -442,12 +443,71 @@ function lidTexture(skin, happy) {
     g.fillStyle = grad;
     g.fillRect(0, 0, 128, 128);
     g.strokeStyle = '#2a1a10';
-    g.lineWidth = 11;
+    g.lineWidth = lineWidth;
     g.lineCap = 'round';
     g.beginPath();
     if (happy) g.arc(64, 82, 30, Math.PI * 1.15, Math.PI * 1.85); // ∩ : squeezed shut, smiling
     else g.arc(64, 44, 30, Math.PI * 0.18, Math.PI * 0.82); // ‿ : closed
     g.stroke();
+  });
+}
+
+/** 奶蛙's laugh: a huge, wide-open dark mouth with rows of white upper and lower teeth. */
+function toothyMouthTexture() {
+  return faceTexture((g) => {
+    const mouth = new Path2D();
+    mouth.moveTo(4, 30);
+    mouth.quadraticCurveTo(64, 14, 124, 28); // upper lip, slightly arched
+    mouth.quadraticCurveTo(122, 118, 62, 122); // deep round jaw
+    mouth.quadraticCurveTo(10, 116, 4, 30);
+    mouth.closePath();
+    g.fillStyle = '#2e0a0a';
+    g.fill(mouth);
+    g.save();
+    g.clip(mouth);
+    // Throat shading and a hint of tongue at the back.
+    const throat = g.createRadialGradient(64, 80, 6, 64, 80, 58);
+    throat.addColorStop(0, '#5a1414');
+    throat.addColorStop(1, '#260808');
+    g.fillStyle = throat;
+    g.fill(mouth);
+    g.fillStyle = '#8c2a32';
+    g.beginPath();
+    g.ellipse(64, 118, 36, 18, 0, 0, Math.PI * 2);
+    g.fill();
+    // Upper teeth: a white band under the top lip, split into teeth.
+    g.lineCap = 'butt';
+    g.strokeStyle = '#fbf8f0';
+    g.lineWidth = 20;
+    g.beginPath();
+    g.moveTo(0, 30);
+    g.quadraticCurveTo(64, 14, 128, 28);
+    g.stroke();
+    // Lower teeth along the jaw.
+    g.lineWidth = 12;
+    g.beginPath();
+    g.moveTo(20, 96);
+    g.quadraticCurveTo(64, 128, 108, 96);
+    g.stroke();
+    // Gaps between the teeth.
+    g.strokeStyle = 'rgba(80,40,40,.55)';
+    g.lineWidth = 2;
+    for (let x = 18; x < 120; x += 13) {
+      g.beginPath();
+      g.moveTo(x, 18);
+      g.lineTo(x, 42);
+      g.stroke();
+    }
+    for (let x = 30; x < 104; x += 12) {
+      g.beginPath();
+      g.moveTo(x, 96);
+      g.lineTo(x, 122);
+      g.stroke();
+    }
+    g.restore();
+    g.lineWidth = 5;
+    g.strokeStyle = '#1e0606';
+    g.stroke(mouth);
   });
 }
 
@@ -490,18 +550,21 @@ function stick(meshes, x, y, w, hgt, material, h, lift = 0.006) {
   return m;
 }
 
-function buildFace(body, h, { mouthDrop = 0.1, lidSize = 2.7, mouthSize = 1 } = {}) {
+function buildFace(body, h, { mouthDrop = 0.1, lidSize = 2.7, mouthSize = 1, mouthAspect = 1.25, mouthStyle = 'open', lidLine = 11 } = {}) {
   body.updateMatrixWorld(true);
   const meshes = body.children.filter((o) => o.isMesh);
   const eyes = findEyes(meshes, h);
   if (!eyes) return null;
   const decal = (map) => new THREE.MeshStandardMaterial({ map, transparent: true, depthWrite: false, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -4 });
-  const happy = lidTexture(eyes.skin, true);
-  const closed = lidTexture(eyes.skin, false);
+  const happy = lidTexture(eyes.skin, true, lidLine);
+  const closed = lidTexture(eyes.skin, false, lidLine);
   const lidMat = decal(closed);
   const lids = [eyes.L, eyes.R].map((e) => stick(meshes, e.x, e.y, e.r * lidSize, e.r * lidSize, lidMat, h)).filter(Boolean);
   const r = (eyes.L.r + eyes.R.r) / 2;
-  const mouth = stick(meshes, (eyes.L.x + eyes.R.x) / 2, (eyes.L.y + eyes.R.y) / 2 - h * mouthDrop, r * 3 * mouthSize, r * 2.4 * mouthSize, decal(mouthTexture()), h, 0.02);
+  const mw = r * 2.4 * mouthSize * mouthAspect;
+  const mh = r * 2.4 * mouthSize;
+  const mouthMap = mouthStyle === 'teeth' ? toothyMouthTexture() : mouthTexture();
+  const mouth = stick(meshes, (eyes.L.x + eyes.R.x) / 2, (eyes.L.y + eyes.R.y) / 2 - h * mouthDrop, mw, mh, decal(mouthMap), h, 0.02);
   const parts = [...lids, mouth].filter(Boolean);
   for (const m of parts) body.add(m);
   return { lids, mouth, lidMat, happy, closed };

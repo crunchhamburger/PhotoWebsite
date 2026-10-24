@@ -676,7 +676,7 @@ const REACT = {
     start() {
       const lines = {
         nailong: ['哈哈哈哈哈!', '笑死我了', '嘿嘿嘿嘿'],
-        naiwa: ['呱哈哈哈', '噗……哈哈', '哈哈哈'],
+        naiwa: ['哈哈哈哈哈!', '笑死蛙了', '肚子笑痛了', '呱哈哈哈'],
         naidan: ['咕哈哈哈', '蛋都笑裂了', '哈哈哈'],
         laoshu: ['你的外卖我偷吃了😋', '哈哈哈哈哈', '嘿嘿嘿嘿'],
       };
@@ -687,6 +687,7 @@ const REACT = {
       setTimeout(() => sound('happy'), 1700);
     },
     pose(k, e, p) {
+      if (pet.kind === 'naiwa') return naiwaLaugh(k, e, p);
       const u = clamp(k * 6, 0, 1) * clamp((1 - k) * 5, 0, 1); // in and out
       const beat = Math.abs(Math.sin(e * 8.5)); // one "ha" per half-cycle
       const fold = clamp((k - 0.5) / 0.2, 0, 1) * clamp((0.9 - k) / 0.15, 0, 1); // doubles over
@@ -740,6 +741,30 @@ const REACT = {
     },
   },
 };
+
+/**
+ * 奶蛙's laugh, after its meme: doubled over and crouching, clutching its belly, head turned a
+ * little to you, eyes squeezed to thin arcs, a huge toothy mouth, rocking with every "ha".
+ */
+function naiwaLaugh(k, e, p) {
+  const u = clamp(k * 5, 0, 1) * clamp((1 - k) * 4, 0, 1);
+  const beat = Math.abs(Math.sin(e * 7.5));
+  p.faceCam = 1;
+  p.yawAdd += 0.3 * u; // a three-quarter turn, like the photo
+  p.eyes = 1 - 0.95 * u;
+  p.eyeStyle = 'happy';
+  p.mouth = u > 0.1;
+  p.mouthAmt = 0.75 + 0.25 * beat;
+  p.lean += (0.3 + 0.05 * beat) * u; // bent forward
+  p.sqY *= 1 - (0.07 + 0.03 * beat) * u; // knees bent, sinking with each laugh
+  p.lift += beat * 0.03 * u;
+  p.roll += Math.sin(e * 3.2) * 0.07 * u;
+  // Coded model: hands on the belly.
+  p.armLx -= 0.75 * u;
+  p.armRx -= 0.75 * u;
+  p.armLz += (0.55 + beat * 0.1) * u;
+  p.armRz -= (0.55 + beat * 0.1) * u;
+}
 
 function start(name) {
   const r = Object.create(REACT[name]);
