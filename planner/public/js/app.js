@@ -7,7 +7,7 @@ import { initBoard, render, addList, addNote, fit, zoomBy, resetZoom, setFilter,
 import { renderSide, showTab, moveInk } from './sidebar.js';
 import { addParsed, notify } from './actions.js';
 import * as fx from './motion.js';
-import { initPets, syncPets } from './pets.js';
+import { initPets, syncPet } from './pets.js';
 
 const SIDE_KEY = 'planner.side';
 const SYNC_EVERY = 15 * 60000;
@@ -19,10 +19,10 @@ initBoard();
 // Pets arrive after the cards have risen in.
 setTimeout(initPets, fx.reduced() ? 0 : 700);
 // Undo/import can change the pet settings: keep the board in step.
-let petsKey = '';
+let petsKey = JSON.stringify(store.state.settings.pet || {});
 store.subscribe((s) => {
-  const k = JSON.stringify(s.settings.pets || {});
-  if (petsKey && k !== petsKey) syncPets();
+  const k = JSON.stringify(s.settings.pet || {});
+  if (k !== petsKey) syncPet();
   petsKey = k;
 });
 

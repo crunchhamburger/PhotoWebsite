@@ -28,11 +28,30 @@ No dependencies: plain ES modules in `public/`, a small Node server in `server.m
   course, due date and link. Optional API token adds To Do items and syncs "done" back to Canvas.
 - **Google Calendar.** Paste a calendar's secret iCal address (read-only, no setup), or add an OAuth
   client ID to read all calendars and push time blocks to Google.
-- **Pets** (🐾 slider, top right): 奶龙-style dragon, delivery kangaroo, 奶蛋 egg, Pop cat, loaf cat,
-  "huh" cat, or upload your own picture. They roam and bounce around the board, follow the cursor
-  with their eyes, nap, and cheer when you finish tasks. Click for a reaction (laugh, hop-delivery,
-  POP, hearts, dizzy, spin, zoomies, tilt, crack…), drag to throw, give a treat to make them race.
-  All art is hand-drawn SVG in `public/js/pets.js`.
+- **Desk pet** (`‹ 奶龙 ›` switcher, top right): one 3D pet at a time: 奶龙, 奶蛙, 奶蛋 or 美团老鼠.
+  It strolls slowly, turns to walk where it's going, looks at your cursor, naps (more at night or
+  when you're idle), visits your lists to comment on them, likes being petted (hover), can be
+  picked up (drag), chases treats, and cheers when you finish tasks. Click for a reaction,
+  double-click for its signature move (laugh, side-eye, wobble, head shake…). Engine:
+  `public/js/pets.js` (three.js, vendored in `public/vendor/`).
+
+## Pet models
+
+`public/models/<kind>.glb` are generated from reference pictures with Tencent Hunyuan3D-2.1 run
+locally (the Apple-Silicon port in `~/hunyuan3d-mac-src`), shape + PBR texture at 6 views / 256 px.
+They are fan-made models of copyrighted characters, so they are git-ignored and stay on this Mac.
+`public/js/models3d.js` loads them (flipping Hunyuan's UVs, recomputing normals), fixes texture
+colours the generator invented (`GLB_PETS`), and bends the head in a vertex shader. Without the
+files, simple coded models are used instead. Preview all four at `/dev/models.html` (`?yaw=0`).
+
+To regenerate one (about 15–25 min on an M4):
+
+```sh
+cd ~/hunyuan3d-mac-src/hunyuan3d-2.1-mac-rocm-main
+PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0 venv/bin/python tests/e2e_visual.py --image <picture> \
+  --out /tmp/pet --tex-preset safe --tex-views 6 --tex-resolution 256
+cp outputs/<newest, not *_raw>.glb <planner>/public/models/<kind>.glb
+```
 - Focus timer (25/5) that logs time per task, due-date notifications, search (`/`), undo (`⌘Z`),
   light/dark, JSON export/import.
 

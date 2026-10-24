@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex">
+  <title>Pet models preview</title>
+  <style>
+    body { margin: 0; background: #e9e4dc; font: 14px system-ui; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 8px; }
+    canvas { width: 100%; height: 360px; display: block; background: #f3efe8; border-radius: 10px; }
+    p { margin: 4px 0 0; text-align: center; }
+  </style>
+  <script type="importmap">{ "imports": { "three": "../vendor/three.module.min.js" } }</script>
+</head>
+<body>
+  <!-- Dev-only: renders every pet (generated GLB when present, else the coded model).
+       ?yaw=0.5 fixes the turn angle, otherwise it swings slowly. -->
+  <div class="row" id="row"></div>
+  <script type="module">
+    import { THREE, buildPet, loadGLBPet, GLB_PETS, addLights, MODELS } from '../js/models3d.js';
+    const row = document.getElementById('row');
+    const yaw = Number(new URLSearchParams(location.search).get('yaw') ?? 'NaN');
+    for (const kind of Object.keys(MODELS)) {
+      const cell = document.createElement('div');
+      const canvas = document.createElement('canvas');
+      const label = Object.assign(document.createElement('p'), { textContent: kind });
+      cell.append(canvas, label);
+      row.append(cell);
+      const r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+      r.setPixelRatio(2);
+      r.setSize(canvas.clientWidth, canvas.clientHeight, false);
+      r.outputColorSpace = THREE.SRGBColorSpace;
+      r.toneMapping = THREE.ACESFilmicToneMapping;
+      r.toneMappingExposure = 1.05;
+      const scene = new THREE.Scene();
+      addLights(scene);
+      const pet = (await loadGLBPet(kind, { ...GLB_PETS[kind], target: 2.1 })) || buildPet(kind);
+      if (!pet.glb) pet.body.scale.setScalar(2.1 / pet.height);
+      label.textContent = `${kind} — ${pet.glb ? 'generated' : 'coded'}`;
+      scene.add(pet.root);
+      const cam = new THREE.PerspectiveCamera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 50);
+      cam.position.set(0, 1.7, 6.5);
+      cam.lookAt(0, 1.0, 0);
+      const tick = (t) => {
+        pet.root.rotation.y = Number.isNaN(yaw) ? Math.sin(t / 1600) * 0.9 : yaw;
+        r.render(scene, cam);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+  </script>
+</body>
+</html>
