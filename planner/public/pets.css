@@ -5,7 +5,29 @@
 
 .pet3d { position: absolute; left: 0; top: 0; width: 210px; height: 250px; pointer-events: none; will-change: transform; }
 .pet3d-canvas { width: 210px; height: 250px; display: block; }
+.pet3d { transition: opacity .3s, filter .3s; }
+/* You're working on a list it's standing in front of: fade so the list stays readable. */
+.pet3d.ghosted { opacity: .28; }
+/* A task is being dragged over it: it wants to eat it. */
+.pet3d.drop-target { filter: drop-shadow(0 0 14px var(--accent)) drop-shadow(0 0 4px var(--accent)); }
 .board.pet-hover, .board.pet-hover * { cursor: grab !important; }
+
+/* Fetch ball (a felt tennis ball) and its ground shadow */
+.ball {
+  position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%;
+  pointer-events: auto; cursor: grab; touch-action: none;
+  background:
+    radial-gradient(circle at 30% 28%, rgb(255 255 255 / .7) 0 12%, transparent 30%),
+    radial-gradient(circle at 50% 50%, #e3f25a 0 55%, #c4d63a 100%);
+  box-shadow: inset -3px -4px 6px rgb(0 0 0 / .18);
+}
+.ball::before {
+  content: ''; position: absolute; inset: 2px; border-radius: 50%;
+  border: 1.6px solid rgb(255 255 255 / .85); border-color: rgb(255 255 255 / .85) transparent rgb(255 255 255 / .85) transparent;
+  transform: rotate(35deg);
+}
+.ball.held { cursor: grabbing; }
+.ball-shadow { position: absolute; left: 0; top: 0; width: 20px; height: 8px; border-radius: 50%; background: rgb(0 0 0 / .3); filter: blur(2px); pointer-events: none; }
 .board.pet-grab, .board.pet-grab * { cursor: grabbing !important; }
 
 /* Bubbles, floaties, stars (positioned at the pet's head by pets.js) */
@@ -75,6 +97,20 @@
 }
 .pet-range::-webkit-slider-thumb:hover { transform: scale(1.3); }
 .pet-range::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg-elev); }
+
+/* Mood bar, size picker, menu header */
+.pet-mood { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 12.5px; margin-top: 2px; }
+.pet-mood-bar { height: 6px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.pet-mood-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff8fab, #ff4d6d); box-shadow: 0 0 8px #ff6b8b; transition: width .6s var(--ease); }
+.pet-sizes { display: flex; align-items: center; gap: 4px; padding: 4px 10px; }
+.field .pet-sizes { padding: 0; }
+.pet-sizes button {
+  min-width: 30px; height: 26px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); color: var(--fg-muted);
+  font-size: 12px; font-weight: 600; padding: 0 8px;
+}
+.pet-sizes button.on { border-color: var(--accent); color: var(--fg); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
+.pet-sizes .faint { margin-right: 6px; white-space: nowrap; }
+.pet-menu-head { padding: 6px 10px 4px; font-size: 13px; }
 
 @media (max-width: 860px) {
   .pet-current span { display: none; }

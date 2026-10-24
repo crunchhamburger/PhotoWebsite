@@ -29,11 +29,16 @@ No dependencies: plain ES modules in `public/`, a small Node server in `server.m
 - **Google Calendar.** Paste a calendar's secret iCal address (read-only, no setup), or add an OAuth
   client ID to read all calendars and push time blocks to Google.
 - **Desk pet** (`‹ 奶龙 ›` switcher, top right): one 3D pet at a time: 奶龙, 奶蛙, 奶蛋 or 美团老鼠.
-  It strolls slowly, turns to walk where it's going, looks at your cursor, naps (more at night or
-  when you're idle), visits your lists to comment on them, likes being petted (hover), can be
-  picked up (drag), chases treats, and cheers when you finish tasks. Click for a reaction,
-  double-click for its signature move (laugh, side-eye, wobble, head shake…). Engine:
-  `public/js/pets.js` (three.js, vendored in `public/vendor/`).
+  It strolls (smooth steering, pauses to look around), turns to walk where it's going, looks at
+  you, naps (more at night or when you're idle), keeps off your lists, and visits them to comment.
+  - Click: reaction · double-click: signature move · hover: pet it · drag: pick up (flick to toss)
+  - Right-click: menu (treat, fetch, follow, stay, nap, dance, size S/M/L, settings)
+  - Drop a task on it: it eats it (= marks it done) · `P`: come here · `Shift+P`: follow (Esc stops)
+  - Fetch: drag the ball and let go; it runs after it, brings it back and waits for more
+  - Sits with you during focus sessions and cheers when the break starts
+  - Mood (panel and menu) rises with petting, treats, fetch and finished tasks
+  - Panel: name it, stroll speed, size, quiet mode, comments, cheers, sounds; position is remembered
+  Engine: `public/js/pets.js` (three.js, vendored in `public/vendor/`).
 
 ## Pet models
 

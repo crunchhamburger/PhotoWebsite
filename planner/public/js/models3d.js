@@ -218,10 +218,9 @@ export function buildPet(kind) {
 }
 
 // ---------- Generated GLB pets ----------
-// A generated model (image-to-3D) is one solid mesh, so it has no head or limb nodes. To make it
-// move like the coded pets, it gets a vertex shader that bends its upper part: a "head" that turns
-// (twist), nods and tilts, weighted by height. Geometry is baked into model space (feet at y = 0,
-// centred, about `target` units tall) so the shader can work in those units.
+// A generated model (image-to-3D) is one solid mesh with no head or limb nodes, so it moves as a
+// rigid body: it turns, leans, hops and squashes. Geometry is baked into model space (feet at
+// y = 0, centred, about `target` units tall).
 
 // Generated models (planner/public/models/<kind>.glb) are used when present; the coded models
 // are the fallback. `yaw` turns a generated model so its face points at the camera. `paint`
@@ -321,11 +320,7 @@ function petFromGLTF(kind, gltf, target, yaw, belly) {
     .multiply(new THREE.Matrix4().makeScale(s, s, s))
     .multiply(new THREE.Matrix4().makeTranslation(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2));
 
-  const uniforms = {
-    uTwist: { value: 0 }, uNod: { value: 0 }, uTilt: { value: 0 },
-    uNeck: { value: target * 0.55 }, uTop: { value: target * 0.95 },
-    uBelly: { value: new THREE.Color(belly?.color ?? '#ffffff') },
-  };
+  const uniforms = { uBelly: { value: new THREE.Color(belly?.color ?? '#ffffff') } };
   const body = new THREE.Group();
   src.traverse((o) => {
     if (!o.isMesh) return;
@@ -343,7 +338,7 @@ function petFromGLTF(kind, gltf, target, yaw, belly) {
       // Soften the look a touch: generated PBR textures can come out very matte or metallic.
       if ('metalness' in c) c.metalness = Math.min(c.metalness ?? 0, 0.05);
       if ('roughness' in c) c.roughness = Math.min(Math.max(c.roughness ?? 0.5, 0.35), 0.7);
-      bendShader(c, uniforms, !!belly);
+      if (belly) bellyShader(c, uniforms);
       return c;
     });
     body.add(new THREE.Mesh(geo, Array.isArray(o.material) ? m : m[0]));
@@ -363,44 +358,20 @@ function petFromGLTF(kind, gltf, target, yaw, belly) {
 }
 
 /**
- * Injects the head bend (twist / nod / tilt above uNeck) into a standard material, and
- * optionally the belly patch (aBelly weights mixed towards uBelly).
+ * Adds the belly patch to a generated model's material: aBelly vertex weights mixed towards
+ * uBelly. The mesh itself is never deformed (bending it warped the faces printed on it).
  */
-function bendShader(material, uniforms, belly = false) {
+function bellyShader(material, uniforms) {
   material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
-    const fn = /* glsl */ `
-      uniform float uTwist; uniform float uNod; uniform float uTilt; uniform float uNeck; uniform float uTop;
-      vec3 petBend(vec3 p, float w) {
-        float a = uTwist * w;
-        p.xz = mat2(cos(a), sin(a), -sin(a), cos(a)) * p.xz;
-        float b = uNod * w;
-        vec2 yz = vec2(p.y - uNeck, p.z);
-        yz = mat2(cos(b), sin(b), -sin(b), cos(b)) * yz;
-        p.y = yz.x + uNeck; p.z = yz.y;
-        float c = uTilt * w;
-        vec2 xy = vec2(p.x, p.y - uNeck);
-        xy = mat2(cos(c), sin(c), -sin(c), cos(c)) * xy;
-        p.x = xy.x; p.y = xy.y + uNeck;
-        return p;
-      }`;
+    shader.uniforms.uBelly = uniforms.uBelly;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\n${fn}`)
-      .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
-        float petW = smoothstep(uNeck, uTop, position.y);
-        objectNormal = normalize(petBend(objectNormal + vec3(0.0, uNeck, 0.0), petW) - vec3(0.0, uNeck, 0.0));`)
-      .replace('#include <begin_vertex>', `#include <begin_vertex>
-        transformed = petBend(transformed, petW);`);
-    if (belly) {
-      shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float aBelly;\nvarying float vBelly;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBelly = aBelly;');
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nuniform vec3 uBelly;\nvarying float vBelly;')
-        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, uBelly, vBelly);');
-    }
+      .replace('#include <common>', '#include <common>\nattribute float aBelly;\nvarying float vBelly;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBelly = aBelly;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 uBelly;\nvarying float vBelly;')
+      .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, uBelly, vBelly);');
   };
-  material.customProgramCacheKey = () => (belly ? 'petBend+belly' : 'petBend');
+  material.customProgramCacheKey = () => 'petBelly';
 }
 
 /** Studio lighting that flatters the soft vinyl/clay look. */
