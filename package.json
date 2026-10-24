@@ -13,7 +13,9 @@
     "series:update": "node scripts/fetch-series.mjs",
     "test": "node --test scripts/test/*.test.mjs",
     "check:public": "node scripts/check-public-dist.mjs",
-    "research:local": "node scripts/research-local.mjs"
+    "research:local": "node scripts/research-local.mjs",
+    "planner": "node planner/server.mjs",
+    "test:planner": "node --test planner/test/parse.test.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.19",

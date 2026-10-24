@@ -7,3 +7,6 @@ dist
 
 # Chart screenshots from the market briefs: shown in npm run dev only, never published.
 src/content/briefs/*/charts/
+
+# Planner: local board data
+planner/data/
