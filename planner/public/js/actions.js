@@ -20,6 +20,7 @@ export function toggleItem(id, from) {
       fx.ripple(r.left + r.width / 2, r.top + r.height / 2, f.list.color, 46);
     }
     fx.queue(`item:${id}`, { type: it.repeat && it.due ? 'land' : 'check', burstDone: !!from });
+    document.dispatchEvent(new CustomEvent('planner:done', { detail: { id } }));
   } else fx.queue(`item:${id}`, { type: 'uncheck' });
   if (!it.done && it.repeat && it.due) {
     const next = nextDue(new Date(it.due), it.repeat);

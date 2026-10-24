@@ -316,6 +316,7 @@ function animateProgress() {
     if (ratio > prev) bar.classList.add('shine');
     if (ratio === 1 && prev < 1 && total > 1) {
       fx.celebrate(el.getBoundingClientRect(), c.color);
+      document.dispatchEvent(new CustomEvent('planner:celebrate', { detail: { id: c.id } }));
       el.classList.add('complete');
       setTimeout(() => el.classList.remove('complete'), 1600);
     }

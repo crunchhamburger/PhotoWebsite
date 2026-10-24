@@ -28,6 +28,11 @@ No dependencies: plain ES modules in `public/`, a small Node server in `server.m
   course, due date and link. Optional API token adds To Do items and syncs "done" back to Canvas.
 - **Google Calendar.** Paste a calendar's secret iCal address (read-only, no setup), or add an OAuth
   client ID to read all calendars and push time blocks to Google.
+- **Pets** (🐾 slider, top right): 奶龙-style dragon, delivery kangaroo, 奶蛋 egg, Pop cat, loaf cat,
+  "huh" cat, or upload your own picture. They roam and bounce around the board, follow the cursor
+  with their eyes, nap, and cheer when you finish tasks. Click for a reaction (laugh, hop-delivery,
+  POP, hearts, dizzy, spin, zoomies, tilt, crack…), drag to throw, give a treat to make them race.
+  All art is hand-drawn SVG in `public/js/pets.js`.
 - Focus timer (25/5) that logs time per task, due-date notifications, search (`/`), undo (`⌘Z`),
   light/dark, JSON export/import.
 

@@ -7,6 +7,7 @@ import { initBoard, render, addList, addNote, fit, zoomBy, resetZoom, setFilter,
 import { renderSide, showTab, moveInk } from './sidebar.js';
 import { addParsed, notify } from './actions.js';
 import * as fx from './motion.js';
+import { initPets, syncPets } from './pets.js';
 
 const SIDE_KEY = 'planner.side';
 const SYNC_EVERY = 15 * 60000;
@@ -15,6 +16,15 @@ await store.load();
 calendar.restoreCache();
 applyTheme();
 initBoard();
+// Pets arrive after the cards have risen in.
+setTimeout(initPets, fx.reduced() ? 0 : 700);
+// Undo/import can change the pet settings: keep the board in step.
+let petsKey = '';
+store.subscribe((s) => {
+  const k = JSON.stringify(s.settings.pets || {});
+  if (petsKey && k !== petsKey) syncPets();
+  petsKey = k;
+});
 
 let frame = 0;
 const schedule = () => {
