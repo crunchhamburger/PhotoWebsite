@@ -1,0 +1,37 @@
+[
+  {
+    "file": "01-meta-shares-slide.png",
+    "caption": "Meta share price, Sep 10–Oct 22: from a ~$770 peak to ~$645 after results (FactSet via FT)",
+    "url": "https://www.ft.com/content/6e318b81-a771-4842-9754-e265fef2852f"
+  },
+  {
+    "file": "02-brent-oct-jump.png",
+    "caption": "Brent crude in 2026: back to ~$117 on Oct 23, near the March–April war peaks (LSEG via FT)",
+    "url": "https://www.ft.com/content/8948193b-438b-4d71-a0b1-31dff56fc308"
+  },
+  {
+    "file": "03-sp500-earnings-contributions.png",
+    "caption": "Contributions to S&P 500 Q3 earnings growth (29.7%): Micron and Nvidia alone are about a third (Dow Jones Market Data/FactSet via WSJ)",
+    "url": "https://www.wsj.com/finance/stocks/the-earnings-boom-is-heavily-reliant-on-just-a-handful-of-stocks-21decb53"
+  },
+  {
+    "file": "04-france-10y-yields.png",
+    "caption": "10-year yields for France, Germany and Japan since 2020: France above 5% (FactSet via WSJ)",
+    "url": "https://www.wsj.com/finance/investing/frances-debt-crisis-deepens-as-foreign-investors-look-for-the-exit-e6ef398c"
+  },
+  {
+    "file": "05-nvidia-neocloud-commitments.png",
+    "caption": "Nvidia's >$170B of guarantees and investments tied to its own customers (The Information)",
+    "url": "https://www.theinformation.com/articles/nvidia-put-170-billion-line-neoclouds"
+  },
+  {
+    "file": "06-h100-index-1m.png",
+    "caption": "Ornn H100 rental index, 1 month to Oct 22: $3.15/hr, +14.96% w/w",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "07-pension-ai-share.png",
+    "caption": "Share of US equity in 15 AI-linked stocks at large US public pensions, Dec 2022 vs June 2026 (~12% to ~27%) (WSJ)",
+    "url": "https://www.wsj.com/finance/investing/politicians-are-turning-against-ai-but-your-pension-is-riding-on-it-6764d852"
+  }
+]
