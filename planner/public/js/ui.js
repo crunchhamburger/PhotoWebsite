@@ -165,7 +165,7 @@ function openFloating(el, anchor, onClose) {
 export function menu(anchor, items) {
   const el = document.getElementById('menu');
   el.replaceChildren(
-    ...items.map((it) =>
+    ...items.filter(Boolean).map((it) =>
       it === 'hr' ? h('hr') : it instanceof Node ? it : h(`button${it.danger ? '.danger' : ''}`, { onclick: () => { closeFloats(); it.onclick(); } }, it.label),
     ),
   );
