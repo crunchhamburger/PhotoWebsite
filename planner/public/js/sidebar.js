@@ -539,6 +539,11 @@ function renderSettings(pane) {
           store.state.archive.length > 25 ? h('p.small.faint', `…and ${store.state.archive.length - 25} more`) : null)
       : h('p.small.faint', 'Completed tasks you archive (or finished repeating tasks) show up here.'),
 
+    // On the website (served privately at /planner) there's a session to end.
+    document.querySelector('meta[name="planner-hosted"]')
+      ? h('div', h('h3', 'Account'),
+          h('form', { method: 'post', action: '/planner/logout' }, h('button.btn.small', { type: 'submit' }, 'Sign out')))
+      : null,
     h('h3', 'Backup'),
     h('div.inline', { style: { flexWrap: 'wrap' } },
       h('button.btn.small', { onclick: exportJson }, 'Export JSON'),

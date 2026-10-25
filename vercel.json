@@ -31,10 +31,13 @@
   ],
   "rewrites": [
     { "source": "/research", "destination": "/api/research" },
-    { "source": "/research/:path*", "destination": "/api/research?__path=:path*" }
+    { "source": "/research/:path*", "destination": "/api/research?__path=:path*" },
+    { "source": "/planner", "destination": "/api/planner" },
+    { "source": "/planner/:path*", "destination": "/api/planner?__path=:path*" }
   ],
   "functions": {
-    "api/research.js": { "maxDuration": 15 }
+    "api/research.js": { "maxDuration": 15 },
+    "api/planner.js": { "maxDuration": 20, "includeFiles": "planner/{public/index.html,public/*.css,public/js/**,public/vendor/**,proxy.mjs}" }
   },
   "headers": [
     {
@@ -56,6 +59,10 @@
         { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
         { "key": "Cache-Control", "value": "private, no-store, max-age=0" }
       ]
+    },
+    {
+      "source": "/planner(.*)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }]
     },
     {
       "source": "/podcast/audio/(.*)",

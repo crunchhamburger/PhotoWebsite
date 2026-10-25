@@ -12,3 +12,4 @@ src/content/briefs/*/charts/
 planner/data/
 # Planner: generated pet models (fan art of copyrighted characters, kept local)
 planner/public/models/
+.vercel/
