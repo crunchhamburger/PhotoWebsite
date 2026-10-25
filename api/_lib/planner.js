@@ -109,7 +109,7 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
 
     try {
       if (rest === 'login') {
-        if (method === 'GET') return session(request) ? redirect('/planner/') : loginPage();
+        if (method === 'GET') return session(request) ? redirect('/planner') : loginPage();
         if (method !== 'POST') return text(405, 'Method not allowed', { Allow: 'GET, POST' });
         if (!sameOrigin()) return text(403, 'Cross-site sign-in refused');
         const form = new URLSearchParams(await readText(request, 4096));
@@ -120,7 +120,7 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
         }
         const exp = Math.floor(now() / 1000) + SESSION_DAYS * 86400;
         const value = sign({ sub: 'owner', iat: Math.floor(now() / 1000), exp, n: randomToken(8) }, config.secret);
-        return redirect('/planner/', { 'Set-Cookie': cookie(SESSION, value, { maxAge: SESSION_DAYS * 86400 }) });
+        return redirect('/planner', { 'Set-Cookie': cookie(SESSION, value, { maxAge: SESSION_DAYS * 86400 }) });
       }
       if (rest === 'logout') {
         if (method !== 'POST') return text(405, 'Method not allowed', { Allow: 'POST' });
