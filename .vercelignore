@@ -1,0 +1,4 @@
+# Kept out of CLI deploy uploads: local-only planner data and the 3D models (served from private Blob storage).
+planner/data
+planner/public/models
+.claude
