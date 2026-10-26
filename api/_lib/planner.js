@@ -34,10 +34,11 @@ const TYPES = {
 /** Reads configuration from environment variables. `missing` lists what isn't set. */
 export function configFromEnv(env) {
   const missing = [];
-  if (!env.PLANNER_PASSWORD || env.PLANNER_PASSWORD.length < 12) missing.push('PLANNER_PASSWORD (at least 12 characters)');
+  const password = normalizePassword(env.PLANNER_PASSWORD);
+  if (password.length < 12) missing.push('PLANNER_PASSWORD (at least 12 characters)');
   if (!env.PLANNER_SECRET || env.PLANNER_SECRET.length < 32) missing.push('PLANNER_SECRET (at least 32 characters)');
   if (!env.BLOB_READ_WRITE_TOKEN && !env.BLOB_STORE_ID) missing.push('Blob store (BLOB_READ_WRITE_TOKEN)');
-  return { missing, password: env.PLANNER_PASSWORD, secret: env.PLANNER_SECRET };
+  return { missing, password, secret: env.PLANNER_SECRET };
 }
 
 /** The private Blob store, behind a small interface so tests can swap it. */
@@ -77,6 +78,12 @@ const text = (status, msg, headers = {}) => respond(status, msg, { 'Content-Type
 const redirect = (location, headers = {}) => respond(303, null, { Location: location, ...headers });
 
 const sha = (s) => createHash('sha256').update(String(s)).digest();
+
+/**
+ * The stored and typed password are compared after this, so a value pasted into the Vercel
+ * dashboard with a stray space or line break, or typed with full-width characters, still matches.
+ */
+export const normalizePassword = (s) => String(s ?? '').normalize('NFKC').trim();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -113,7 +120,7 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
         if (method !== 'POST') return text(405, 'Method not allowed', { Allow: 'GET, POST' });
         if (!sameOrigin()) return text(403, 'Cross-site sign-in refused');
         const form = new URLSearchParams(await readText(request, 4096));
-        const given = form.get('password') ?? '';
+        const given = normalizePassword(form.get('password'));
         if (!timingSafeEqual(sha(given), sha(config.password))) {
           await sleep(delay);
           return loginPage('That password isn’t right.', 401);

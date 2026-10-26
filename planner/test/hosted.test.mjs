@@ -123,3 +123,11 @@ test('hostedIndex rewrites paths only', () => {
   assert.match(out, /\/planner\/api\/ics/);
   assert.match(out, /\/planner\/api\/canvas/);
 });
+
+test('stray whitespace or full-width characters in the stored or typed password still match', async () => {
+  const handle = createPlannerHandler({ config: configFromEnv({ ...env, PLANNER_PASSWORD: ' Abc123456789 \n' }), store: memoryStore(), root, delay: 0 });
+  const post = (password) => handle(new Request(ORIGIN + '/planner/login', { method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ password }) }));
+  assert.equal((await post('Abc123456789')).status, 303);
+  assert.equal((await post('Ａｂｃ１２３４５６７８９ ')).status, 303);
+  assert.equal((await post('abc123456789')).status, 401);
+});
