@@ -10,7 +10,7 @@
 //   3D models and the board data. Writes and logout are same-origin only.
 // - Board data and the 3D models live in a private Vercel Blob store (no public URLs).
 // - Calendar and Canvas proxies only fetch allowlisted hosts (planner/proxy.mjs).
-// - Responses are private, no-store (models: private cache), noindex, no-referrer.
+// - Responses are private, no-store (models: private cache), noindex; referrers stay on this site.
 // - Missing configuration fails closed: every route answers 503.
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
@@ -62,7 +62,8 @@ export function blobStore() {
 const BASE_HEADERS = {
   'Cache-Control': 'private, no-store, max-age=0',
   'X-Robots-Tag': 'noindex, nofollow, noarchive',
-  'Referrer-Policy': 'no-referrer',
+  // Not no-referrer: with it, browsers send `Origin: null` on form posts and sign-in looks cross-site.
+  'Referrer-Policy': 'same-origin',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Cross-Origin-Resource-Policy': 'same-origin',
@@ -112,6 +113,9 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
     rest = rest.replace(/^\/+/, '');
     const method = request.method.toUpperCase();
     const sameOrigin = () => {
+      // Browsers say where a request came from in Sec-Fetch-Site; fall back to Origin for others.
+      const site = request.headers.get('sec-fetch-site');
+      if (site) return site === 'same-origin';
       const o = request.headers.get('origin');
       return !o || o === url.origin;
     };

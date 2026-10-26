@@ -124,6 +124,14 @@ test('hostedIndex rewrites paths only', () => {
   assert.match(out, /\/planner\/api\/canvas/);
 });
 
+test('a browser form post (Origin: null, Sec-Fetch-Site: same-origin) signs in; cross-site is refused', async () => {
+  const { req } = setup();
+  const post = (headers) => req('/planner/login', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', ...headers }, body: new URLSearchParams({ password: env.PLANNER_PASSWORD }) });
+  assert.equal((await post({ origin: 'null', 'sec-fetch-site': 'same-origin' })).status, 303);
+  assert.equal((await post({ origin: ORIGIN, 'sec-fetch-site': 'cross-site' })).status, 403);
+  assert.equal((await post({ origin: 'null', 'sec-fetch-site': 'same-site' })).status, 403);
+});
+
 test('stray whitespace or full-width characters in the stored or typed password still match', async () => {
   const handle = createPlannerHandler({ config: configFromEnv({ ...env, PLANNER_PASSWORD: ' Abc123456789 \n' }), store: memoryStore(), root, delay: 0 });
   const post = (password) => handle(new Request(ORIGIN + '/planner/login', { method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ password }) }));
