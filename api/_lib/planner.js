@@ -103,6 +103,8 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
   }
 
   return async function handle(request) {
+    // Names only, never values, so the owner can see in the runtime logs what's missing.
+    if (!configured) console.warn('planner not configured; missing:', config?.missing?.join(', ') || 'store');
     if (!configured) return page(503, 'Not configured', '<h1>Planner not configured</h1><p>The private planner needs its password, session secret and private storage. Nothing is served until they are set.</p>');
     const url = new URL(request.url);
     // Vercel rewrites /planner/<path> to /api/planner?__path=<path>; locally the path arrives as is.
