@@ -1,0 +1,17 @@
+[
+  {
+    "file": "prices-01-h100-3m.png",
+    "caption": "Ornn H100 index, 3 months: last point $3.57/hr (Oct 27), a near-vertical jump from ~$3.17, well above the mid-October high near $3.21.",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "wsj-01-pe-maturity-wall.png",
+    "caption": "PE \"maturity wall\": below-investment-grade loans due 2027–29, software vs everything else (~$140B in 2028, ~$160B in 2029). Data: PitchBook.",
+    "url": "https://www.wsj.com/finance/investing/a-300-billion-debt-wall-is-looming-over-private-equity-backed-companies-d6359497"
+  },
+  {
+    "file": "ft-01-china-hk-outflows.png",
+    "caption": "Monthly net Southbound Stock Connect flows, 2015–Oct 2026: October is the biggest outflow since 2021.",
+    "url": "https://www.ft.com/content/2bb82c45-04b2-4ccc-9002-f54483fb044e"
+  }
+]
