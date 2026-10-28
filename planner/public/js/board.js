@@ -9,6 +9,11 @@ const board = document.getElementById('board');
 const world = document.getElementById('world');
 const linksSvg = document.getElementById('links');
 const glow = document.getElementById('board-glow');
+// Page modes in the Mac app: 'solo' shows one list in its own window; 'pet' is the transparent
+// desktop the pet roams on (no cards). Everything else is the full board.
+export const MODE = document.body.dataset.mode || 'board';
+export const SOLO = MODE === 'solo' ? new URLSearchParams(location.search).get('list') : null;
+const passive = MODE !== 'board';
 const GRID = 10;
 const MIN_Z = 0.25;
 const MAX_Z = 2;
@@ -26,11 +31,13 @@ export const getLastListId = () => lastListId;
 // ---------- View ----------
 
 function applyView() {
+  if (passive) return;
   world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
   const g = 22 * view.zoom;
   board.style.backgroundSize = glow.style.backgroundSize = `${g}px ${g}px`;
   board.style.backgroundPosition = glow.style.backgroundPosition = `${view.x}px ${view.y}px`;
-  document.getElementById('zoom-level').textContent = `${Math.round(view.zoom * 100)}%`;
+  const zl = document.getElementById('zoom-level');
+  if (zl) zl.textContent = `${Math.round(view.zoom * 100)}%`;
 }
 
 // Glides the camera to a target view. Any wheel/drag cancels it.
@@ -48,6 +55,7 @@ function glideTo(target, duration = 650) {
 
 let viewSaveTimer = null;
 function saveView() {
+  if (passive) return;
   clearTimeout(viewSaveTimer);
   viewSaveTimer = setTimeout(() => store.update((s) => (s.view = { ...view }), { undoable: false, quiet: true }), 400);
 }
@@ -78,6 +86,7 @@ export function resetZoom() {
 }
 
 export function fit(instant = false) {
+  if (passive) return;
   const cs = store.state.cards;
   if (!cs.length) return;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -194,9 +203,12 @@ export function render() {
   rendered = true;
 }
 
+const shownCards = (s) => (SOLO ? s.cards.filter((c) => c.id === SOLO) : MODE === 'pet' ? [] : s.cards);
+
 function paint(s) {
   const seen = new Set();
-  for (const c of s.cards) {
+  const cards = shownCards(s);
+  for (const c of cards) {
     seen.add(c.id);
     const el = c.kind === 'note' ? renderNote(c) : renderList(c);
     const old = cardEls.get(c.id);
@@ -206,7 +218,7 @@ function paint(s) {
   }
   for (const [id, el] of cardEls) if (!seen.has(id)) { el.remove(); cardEls.delete(id); }
   // Paint order follows the array (last = on top).
-  for (const c of s.cards) world.append(cardEls.get(c.id));
+  for (const c of cards) world.append(cardEls.get(c.id));
   drawLinks();
   applyFilter();
 }
@@ -532,6 +544,7 @@ function listMenu(anchor, c) {
     { label: `Archive completed${doneCount ? ` (${doneCount})` : ''}`, onclick: () => archiveDone(c.id) },
     { label: 'Connect to…', onclick: () => startConnect(c.id) },
     { label: 'Auto-height', onclick: () => store.update((s) => (findCard(s, c.id).h = 0)) },
+    window.plannerDesktop && !SOLO ? { label: 'Open in its own window', onclick: () => window.plannerDesktop.openList(c.id) } : null,
     'hr',
     { label: 'Delete list', danger: true, onclick: () => deleteCard(c.id) },
   ]);
@@ -749,6 +762,7 @@ function startPan(e) {
 const isBackground = (t) => t === board || t === world || t === linksSvg || t.classList?.contains('board-hint');
 
 board.addEventListener('pointerdown', (e) => {
+  if (passive) return;
   hideHint();
   if (e.button === 1 || (e.button === 0 && (space || isBackground(e.target)))) {
     if (connectingFrom && isBackground(e.target)) return endConnect(null);
@@ -776,7 +790,7 @@ board.addEventListener('pointerdown', (e) => {
 });
 
 board.addEventListener('dblclick', (e) => {
-  if (!isBackground(e.target)) return;
+  if (passive || !isBackground(e.target)) return;
   fx.ripple(e.clientX, e.clientY, 'var(--accent)', 180);
   addList(toWorld(e.clientX, e.clientY));
 });
@@ -796,6 +810,7 @@ board.addEventListener('pointermove', (e) => {
 board.addEventListener('pointerleave', () => board.classList.remove('lit'));
 
 board.addEventListener('wheel', (e) => {
+  if (passive) return;
   // Let lists scroll their own items.
   const body = e.target.closest('.card-body, textarea');
   if (body && !e.ctrlKey && !e.metaKey && body.scrollHeight > body.clientHeight) return;
@@ -832,7 +847,8 @@ let hintHidden = false;
 function hideHint() {
   if (hintHidden) return;
   hintHidden = true;
-  document.getElementById('board-hint').style.opacity = '0';
+  const hint = document.getElementById('board-hint');
+  if (hint) hint.style.opacity = '0';
 }
 
 // ---------- Item drag & drop between lists ----------
@@ -891,6 +907,7 @@ world.addEventListener('drop', (e) => {
 // ---------- Init ----------
 
 export function initBoard() {
+  if (passive) return render();
   view = { ...store.state.view };
   applyView();
   render();

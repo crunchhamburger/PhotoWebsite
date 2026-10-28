@@ -1,0 +1,77 @@
+/* The planner library window. Uses the planner's tokens and controls from styles.css. */
+body.library { overflow: auto; min-height: 100vh; }
+
+.lib-head {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 16px;
+  height: 64px; padding: 0 20px 0 92px; background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); -webkit-app-region: drag;
+}
+.lib-head :is(button, input, .search) { -webkit-app-region: no-drag; }
+.lib-title { display: flex; align-items: center; gap: 10px; }
+.lib-title h1 { margin: 0; font: 600 18px var(--font-display); letter-spacing: .02em; }
+.lib-head .search { flex: 1; max-width: 420px; margin-left: auto; }
+.lib-actions { display: flex; gap: 8px; }
+
+.lib-tabs { display: flex; gap: 4px; padding: 16px 20px 0; }
+.lib-tabs [role=tab] {
+  border: 0; background: none; color: var(--fg-muted); padding: 7px 12px; border-radius: 9px; cursor: pointer; font-weight: 500;
+}
+.lib-tabs [role=tab][aria-selected=true] { background: var(--bg-elev2); color: var(--fg); }
+.lib-tabs .count { color: var(--fg-faint); font-variant-numeric: tabular-nums; margin-left: 2px; }
+
+.lib-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 16px 20px 32px;
+}
+.lib-card {
+  display: flex; flex-direction: column; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 14px;
+  overflow: hidden; cursor: pointer; outline: none;
+  transition: transform .25s var(--ease), border-color .2s, box-shadow .25s;
+}
+.lib-card:hover, .lib-card:focus-visible { transform: translateY(-2px); border-color: var(--line-strong); box-shadow: var(--shadow); }
+.lib-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lib-card.archived { opacity: .78; }
+.lib-thumb {
+  position: relative; aspect-ratio: 5 / 3; background-color: var(--bg);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.1px); background-size: 12px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.lib-map { position: absolute; inset: 10px; width: calc(100% - 20px); height: calc(100% - 20px); }
+.lib-badge {
+  position: absolute; left: 10px; top: 10px; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  background: var(--bg-elev2); color: var(--fg-muted); border: 1px solid var(--line);
+}
+.lib-info { padding: 12px 14px 14px; display: grid; gap: 6px; }
+.lib-row { display: flex; align-items: center; gap: 8px; }
+.lib-name {
+  flex: 1; min-width: 0; margin: 0; font: 600 15px/1.3 var(--font-display); letter-spacing: .01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; outline: none; border-radius: 4px;
+}
+.lib-name[contenteditable=true] { background: var(--bg-elev2); padding: 0 4px; white-space: normal; cursor: text; }
+.lib-more { width: 28px; height: 28px; font-size: 18px; line-height: 1; }
+.lib-meta { margin: 0; color: var(--fg-muted); font-size: 12.5px; }
+.lib-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+.lib-stats .chip.done { color: var(--fg-faint); }
+.lib-lists { flex: 1 1 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-empty { text-align: center; color: var(--fg-muted); padding: 60px 20px; margin: 0; }
+
+.lib-dialog {
+  width: min(480px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 16px; padding: 0;
+  background: var(--bg-elev); color: var(--fg); box-shadow: 0 30px 80px rgb(0 0 0 / .45);
+}
+.lib-dialog::backdrop { background: rgb(0 0 0 / .45); backdrop-filter: blur(3px); }
+.lib-dialog form { padding: 20px; display: grid; gap: 14px; }
+.lib-dialog h2 { margin: 0; font: 600 18px var(--font-display); }
+.start-with { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+.start-with legend { font-size: 12px; color: var(--fg-muted); margin-bottom: 6px; }
+.start-with .opt {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+}
+.start-with .opt:has(input[type=radio]:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.start-with .opt.disabled { opacity: .5; pointer-events: none; }
+.start-with .opt > input { margin-top: 3px; accent-color: var(--accent); }
+.start-with .opt > span { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.start-with em { font-style: normal; color: var(--fg-muted); font-size: 12.5px; }
+.start-with select { margin-top: 2px; }
+.start-with .carry { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg-muted); }
+.start-with .carry input { accent-color: var(--accent); }
+.lib-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }

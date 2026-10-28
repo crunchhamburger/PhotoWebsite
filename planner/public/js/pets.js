@@ -9,7 +9,7 @@ import { store, lists, findItem } from './store.js';
 import * as fx from './motion.js';
 import { h, popover, menu, closeFloats, toast, fmtDue } from './ui.js';
 import { toggleItem } from './actions.js';
-import { isTyping } from './board.js';
+import { isTyping, MODE } from './board.js';
 import { THREE, buildPet, loadGLBPet, GLB_PETS, addLights, shadowTexture } from './models3d.js';
 
 const board = document.getElementById('board');
@@ -39,6 +39,9 @@ const KINDS = {
 const ORDER = ['nailong', 'naiwa', 'naidan', 'laoshu'];
 const DEFAULTS = { kind: 'nailong', on: true, speed: 1, size: 1, sound: false, cheer: true, chatty: true, quiet: false, names: {}, mood: 70, moodAt: 0 };
 export const cfg = () => ({ ...DEFAULTS, ...(store.state.settings.pet || {}) });
+// Mac app: the pet lives either on the board or out on the desktop (pages/pet.html), never both.
+const ON_DESKTOP = MODE === 'pet';
+const shown = (c = cfg()) => !!c.on && (ON_DESKTOP ? !!c.desktop : !c.desktop);
 function setCfg(patch, { quiet = true } = {}) {
   store.update((s) => (s.settings.pet = { ...cfg(), ...patch }), { undoable: false, quiet });
 }
@@ -191,7 +194,7 @@ const pick = (a) => a[(Math.random() * a.length) | 0];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const easeIO = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-const bounds = () => ({ x0: 70, y0: 150, x1: board.clientWidth - 70, y1: board.clientHeight - 20 });
+const bounds = () => ({ x0: 70, y0: ON_DESKTOP ? 130 : 150, x1: board.clientWidth - 70, y1: board.clientHeight - (ON_DESKTOP ? 8 : 20) });
 const size = () => clamp(cfg().size || 1, 0.6, 1.5);
 
 function squashImpulse(v) {
@@ -1150,7 +1153,7 @@ board.addEventListener('contextmenu', (e) => {
 }, true);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') stopLoop();
-  else if (cfg().on && pet) startLoop();
+  else if (shown() && pet) startLoop();
 });
 
 // Keyboard: P = come here, Shift+P = follow me, Esc stops following.
@@ -1480,13 +1483,12 @@ async function spawn(kind, { from = 'top' } = {}) {
 export function syncPet() {
   const c = cfg();
   updateControl();
-  if (!c.on) {
-    if (running) {
-      poof();
-      stopLoop();
-      wrap.style.display = 'none';
-      endFetch(true);
-    }
+  if (!shown(c)) {
+    // Hidden even if the loop was already paused (window in the background).
+    if (running) poof();
+    stopLoop();
+    if (wrap) wrap.style.display = 'none';
+    endFetch(true);
     return;
   }
   if (!setupGL()) return;
@@ -1536,7 +1538,11 @@ function openPetMenu(at) {
     { label: '✨ Signature move', onclick: () => start(pick(signatures())) },
     'hr',
     sizes,
-    { label: '⚙️ Pet settings…', onclick: () => openPanel(document.getElementById('pets-btn')) },
+    { label: '⚙️ Pet settings…', onclick: () => openPanel(document.getElementById('pets-btn') || at) },
+    ...(ON_DESKTOP ? ['hr',
+      { label: '🏠 Back to the planner', onclick: () => setDesktop(false) },
+      { label: '📋 Open the planner', onclick: () => window.plannerDesktop?.openBoard() },
+    ] : []),
   ]);
 }
 
@@ -1593,23 +1599,25 @@ const ctl = {
 };
 
 function updateControl() {
+  if (!ctl.img) return;
   const c = cfg();
   ctl.img.src = thumb(c.kind);
   ctl.img.dataset.thumb = c.kind;
-  ctl.name.textContent = c.on ? petName(c.kind) : '休息中';
-  ctl.cur.classList.toggle('off', !c.on);
-  ctl.cur.title = c.on ? `${petName(c.kind)} · 心情 ${mood()}% · click to switch pets` : 'Pet is hidden: click to bring it back';
+  const away = c.on && c.desktop;
+  ctl.name.textContent = away ? `${petName(c.kind)} · 🖥` : c.on ? petName(c.kind) : '休息中';
+  ctl.cur.classList.toggle('off', !c.on || away);
+  ctl.cur.title = away ? `${petName(c.kind)} is out on your desktop` : c.on ? `${petName(c.kind)} · 心情 ${mood()}% · click to switch pets` : 'Pet is hidden: click to bring it back';
 }
 
 function cycle(dir) {
   const c = cfg();
   const i = (ORDER.indexOf(c.kind) + dir + ORDER.length) % ORDER.length;
   setCfg({ kind: ORDER[i], on: true }, { quiet: false });
-  fx.play(ctl.cur, [{ opacity: 0, transform: `translateX(${dir * 14}px)` }, { opacity: 1, transform: 'none' }], { duration: 300, easing: fx.EASE_OUT });
+  if (ctl.cur) fx.play(ctl.cur, [{ opacity: 0, transform: `translateX(${dir * 14}px)` }, { opacity: 1, transform: 'none' }], { duration: 300, easing: fx.EASE_OUT });
   syncPet();
 }
-ctl.prev.addEventListener('click', () => cycle(-1));
-ctl.next.addEventListener('click', () => cycle(1));
+ctl.prev?.addEventListener('click', () => cycle(-1));
+ctl.next?.addEventListener('click', () => cycle(1));
 // The pet chip and the paw both open the pet picker (a second click closes it). Show/hide lives in
 // the panel and the right-click menu.
 let panelAnchor = null;
@@ -1621,12 +1629,16 @@ function togglePanel(anchor) {
   }
   openPanel(anchor);
 }
-ctl.cur.addEventListener('click', (e) => togglePanel(e.currentTarget));
-document.getElementById('pets-btn').addEventListener('click', (e) => togglePanel(e.currentTarget));
+ctl.cur?.addEventListener('click', (e) => togglePanel(e.currentTarget));
+document.getElementById('pets-btn')?.addEventListener('click', (e) => togglePanel(e.currentTarget));
 
 function openPanel(anchor) {
   const c = cfg();
   const m = mood();
+  const desktopCtl = window.plannerDesktop ? h('div.pet-roam',
+    h('label.cal-pick', h('input', { type: 'checkbox', checked: !!c.desktop, onchange: (e) => { setDesktop(e.target.checked); closeFloats(); } }), '🖥 Roam on my desktop'),
+    h('label.cal-pick', h('input', { type: 'checkbox', checked: petScreen === 'mouse', onchange: (e) => { petScreen = e.target.checked ? 'mouse' : 'main'; window.plannerDesktop.setPetScreen(petScreen); } }), 'Follow my mouse across screens'),
+  ) : null;
   const tile = (k) => h(`button.pet-pick${c.kind === k && c.on ? '.on' : ''}`, {
     title: petName(k),
     onclick: () => {
@@ -1642,6 +1654,7 @@ function openPanel(anchor) {
       h('strong', '🐾 桌宠'),
       h('label.cal-pick', { style: { padding: 0 } }, h('input', { type: 'checkbox', checked: c.on, onchange: (e) => { setCfg({ on: e.target.checked }, { quiet: false }); syncPet(); } }), 'Show')),
     h('div.pet-picks', ORDER.map(tile)),
+    desktopCtl,
     h('div.pet-mood', { title: 'Goes up when you pet, feed or play with it and when you finish tasks' },
       h('span', `心情 · ${moodWord(m)}`),
       h('div.pet-mood-bar', h('i', { style: { width: `${m}%` } })),
@@ -1693,6 +1706,42 @@ function openPanel(anchor) {
   popover(anchor, content, () => { if (panelAnchor === anchor) panelAnchor = null; });
   panelAnchor = anchor;
 }
+
+// ---------- Mac app: out on the desktop ----------
+
+let petScreen = 'mouse';
+window.plannerDesktop?.petState().then((p) => (petScreen = p.screen));
+
+/** Sends the pet out to roam the desktop (or brings it home to the board). */
+async function setDesktop(on) {
+  if (!window.plannerDesktop) return;
+  if (!on && ON_DESKTOP) say(pick(['回家咯~', '拜拜桌面']));
+  setCfg({ desktop: on, on: true }, { quiet: false });
+  syncPet();
+  // Saved before the other window opens (it reads the setting) or this one closes.
+  await store.flush();
+  window.plannerDesktop.setDesktopPet(on);
+  if (on && !ON_DESKTOP) toast(`${petName()} is out on your desktop. Right-click it to bring it back.`);
+}
+
+/** Moved to another screen: drop in from the top somewhere on it. */
+export function dropIn() {
+  const b = bounds();
+  st.x = rand(b.x0 + 60, Math.max(b.x0 + 61, b.x1 - 60));
+  st.y = rand(b.y0 + 100, Math.max(b.y0 + 101, b.y1 - 40));
+  st.lift = 3.2;
+  st.liftV = 0;
+  st.vx = st.vy = 0;
+  st.mode = 'drop';
+  st.reaction = null;
+}
+
+// The window can change size (screens, resolution): keep the pet on it.
+addEventListener('resize', () => {
+  const b = bounds();
+  st.x = clamp(st.x, b.x0, b.x1);
+  st.y = clamp(st.y, b.y0, b.y1);
+});
 
 /** For tests and the console. */
 export const petDebug = () => ({ st, pet, start, react, say, startFetch, giveTreat, toggleFollow, toggleStay, eatTask, mood, ball: () => ball });

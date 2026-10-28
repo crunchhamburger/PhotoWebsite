@@ -1,0 +1,41 @@
+/* Mac app additions: the planner window's title bar, pop-out lists, and the desktop pet overlay. */
+
+/* ---------- Planner window (hidden title bar: the top bar is the title bar) ---------- */
+html[data-desktop] .topbar { padding-left: 86px; -webkit-app-region: drag; }
+html[data-desktop] .topbar :is(button, input, a, select, .search, .pets-ctl, kbd) { -webkit-app-region: no-drag; }
+html[data-desktop] .brand { cursor: pointer; }
+.brand .planner-name { color: var(--fg-muted); font: 500 14px var(--font-body); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand .planner-name::before { content: '/'; margin: 0 8px 0 2px; color: var(--fg-faint); }
+:is(.popover, .menu, dialog) { -webkit-app-region: no-drag; }
+
+/* ---------- Pop-out list ---------- */
+.solo .board { position: fixed; inset: 0; background: var(--bg-elev); background-image: none; }
+.solo .board-glow { display: none; }
+.solo .world { position: absolute; inset: 0; transform: none !important; }
+.solo .card {
+  position: absolute; inset: 0; left: 0 !important; top: 0 !important; width: auto !important; height: auto !important;
+  border: 0; border-radius: 0; box-shadow: none; min-width: 0;
+}
+.solo .card-head { padding: 12px 108px 8px 78px; min-height: 44px; box-sizing: border-box; -webkit-app-region: drag; cursor: default; }
+.solo .card-head :is(button, [contenteditable='true']) { -webkit-app-region: no-drag; }
+.solo .card-head .icon-btn { position: absolute; right: 8px; top: 9px; }
+.solo .card-body { max-height: none !important; }
+.solo .resize { display: none; }
+.solo .item, .solo .card-foot, .solo .card-progress { -webkit-app-region: no-drag; }
+.solo-tools { position: fixed; top: 9px; right: 40px; display: flex; gap: 2px; z-index: 10; -webkit-app-region: no-drag; }
+.solo-tools .icon-btn { width: 26px; height: 26px; }
+.solo-tools .icon-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+#solo-pin { color: var(--fg-faint); }
+#solo-pin.on { color: var(--accent); }
+#solo-pin.on svg { fill: currentColor; fill-opacity: .25; }
+.solo-gone { position: absolute; inset: 0; display: grid; place-content: center; gap: 12px; text-align: center; color: var(--fg-muted); padding: 24px; }
+.solo-gone[hidden] { display: none; }
+
+/* ---------- Desktop pet overlay ---------- */
+html:has(body.pet-desktop), body.pet-desktop { background: transparent !important; }
+.pet-desktop .board { position: fixed; inset: 0; background: transparent !important; background-image: none !important; }
+.pet-desktop .board-glow, .pet-desktop .world { display: none; }
+.pet-desktop .pets { overflow: visible; }
+
+/* Pet panel: desktop switches */
+.pets-panel .pet-roam { display: grid; gap: 2px; margin: 6px 0 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev2); }

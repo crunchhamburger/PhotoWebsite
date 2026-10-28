@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="planner-api" content="/api/state">
+  <meta name="planner-ics" content="/api/ics">
+  <meta name="planner-canvas" content="/api/canvas">
+  <title>List</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Raleway:wght@500;600&display=swap">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../motion.css">
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body data-mode="solo" class="solo">
+  <main class="board" id="board" tabindex="-1">
+    <div class="board-glow" id="board-glow" aria-hidden="true"></div>
+    <div class="world" id="world"><svg class="links" id="links" aria-hidden="true"></svg></div>
+    <div class="solo-gone" id="solo-gone" hidden>
+      <p>This list isn't in the planner anymore.</p>
+      <button class="btn small" id="solo-close">Close window</button>
+    </div>
+  </main>
+  <div class="solo-tools">
+    <button class="icon-btn" id="solo-board" title="Open the planner" aria-label="Open the planner">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="6" height="5" rx="1.2"/><rect x="11.5" y="3.5" width="6" height="9" rx="1.2"/><rect x="2.5" y="11.5" width="6" height="5" rx="1.2"/></svg>
+    </button>
+    <button class="icon-btn" id="solo-pin" title="Keep on top" aria-label="Keep on top" aria-pressed="true">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3h6l-1 5 3 3H5l3-3-1-5Z"/><path d="M10 11v6"/></svg>
+    </button>
+  </div>
+  <div class="popover" id="popover" hidden></div>
+  <div class="menu" id="menu" hidden></div>
+  <div class="timer" id="timer" hidden></div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <script type="module" src="solo.js"></script>
+</body>
+</html>

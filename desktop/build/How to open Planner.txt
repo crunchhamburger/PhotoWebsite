@@ -1,0 +1,25 @@
+Planner — how to install and open it
+
+1. Drag Planner onto the Applications folder in this window.
+2. Open Planner from Applications (or Launchpad).
+
+The first time, macOS says it can't check Planner for malicious software
+(it's a free app made by a friend, not from the App Store). To open it anyway:
+
+   • Click "Done" on that message.
+   • Open System Settings > Privacy & Security.
+   • Scroll down to the message about Planner and click "Open Anyway".
+   • Confirm with your password or Touch ID, then click "Open".
+
+You only have to do this once.
+
+Tips
+- File > New Planner (⇧⌘N) starts a fresh planner; ⌘O shows all your planners.
+- Click the paw in the top bar to pick a pet. Turn on "Roam on my desktop" to let it
+  walk around your screen; right-click it to bring it back.
+- In a list's ⋯ menu, "Open in its own window" pops the list out as a small floating window.
+- The paw in the menu bar has the pet controls too.
+
+Your planners are saved on your Mac in ~/Library/Application Support/Planner.
+
+Copyright © 2026 Michael Wang. All rights reserved.

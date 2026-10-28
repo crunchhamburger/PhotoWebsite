@@ -3,11 +3,11 @@
 // out the daily workload used by the heatmap and "Plan my day".
 import { parseIcs, expand, splitCanvasTitle } from './ics.js';
 import { gcal } from './gcal.js';
-import { store, uid, lists } from './store.js';
+import { store, uid, lists, scoped } from './store.js';
 
 const ICS_API = document.querySelector('meta[name="planner-ics"]')?.content || '/api/ics';
 const CANVAS_API = document.querySelector('meta[name="planner-canvas"]')?.content || '/api/canvas';
-const CACHE_KEY = 'planner.events.v1';
+const CACHE_KEY = scoped('planner.events.v1');
 const CANVAS_TOKEN_KEY = 'planner.canvasToken';
 
 export const DAY = 86400000;
