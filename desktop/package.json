@@ -1,0 +1,94 @@
+{
+  "name": "planner-desktop",
+  "productName": "Planner",
+  "version": "1.0.0",
+  "description": "Whiteboard planner with a desk pet that roams your screen.",
+  "author": "Michael Wang",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.mjs",
+    "icons": "node scripts/icons.mjs",
+    "dist": "electron-builder --mac --arm64 --x64",
+    "dist:arm64": "electron-builder --mac --arm64"
+  },
+  "devDependencies": {
+    "electron": "45.1.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.haozhewang.planner",
+    "productName": "Planner",
+    "copyright": "Copyright © 2026 Michael Wang. All rights reserved.",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.mjs",
+      "preload.cjs",
+      "lib/**",
+      "pages/**",
+      "build/tray*.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../planner/public",
+        "to": "web",
+        "filter": [
+          "**/*",
+          "!dev/**"
+        ]
+      },
+      {
+        "from": "../planner/proxy.mjs",
+        "to": "proxy.mjs"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "target": [
+        "dmg"
+      ],
+      "identity": null,
+      "hardenedRuntime": false,
+      "artifactName": "Planner-${version}-${arch}.${ext}",
+      "extendInfo": {
+        "NSHumanReadableCopyright": "Copyright © 2026 Michael Wang. All rights reserved."
+      }
+    },
+    "dmg": {
+      "title": "Planner ${version}",
+      "artifactName": "Planner-${version}-${arch}.${ext}",
+      "contents": [
+        {
+          "x": 150,
+          "y": 190,
+          "type": "file"
+        },
+        {
+          "x": 410,
+          "y": 190,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 280,
+          "y": 340,
+          "type": "file",
+          "path": "build/How to open Planner.txt"
+        }
+      ],
+      "window": {
+        "width": 560,
+        "height": 460
+      }
+    },
+    "afterPack": "scripts/adhoc-sign.cjs"
+  },
+  "license": "UNLICENSED"
+}

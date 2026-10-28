@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <title>Planners</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Raleway:wght@500;600&display=swap">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../motion.css">
+  <link rel="stylesheet" href="planners.css">
+</head>
+<body class="library">
+  <header class="lib-head">
+    <div class="lib-title">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <h1>Planners</h1>
+    </div>
+    <div class="search">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input id="lib-search" type="search" placeholder="Search planners and lists" autocomplete="off" aria-label="Search planners">
+    </div>
+    <div class="lib-actions">
+      <button class="btn ghost" id="lib-import" title="Open a planner backup (.json)">Import</button>
+      <button class="btn primary" id="lib-new">＋ New planner</button>
+    </div>
+  </header>
+
+  <nav class="lib-tabs" role="tablist">
+    <button role="tab" data-tab="active" aria-selected="true">Active <span class="count" id="count-active"></span></button>
+    <button role="tab" data-tab="archived" aria-selected="false">Archived <span class="count" id="count-archived"></span></button>
+  </nav>
+
+  <main class="lib-grid" id="lib-grid" aria-live="polite"></main>
+  <p class="lib-empty" id="lib-empty" hidden></p>
+
+  <dialog class="lib-dialog" id="new-dialog">
+    <form method="dialog" id="new-form">
+      <h2>New planner</h2>
+      <div class="field">
+        <label for="new-name">Name</label>
+        <input class="input" id="new-name" maxlength="80" autocomplete="off" required>
+      </div>
+      <fieldset class="start-with">
+        <legend>Start with</legend>
+        <label class="opt"><input type="radio" name="start" value="starter" checked><span><strong>Starter lists</strong><em>Canvas school work, Research, Hobbies, Long term</em></span></label>
+        <label class="opt"><input type="radio" name="start" value="blank"><span><strong>Empty board</strong><em>Nothing on it yet</em></span></label>
+        <label class="opt"><input type="radio" name="start" value="from"><span><strong>Same lists as</strong>
+          <select class="input" id="new-from"></select>
+          <span class="carry"><input type="checkbox" id="new-carry" checked> <label for="new-carry">Bring over unfinished tasks</label></span></span></label>
+      </fieldset>
+      <div class="lib-dialog-actions">
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn primary" value="create" id="new-create">Create and open</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="popover" id="popover" hidden></div>
+  <div class="menu" id="menu" hidden></div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <script type="module" src="planners.js"></script>
+</body>
+</html>

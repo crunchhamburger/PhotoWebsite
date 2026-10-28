@@ -12,6 +12,9 @@ import { initPets, syncPet } from './pets.js';
 const SIDE_KEY = 'planner.side';
 const SYNC_EVERY = 15 * 60000;
 
+// Mac app: title bar, planner name, library.
+if (window.plannerDesktop) import('./desktop.js');
+
 await store.load();
 calendar.restoreCache();
 applyTheme();

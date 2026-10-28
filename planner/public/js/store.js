@@ -5,8 +5,12 @@
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
-const LOCAL_KEY = 'planner.board.v1';
 const API = document.querySelector('meta[name="planner-api"]')?.content || '/api/state';
+// The Mac app runs several planners side by side: each keeps its own browser copy.
+export const PLANNER_ID = document.querySelector('meta[name="planner-id"]')?.content || '';
+export const DESKTOP = !!window.plannerDesktop && !!PLANNER_ID;
+export const scoped = (key) => (PLANNER_ID ? `${key}:${PLANNER_ID}` : key);
+const LOCAL_KEY = scoped('planner.board.v1');
 
 export const COLORS = ['#d8ff5a', '#7cc7ff', '#ff9e7a', '#c79bff', '#5ee0b0', '#ffd166', '#ff7ab6', '#a3a19c'];
 
@@ -50,6 +54,7 @@ export const store = {
   undo: [],
   redo: [],
   saveTimer: null,
+  dirty: false,
   serverOk: false,
 
   async load() {
@@ -110,11 +115,27 @@ export const store = {
       localStorage.setItem(LOCAL_KEY, JSON.stringify(this.state));
     } catch {}
     clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => this.flush(), 600);
+    this.dirty = true;
+    this.saveTimer = setTimeout(() => this.flush(), DESKTOP ? 250 : 600);
+  },
+
+  /** Takes the saved copy if it's newer (another window of this planner changed it). */
+  async pull() {
+    if (this.dirty) return;
+    try {
+      const r = await fetch(API, { cache: 'no-store' });
+      if (r.status !== 200) return;
+      const next = await r.json();
+      if (this.dirty || !this.state || (next.updatedAt || 0) <= (this.state.updatedAt || 0)) return;
+      this.state = migrate(next);
+      try { localStorage.setItem(LOCAL_KEY, JSON.stringify(this.state)); } catch {}
+      this.emit();
+    } catch {}
   },
 
   async flush() {
     clearTimeout(this.saveTimer);
+    this.dirty = false;
     try {
       const r = await fetch(API, {
         method: 'PUT',
@@ -145,6 +166,10 @@ export const store = {
     });
   },
 };
+
+window.plannerDesktop?.onPlannerChanged((id, updatedAt) => {
+  if (id === PLANNER_ID && store.state && updatedAt > (store.state.updatedAt || 0)) store.pull();
+});
 
 function migrate(s) {
   const base = seed();
