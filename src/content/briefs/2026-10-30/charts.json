@@ -1,0 +1,17 @@
+[
+  {
+    "file": "ft-01-bigtech-900bn-rout.png",
+    "caption": "Big Tech market value lost after earnings: Alphabet −$505bn, Amazon −$192bn, Meta −$187bn, Microsoft −$10bn; ~$894bn in total (FactSet, FT research).",
+    "url": "https://www.ft.com/content/c695558e-11e6-494c-aeee-0f9fb5c75afc"
+  },
+  {
+    "file": "ft-02-bigtech-capex-vs-fcf.png",
+    "caption": "Quarterly capex vs free cash flow at Meta, Google, Microsoft and Amazon, 2023–Q3 2026: capex reaches ~$207bn as combined FCF turns negative (FT research).",
+    "url": "https://www.ft.com/content/c695558e-11e6-494c-aeee-0f9fb5c75afc"
+  },
+  {
+    "file": "prices-01-h100-3m.png",
+    "caption": "Ornn H100 index, 3 months: the Oct 27 spike to ~$3.57/hr has slid back to $2.92.",
+    "url": "https://dashboard.ornnai.com/compute"
+  }
+]
