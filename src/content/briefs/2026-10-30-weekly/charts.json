@@ -1,0 +1,32 @@
+[
+  {
+    "file": "01-bigtech-900bn-rout.png",
+    "caption": "Big Tech market value lost after Q3 earnings: Alphabet −$505bn, Amazon −$192bn, Meta −$187bn, Microsoft −$10bn; ~$894bn in total (FactSet, FT research)",
+    "url": "https://www.ft.com/content/c695558e-11e6-494c-aeee-0f9fb5c75afc"
+  },
+  {
+    "file": "02-bigtech-capex-vs-fcf.png",
+    "caption": "Quarterly capex vs free cash flow at Meta, Google, Microsoft and Amazon, 2023–Q3 2026: capex ~$207bn as combined FCF turns negative (FT research)",
+    "url": "https://www.ft.com/content/c695558e-11e6-494c-aeee-0f9fb5c75afc"
+  },
+  {
+    "file": "03-hyperscaler-bond-spreads.png",
+    "caption": "Bond spreads since August: Oracle and SpaceX near 250–280bp, Meta ~120bp, Amazon near the IG index (~85bp) (MarketAxess/FactSet via WSJ)",
+    "url": "https://www.wsj.com/finance/the-new-bottleneck-in-americas-ai-build-out-a-shortage-of-cheap-money-0c14c84d"
+  },
+  {
+    "file": "04-h100-index-3m.png",
+    "caption": "Ornn H100 rental index, 3 months: the Oct 27 spike to ~$3.57/hr slid back to $2.92 by Oct 29",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "05-anthropic-h1-pnl.png",
+    "caption": "Anthropic H1 2025 vs H1 2026 P&L from its S-1: revenue vs compute, people and sales costs, and the convertible-note charge behind the headline net loss (WSJ)",
+    "url": "https://www.wsj.com/tech/ai/anthropic-ipo-s1-report-takeaways-6eebd721"
+  },
+  {
+    "file": "06-pe-maturity-wall.png",
+    "caption": "PE 'maturity wall': below-investment-grade loans due 2027–29, software vs everything else (~$140B in 2028, ~$160B in 2029) (PitchBook via WSJ)",
+    "url": "https://www.wsj.com/finance/investing/a-300-billion-debt-wall-is-looming-over-private-equity-backed-companies-d6359497"
+  }
+]
