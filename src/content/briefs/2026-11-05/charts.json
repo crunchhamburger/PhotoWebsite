@@ -1,0 +1,17 @@
+[
+  {
+    "file": "wsj-01-index-performance-week.png",
+    "caption": "Dow, S&P 500 and Nasdaq for the week of Nov 2–5: Wednesday's post-election jump and Thursday's collapse.",
+    "url": "https://www.wsj.com/livecoverage/stock-market-today-dow-sp-500-nasdaq-11-05-2026"
+  },
+  {
+    "file": "ft-01-chip-stocks-intraday.png",
+    "caption": "Intraday moves at ~2pm ET Nov 5: Sandisk −19.2%, AMD −15.1%, CoreWeave −11.7%, Qualcomm −9.2%, Nasdaq 100 −5.6%.",
+    "url": "https://www.ft.com/content/7c6ceb4f-d7b1-49ec-9047-0e2e4cd2615c"
+  },
+  {
+    "file": "prices-01-h100-index-1m.png",
+    "caption": "Ornn H100 index, 1 month: up from ~$3.02 to $3.52–3.53, the highest prints on the chart.",
+    "url": "https://dashboard.ornnai.com/compute"
+  }
+]
