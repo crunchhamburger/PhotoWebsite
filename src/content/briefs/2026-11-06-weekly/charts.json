@@ -1,0 +1,27 @@
+[
+  {
+    "file": "01-nasdaq100-week.png",
+    "caption": "Nasdaq 100 intraday, Mon–Thu: the rally after the midterm result, then Thursday's collapse to about 26,600 (FactSet via FT)",
+    "url": "https://www.ft.com/content/3d079b3d-580d-400b-bf9c-56af6a08f60f"
+  },
+  {
+    "file": "02-sox-worst-days.png",
+    "caption": "Biggest one-day falls in the Philadelphia Semiconductor index since 1994: Nov 5 (−12.2%) is second only to Mar 16, 2020 (−15.9%) (LSEG via FT)",
+    "url": "https://www.ft.com/content/5a6806f0-e82e-4b34-b761-f9877e2b511c"
+  },
+  {
+    "file": "03-big-tech-value-wipeout.png",
+    "caption": "Biggest one-day market-value losses in the S&P 1500 on Thursday: Nvidia over $400bn, then Tesla, Microsoft, Broadcom, Micron and AMD (FactSet, FT calculations)",
+    "url": "https://www.ft.com/content/3d079b3d-580d-400b-bf9c-56af6a08f60f"
+  },
+  {
+    "file": "04-retail-flows.png",
+    "caption": "Cumulative net retail purchases of single stocks, Nov 3–5: retail sold ~$390mn by late morning Thursday, then bought back to about −$160mn by the close (Vanda Research via FT)",
+    "url": "https://www.ft.com/content/5a6806f0-e82e-4b34-b761-f9877e2b511c"
+  },
+  {
+    "file": "05-h100-index-3m.png",
+    "caption": "Ornn H100 rental index, 3 months: up to $3.53/hr on Nov 3, back to $3.10 on Nov 6; still +20% over three months",
+    "url": "https://dashboard.ornnai.com/compute"
+  }
+]
