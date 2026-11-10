@@ -19,6 +19,9 @@ await store.load();
 calendar.restoreCache();
 applyTheme();
 initBoard();
+// Phones: bottom tab bar, Lists view, swipes (pinch zoom is in board.js).
+const PHONE = !window.plannerDesktop && (matchMedia('(max-width: 760px)').matches || (matchMedia('(pointer: coarse)').matches && innerWidth < 900));
+if (PHONE) await import('./mobile.js');
 // Pets arrive after the cards have risen in.
 setTimeout(initPets, fx.reduced() ? 0 : 700);
 // Undo/import can change the pet settings: keep the board in step.

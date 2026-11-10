@@ -37,5 +37,15 @@ html:has(body.pet-desktop), body.pet-desktop { background: transparent !importan
 .pet-desktop .board-glow, .pet-desktop .world { display: none; }
 .pet-desktop .pets { overflow: visible; }
 
+/* Settings › Sync with website */
+.sync-panel { margin-bottom: 8px; }
+.sync-line { display: flex; align-items: center; gap: 8px; margin: 4px 0 6px; font-size: 13px; }
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-faint); flex: none; }
+.sync-dot.ok { background: #5ee0b0; }
+.sync-dot.err { background: var(--danger); }
+.sync-dot.busy { background: var(--accent); animation: sync-pulse 1s ease-in-out infinite; }
+@keyframes sync-pulse { 50% { opacity: .35; } }
+.help.warn { color: var(--warn); }
+
 /* Pet panel: desktop switches */
 .pets-panel .pet-roam { display: grid; gap: 2px; margin: 6px 0 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev2); }

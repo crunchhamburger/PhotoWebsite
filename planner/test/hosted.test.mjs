@@ -11,11 +11,17 @@ const ORIGIN = 'https://www.haozhewang.com';
 const env = { PLANNER_PASSWORD: 'correct horse battery', PLANNER_SECRET: 'x'.repeat(40), BLOB_READ_WRITE_TOKEN: 'test' };
 
 function memoryStore() {
+  let version = 0;
   const m = new Map([['models/naiwa.glb', { body: 'GLB', contentType: 'model/gltf-binary', size: 3 }]]);
   return {
     m,
     async get(p) { return m.get(p) ?? null; },
-    async put(p, body, contentType) { m.set(p, { body, contentType, size: body.length }); },
+    async put(p, body, contentType, { ifMatch } = {}) {
+      if (ifMatch && m.get(p)?.etag !== ifMatch) throw Object.assign(new Error('changed'), { status: 412 });
+      const etag = `"v${++version}"`;
+      m.set(p, { body, contentType, size: body.length, etag });
+      return { etag };
+    },
   };
 }
 
@@ -138,4 +144,50 @@ test('stray whitespace or full-width characters in the stored or typed password 
   assert.equal((await post('Abc123456789')).status, 303);
   assert.equal((await post('Ａｂｃ１２３４５６７８９ ')).status, 303);
   assert.equal((await post('abc123456789')).status, 401);
+});
+
+test('saves carry a version; a save from an old version gets 412 and the current board', async () => {
+  const { req, login } = setup();
+  const { cookie } = await login();
+  const h = { cookie, origin: ORIGIN };
+  const first = await req('/planner/api/state', { method: 'PUT', headers: h, body: '{"n":1}' });
+  const v1 = first.headers.get('x-board-version');
+  assert.ok(v1);
+  const got = await req('/planner/api/state', { headers: { cookie } });
+  assert.equal(got.headers.get('x-board-version'), v1);
+  const second = await req('/planner/api/state', { method: 'PUT', headers: { ...h, 'x-board-base': v1 }, body: '{"n":2}' });
+  assert.equal(second.status, 204);
+  const stale = await req('/planner/api/state', { method: 'PUT', headers: { ...h, 'x-board-base': v1 }, body: '{"n":3}' });
+  assert.equal(stale.status, 412);
+  assert.equal(await stale.text(), '{"n":2}');
+  assert.equal(stale.headers.get('x-board-version'), second.headers.get('x-board-version'));
+});
+
+test('the Mac sync key: only for the right password, only for the board', async () => {
+  const { req } = setup();
+  const ask = (password) => req('/planner/api/sync-key', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password }) });
+  assert.equal((await ask('nope nope nope')).status, 401);
+  const ok = await ask(` ${env.PLANNER_PASSWORD} `);
+  assert.equal(ok.status, 200);
+  const { key, expiresAt } = await ok.json();
+  assert.ok(key && expiresAt > Date.now() + 300 * 86400000);
+  const auth = { authorization: `Bearer ${key}` };
+  assert.equal((await req('/planner/api/state', { method: 'PUT', headers: auth, body: '{"from":"mac"}' })).status, 204, 'no Origin header needed for the key');
+  assert.equal((await req('/planner/api/state', { headers: auth })).status, 200);
+  for (const p of ['/planner', '/planner/js/app.js', '/planner/models/naiwa.glb', '/planner/api/ics?url=x']) {
+    const r = await req(p, { headers: auth });
+    assert.ok([303, 401].includes(r.status), `${p} -> ${r.status}`);
+  }
+  assert.equal((await req('/planner/api/state', { headers: { authorization: 'Bearer forged.key' } })).status, 401);
+});
+
+test('the home-screen manifest and icons load without signing in; nothing else does', async () => {
+  const { req } = setup();
+  const m = await req('/planner/manifest.webmanifest');
+  assert.equal(m.status, 200);
+  assert.match(m.headers.get('content-type'), /manifest/);
+  assert.equal((await m.json()).start_url, '/planner');
+  assert.equal((await req('/planner/icons/apple-touch-icon.png')).status, 200);
+  assert.equal((await req('/planner/icons/../js/app.js')).status, 401);
+  assert.equal((await req('/planner/mobile.css')).status, 401);
 });

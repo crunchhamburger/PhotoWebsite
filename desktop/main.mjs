@@ -3,11 +3,14 @@
 //   are served from planner://app/ and save through planner://app/api/state/<id>.
 // - Windows: one per open planner, the planner library, pop-out lists, and the desktop pet
 //   (a transparent, click-through overlay the pet roams on).
-import { app, BrowserWindow, protocol, ipcMain, Menu, Tray, screen, shell, dialog, nativeImage } from 'electron';
-import { readFile, writeFile } from 'node:fs/promises';
+import { app, BrowserWindow, protocol, ipcMain, Menu, Tray, screen, shell, dialog, nativeImage, safeStorage, powerMonitor } from 'electron';
+import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { homedir } from 'node:os';
 import { join, resolve, extname, sep, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createLibrary, validId } from './lib/planners.mjs';
+import { createSync, localAdapter, versionOf } from './lib/sync.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const WEB = app.isPackaged ? join(process.resourcesPath, 'web') : resolve(here, '../planner/public');
@@ -23,9 +26,15 @@ protocol.registerSchemesAsPrivileged([
 // Tests run against a scratch data folder.
 if (process.env.PLANNER_USER_DATA) app.setPath('userData', process.env.PLANNER_USER_DATA);
 if (process.env.PLANNER_DEBUG_PORT && !app.isPackaged) app.commandLine.appendSwitch('remote-debugging-port', process.env.PLANNER_DEBUG_PORT);
-if (!app.requestSingleInstanceLock()) app.quit();
+// A second copy hands its arguments to the first (second-instance) and does nothing itself.
+const primary = app.requestSingleInstanceLock();
+if (!primary) app.quit();
 
 const lib = createLibrary(join(app.getPath('userData'), 'planners'));
+// Versioned reads/writes of boards: windows and the website sync never overwrite each other.
+const local = localAdapter(lib);
+// Launched by the daily background job (or a second copy of it): sync quietly, no windows.
+const BACKGROUND = process.argv.includes('--background-sync');
 const CONFIG = join(app.getPath('userData'), 'app.json');
 let config = { open: [], lists: [], pet: { planner: null, screen: 'mouse' } };
 const proxy = () => import(pathToFileURL(PROXY).href);
@@ -85,17 +94,26 @@ async function handle(request) {
   if (state) {
     const id = state[1];
     if (!validId(id)) return reply(400, 'bad id');
+    // Same contract as the website: X-Board-Version on reads and saves; a save naming the version
+    // it started from (X-Board-Base) gets 412 + the current board if something else saved since.
     if (method === 'GET') {
       const text = await lib.readBoard(id);
-      return text == null ? reply(204, null) : reply(200, text, 'application/json');
+      return text == null ? reply(204, null) : reply(200, text, 'application/json', { 'X-Board-Version': versionOf(text) });
     }
     if (method === 'PUT') {
       const text = await request.text();
       if (text.length > MAX_BODY) return reply(413, 'too large');
+      const baseVersion = request.headers.get('x-board-base');
       try {
-        const board = await lib.writeBoard(id, text);
-        broadcast('planner:changed', id, Number(board.updatedAt) || Date.now());
-        return reply(204, null);
+        const res = await local.lock(id, async () => {
+          const cur = await lib.readBoard(id);
+          if (baseVersion && cur != null && versionOf(cur) !== baseVersion) return reply(412, cur, 'application/json', { 'X-Board-Version': versionOf(cur) });
+          const board = await lib.writeBoard(id, text);
+          broadcast('planner:changed', id, Number(board.updatedAt) || Date.now());
+          return reply(204, null, undefined, { 'X-Board-Version': versionOf(text) });
+        });
+        if (res.status === 204) syncSoon(id);
+        return res;
       } catch (e) {
         return reply(e.status || 400, e.message);
       }
@@ -361,7 +379,7 @@ async function setPetFlag(id, on) {
   board.settings = board.settings || {};
   board.settings.pet = { ...(board.settings.pet || {}), desktop: on, on: true };
   board.updatedAt = Date.now();
-  await lib.writeBoard(id, JSON.stringify(board));
+  await local.lock(id, () => lib.writeBoard(id, JSON.stringify(board)));
   broadcast('planner:changed', id, board.updatedAt);
 }
 
@@ -519,9 +537,110 @@ function buildMenu() {
     { role: 'windowMenu' },
   ]));
 }
+// ---------- Sync with the website ----------
+
+let merger = null;
+const loadMerge = async () => (merger ??= await import(pathToFileURL(join(WEB, 'js', 'merge.js')).href));
+// The sync key is sealed with the macOS Keychain; the password is never stored.
+const keys = {
+  seal: (k) => (safeStorage.isEncryptionAvailable() ? `kc:${safeStorage.encryptString(k).toString('base64')}` : `plain:${k}`),
+  open: (s) => (String(s).startsWith('kc:') ? safeStorage.decryptString(Buffer.from(s.slice(3), 'base64')) : String(s).replace(/^plain:/, '')),
+};
+let sync = null;
+async function getSync() {
+  if (sync) return sync;
+  const merge = await loadMerge();
+  sync = createSync({
+    dir: app.getPath('userData'),
+    local,
+    merge,
+    keys,
+    onLocal: (id, updatedAt) => broadcast('planner:changed', id, updatedAt),
+  });
+  return sync;
+}
+async function syncNow() {
+  const s = await getSync();
+  broadcast('sync:status', { ...(await s.status()), syncing: true });
+  const st = await s.syncNow();
+  broadcast('sync:status', st);
+  return st;
+}
+// Edits to the synced planner go up ~20 s after you stop typing.
+let syncTimer = null;
+async function syncSoon(id) {
+  const s = await getSync();
+  if (!(await s.isLinked(id))) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncNow, 20000);
+}
+
+// Daily sync while Planner is closed: a launchd job runs the app with --background-sync at 7:30
+// and at login. Only for the installed app (its path is stable).
+const AGENT = 'com.haozhewang.planner.sync';
+const agentFile = join(homedir(), 'Library', 'LaunchAgents', `${AGENT}.plist`);
+const launchctl = (...args) => new Promise((done) => execFile('launchctl', args, () => done()));
+async function updateDailyJob() {
+  if (!app.isPackaged) return;
+  const st = await (await getSync()).status();
+  const uid = process.getuid();
+  await launchctl('bootout', `gui/${uid}/${AGENT}`);
+  if (!st.connected || !st.daily) {
+    await rm(agentFile, { force: true });
+    return;
+  }
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>${AGENT}</string>
+  <key>ProgramArguments</key><array><string>${process.execPath}</string><string>--background-sync</string></array>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>30</integer></dict>
+  <key>RunAtLoad</key><true/>
+  <key>ProcessType</key><string>Background</string>
+  <key>StandardOutPath</key><string>/dev/null</string>
+  <key>StandardErrorPath</key><string>/dev/null</string>
+</dict></plist>
+`;
+  await mkdir(dirname(agentFile), { recursive: true });
+  await writeFile(agentFile, xml);
+  await launchctl('bootstrap', `gui/${uid}`, agentFile);
+}
+
+ipcMain.handle('sync:status', async () => (await getSync()).status());
+ipcMain.handle('sync:connect', async (e, site, password) => {
+  const id = plannerOf(e.sender);
+  if (!id) throw new Error('Open the planner you want to sync first.');
+  const st = await (await getSync()).connect(String(site || ''), String(password || ''), id);
+  broadcast('sync:status', st);
+  updateDailyJob();
+  return st;
+});
+ipcMain.handle('sync:now', () => syncNow());
+ipcMain.handle('sync:link', async (e) => {
+  const id = plannerOf(e.sender);
+  if (!id) return null;
+  const st = await (await getSync()).link(id);
+  broadcast('sync:status', st);
+  return st;
+});
+ipcMain.handle('sync:daily', async (_e, on) => {
+  const st = await (await getSync()).setDaily(on);
+  updateDailyJob();
+  broadcast('sync:status', st);
+  return st;
+});
+ipcMain.handle('sync:disconnect', async () => {
+  const st = await (await getSync()).disconnect();
+  updateDailyJob();
+  broadcast('sync:status', st);
+  return st;
+});
+
 // ---------- Start ----------
 
-app.on('second-instance', () => {
+app.on('second-instance', (_e, argv) => {
+  // The daily job ran while Planner is open: just sync.
+  if (argv.includes('--background-sync')) return syncNow();
   const w = BrowserWindow.getAllWindows().find((x) => x !== petWin);
   if (w) { w.show(); w.focus(); } else openLibrary();
 });
@@ -534,6 +653,13 @@ app.on('before-quit', () => (quitting = true));
 app.on('window-all-closed', () => {}); // stays in the menu bar (the pet may be out)
 
 app.whenReady().then(async () => {
+  if (!primary) return;
+  if (BACKGROUND) {
+    app.dock?.hide();
+    await lib.init();
+    await syncNow().catch(() => {});
+    return app.quit();
+  }
   app.setAboutPanelOptions({ applicationName: 'Planner', applicationVersion: app.getVersion(), copyright: 'Copyright © 2026 Michael Wang. All rights reserved.', credits: 'Made by Michael Wang' });
   protocol.handle('planner', (req) => handle(req).catch((e) => reply(500, String(e?.message || e))));
   await lib.init();
@@ -560,5 +686,11 @@ app.whenReady().then(async () => {
   for (const id of open) await openPlanner(id);
   for (const l of config.lists.filter((x) => ids.has(x.planner))) openList(l.planner, l.list, l);
   if (config.pet.planner && ids.has(config.pet.planner)) openPet(config.pet.planner);
+
+  // Sync with the website now, every 5 minutes, and after the Mac wakes up.
+  syncNow();
+  setInterval(syncNow, 5 * 60000);
+  powerMonitor.on('resume', () => setTimeout(syncNow, 5000));
+  updateDailyJob();
 });
 

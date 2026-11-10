@@ -39,6 +39,16 @@ contextBridge.exposeInMainWorld('plannerDesktop', {
     onChanged: on('lib:changed'),
   },
   openLibrary: (opts) => ipcRenderer.send('lib:show', opts || {}),
+  // Sync with the website (the password goes to the website once and isn't stored).
+  sync: {
+    status: () => ipcRenderer.invoke('sync:status'),
+    connect: (site, password) => ipcRenderer.invoke('sync:connect', site, password),
+    now: () => ipcRenderer.invoke('sync:now'),
+    linkThis: () => ipcRenderer.invoke('sync:link'),
+    setDaily: (on) => ipcRenderer.invoke('sync:daily', !!on),
+    disconnect: () => ipcRenderer.invoke('sync:disconnect'),
+    onStatus: on('sync:status'),
+  },
   // Library window: File > New Planner… / Import… from the menu bar.
   onLibCreate: on('lib:create-dialog'),
   onLibImport: on('lib:import'),

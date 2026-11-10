@@ -544,6 +544,8 @@ function renderSettings(pane) {
       ? h('div', h('h3', 'Account'),
           h('form', { method: 'post', action: '/planner/logout' }, h('button.btn.small', { type: 'submit' }, 'Sign out')))
       : null,
+    // Mac app: sync this planner with the website (desktop.js builds the panel).
+    window.plannerSyncPanel?.() ?? null,
     h('h3', 'Backup'),
     h('div.inline', { style: { flexWrap: 'wrap' } },
       h('button.btn.small', { onclick: exportJson }, 'Export JSON'),

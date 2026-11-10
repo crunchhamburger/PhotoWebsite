@@ -41,7 +41,8 @@ const DEFAULTS = { kind: 'nailong', on: true, speed: 1, size: 1, sound: false, c
 export const cfg = () => ({ ...DEFAULTS, ...(store.state.settings.pet || {}) });
 // Mac app: the pet lives either on the board or out on the desktop (pages/pet.html), never both.
 const ON_DESKTOP = MODE === 'pet';
-const shown = (c = cfg()) => !!c.on && (ON_DESKTOP ? !!c.desktop : !c.desktop);
+// (The setting syncs to the website, where there's no desktop to roam: there the pet stays.)
+const shown = (c = cfg()) => !!c.on && (ON_DESKTOP ? !!c.desktop : !(c.desktop && window.plannerDesktop));
 function setCfg(patch, { quiet = true } = {}) {
   store.update((s) => (s.settings.pet = { ...cfg(), ...patch }), { undoable: false, quiet });
 }
@@ -194,8 +195,17 @@ const pick = (a) => a[(Math.random() * a.length) | 0];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const easeIO = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-const bounds = () => ({ x0: 70, y0: ON_DESKTOP ? 130 : 150, x1: board.clientWidth - 70, y1: board.clientHeight - (ON_DESKTOP ? 8 : 20) });
-const size = () => clamp(cfg().size || 1, 0.6, 1.5);
+const bounds = () => {
+  // Phone "Lists" view: the pet strolls along the bottom edge, out of the way of the tasks.
+  if (board.classList.contains('stacked')) {
+    const hgt = layer.clientHeight;
+    return { x0: 46, y0: hgt - 14, x1: board.clientWidth - 46, y1: hgt - 6 };
+  }
+  return { x0: 70, y0: ON_DESKTOP ? 130 : 150, x1: board.clientWidth - 70, y1: board.clientHeight - (ON_DESKTOP ? 8 : 20) };
+};
+// On a phone the pet is drawn smaller so it doesn't cover the lists.
+const PHONE_SCALE = matchMedia('(max-width: 760px)').matches ? 0.62 : 1;
+const size = () => clamp(cfg().size || 1, 0.6, 1.5) * PHONE_SCALE;
 
 function squashImpulse(v) {
   st.sq = v;
@@ -1603,7 +1613,7 @@ function updateControl() {
   const c = cfg();
   ctl.img.src = thumb(c.kind);
   ctl.img.dataset.thumb = c.kind;
-  const away = c.on && c.desktop;
+  const away = c.on && c.desktop && !!window.plannerDesktop;
   ctl.name.textContent = away ? `${petName(c.kind)} · 🖥` : c.on ? petName(c.kind) : '休息中';
   ctl.cur.classList.toggle('off', !c.on || away);
   ctl.cur.title = away ? `${petName(c.kind)} is out on your desktop` : c.on ? `${petName(c.kind)} · 心情 ${mood()}% · click to switch pets` : 'Pet is hidden: click to bring it back';

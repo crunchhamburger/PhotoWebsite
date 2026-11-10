@@ -16,6 +16,16 @@ The whiteboard planner (`../planner/public`) as a Mac app, with:
   to whichever screen you're on (switch off in the pet panel or the menu bar). Right-click it ›
   *Back to the planner* to bring it home.
 
+- **Sync with the website.** Settings › *Sync with website*: connect once with the website planner's
+  password (it's traded for a sync key kept in the Keychain; the password isn't stored). One
+  planner then syncs with the private planner on the website, so the phone and the Mac see the
+  same lists: when Planner opens, every 5 minutes, ~20 s after an edit, after waking up, and every
+  morning at 7:30 / at login even when Planner is closed (a launchd job,
+  `~/Library/LaunchAgents/com.haozhewang.planner.sync.plist`; switch off in the same panel).
+  Changes are merged per list and per task (`planner/public/js/merge.js`), so edits made on both
+  sides since the last sync both survive. The first sync backs up both copies to
+  `~/Library/Application Support/Planner/backups/`.
+
 Planners are saved in `~/Library/Application Support/Planner/planners/` (one JSON file each).
 
 ## Run it

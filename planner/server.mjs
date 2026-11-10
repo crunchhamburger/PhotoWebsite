@@ -29,6 +29,7 @@ const TYPES = {
   '.png': 'image/png',
   '.ico': 'image/x-icon',
   '.glb': 'model/gltf-binary',
+  '.webmanifest': 'application/manifest+json',
 };
 
 function send(res, status, body, headers = {}) {

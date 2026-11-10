@@ -20,6 +20,7 @@ import { fetchFeed, canvasApi } from '../../planner/proxy.mjs';
 
 const SESSION = '__Host-planner_session';
 const SESSION_DAYS = 30;
+const SYNC_DAYS = 365; // the Mac app's sync key
 const MAX_BODY = 5 * 1024 * 1024;
 const MODELS = new Set(['nailong', 'naiwa', 'naidan', 'laoshu']);
 const TYPES = {
@@ -29,7 +30,10 @@ const TYPES = {
   '.svg': 'image/svg+xml',
   '.json': 'application/json',
   '.png': 'image/png',
+  '.webmanifest': 'application/manifest+json',
 };
+// Fetched by the phone's home screen without the sign-in cookie; they say nothing about the planner.
+const PUBLIC_FILES = new Set(['manifest.webmanifest', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png']);
 
 /** Reads configuration from environment variables. `missing` lists what isn't set. */
 export function configFromEnv(env) {
@@ -50,11 +54,18 @@ export function blobStore() {
       const { get } = await lib();
       const r = await get(pathname, { access: 'private', useCache: !fresh });
       if (!r || r.statusCode !== 200) return null;
-      return { body: r.stream, contentType: r.blob.contentType, size: r.blob.size };
+      return { body: r.stream, contentType: r.blob.contentType, size: r.blob.size, etag: r.blob.etag };
     },
-    async put(pathname, body, contentType) {
-      const { put } = await lib();
-      await put(pathname, body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType, cacheControlMaxAge: 60 });
+    /** Saves; with `ifMatch`, only if the blob is still that version (else throws status 412). */
+    async put(pathname, body, contentType, { ifMatch } = {}) {
+      const { put, BlobPreconditionFailedError } = await lib();
+      try {
+        const r = await put(pathname, body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType, cacheControlMaxAge: 60, ...(ifMatch ? { ifMatch } : {}) });
+        return { etag: r.etag };
+      } catch (e) {
+        if (e instanceof BlobPreconditionFailedError) throw Object.assign(new Error('changed since you loaded it'), { status: 412 });
+        throw e;
+      }
     },
   };
 }
@@ -102,6 +113,17 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
     const p = verify(parseCookies(request.headers.get('cookie'))[SESSION], config.secret, now());
     return p && p.sub === 'owner' ? p : null;
   }
+  /** The Mac app's sync key (Authorization: Bearer …). It can only read and save the board. */
+  function syncKey(request) {
+    const m = /^Bearer\s+(\S+)$/i.exec(request.headers.get('authorization') || '');
+    const p = m && verify(m[1], config.secret, now());
+    return p && p.sub === 'sync' ? p : null;
+  }
+  const passwordOk = async (given) => {
+    if (timingSafeEqual(sha(normalizePassword(given)), sha(config.password))) return true;
+    await sleep(delay);
+    return false;
+  };
 
   return async function handle(request) {
     // Names only, never values, so the owner can see in the runtime logs what's missing.
@@ -126,11 +148,7 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
         if (method !== 'POST') return text(405, 'Method not allowed', { Allow: 'GET, POST' });
         if (!sameOrigin()) return text(403, 'Cross-site sign-in refused');
         const form = new URLSearchParams(await readText(request, 4096));
-        const given = normalizePassword(form.get('password'));
-        if (!timingSafeEqual(sha(given), sha(config.password))) {
-          await sleep(delay);
-          return loginPage('That password isn’t right.', 401);
-        }
+        if (!(await passwordOk(form.get('password')))) return loginPage('That password isn’t right.', 401);
         const exp = Math.floor(now() / 1000) + SESSION_DAYS * 86400;
         const value = sign({ sub: 'owner', iat: Math.floor(now() / 1000), exp, n: randomToken(8) }, config.secret);
         return redirect('/planner', { 'Set-Cookie': cookie(SESSION, value, { maxAge: SESSION_DAYS * 86400 }) });
@@ -141,24 +159,55 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
         return redirect('/planner/login', { 'Set-Cookie': cookie(SESSION, '', { maxAge: 0 }) });
       }
 
-      if (!session(request)) {
+      // The Mac app trades the password for a sync key once; the password itself is never stored.
+      if (rest === 'api/sync-key') {
+        if (method !== 'POST') return text(405, 'Method not allowed', { Allow: 'POST' });
+        const body = await readText(request, 4096);
+        let password = '';
+        try { password = JSON.parse(body).password; } catch { return text(400, 'Expected JSON'); }
+        if (!(await passwordOk(password))) return text(401, 'That password isn’t right.');
+        const exp = Math.floor(now() / 1000) + SYNC_DAYS * 86400;
+        const key = sign({ sub: 'sync', iat: Math.floor(now() / 1000), exp, n: randomToken(8) }, config.secret);
+        return respond(200, JSON.stringify({ key, expiresAt: exp * 1000 }), { 'Content-Type': 'application/json' });
+      }
+
+      if (PUBLIC_FILES.has(rest) && (method === 'GET' || method === 'HEAD')) {
+        const body = await readFile(resolve(ROOT, rest)).catch(() => null);
+        if (!body) return text(404, 'Not found');
+        return respond(200, method === 'HEAD' ? null : body, { 'Content-Type': TYPES[extname(rest)], 'Cache-Control': 'public, max-age=86400' });
+      }
+
+      const owner = session(request);
+      const viaKey = !owner && rest === 'api/state' && syncKey(request);
+      if (!owner && !viaKey) {
         if (method === 'GET' && (rest === '' || rest === 'index.html')) return redirect('/planner/login');
         return text(401, 'Sign in required');
       }
 
       // ---- API ----
+      // Every read and save reports the board's version (X-Board-Version). A save that names the
+      // version it started from (X-Board-Base) only succeeds if nobody saved in between; otherwise
+      // it gets 412 with the current board, to merge with and try again. (Custom headers, so no
+      // cache or proxy on the way treats them as HTTP caching.)
       if (rest === 'api/state') {
         if (method === 'GET' || method === 'HEAD') {
           const obj = await store.get('board.json', { fresh: true });
           if (!obj) return respond(204, null);
-          return respond(200, method === 'HEAD' ? null : obj.body, { 'Content-Type': 'application/json' });
+          return respond(200, method === 'HEAD' ? null : obj.body, { 'Content-Type': 'application/json', ...(obj.etag ? { 'X-Board-Version': obj.etag } : {}) });
         }
         if (method === 'PUT') {
-          if (!sameOrigin()) return text(403, 'Cross-origin write refused');
+          if (!viaKey && !sameOrigin()) return text(403, 'Cross-origin write refused');
           const body = await readText(request, MAX_BODY);
           JSON.parse(body); // reject anything that isn't JSON
-          await store.put('board.json', body, 'application/json');
-          return respond(204, null);
+          const ifMatch = request.headers.get('x-board-base') || undefined;
+          try {
+            const r = await store.put('board.json', body, 'application/json', { ifMatch });
+            return respond(204, null, r?.etag ? { 'X-Board-Version': r.etag } : {});
+          } catch (e) {
+            if (e.status !== 412) throw e;
+            const cur = await store.get('board.json', { fresh: true });
+            return respond(412, cur ? cur.body : null, { 'Content-Type': 'application/json', ...(cur?.etag ? { 'X-Board-Version': cur.etag } : {}) });
+          }
         }
         return text(405, 'Method not allowed', { Allow: 'GET, PUT' });
       }

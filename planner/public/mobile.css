@@ -1,0 +1,121 @@
+/* Phones (html.phone, set by js/mobile.js): compact top bar, a bottom tab bar within thumb reach,
+   the side panel as a full-screen sheet, a stacked "Lists" view, bigger touch targets, and room
+   for the notch and the home indicator. */
+
+html.phone { --bar-h: 62px; --safe-b: env(safe-area-inset-bottom, 0px); --safe-t: env(safe-area-inset-top, 0px); }
+html.phone body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+/* iOS zooms the page into any field with text smaller than 16px. */
+html.phone :is(input, textarea, select) { font-size: 16px !important; }
+
+/* ---------- Top bar ---------- */
+html.phone .topbar { height: calc(52px + var(--safe-t)); padding: var(--safe-t) 10px 0 14px; gap: 10px; }
+html.phone .layout { height: calc(100dvh - 52px - var(--safe-t)); }
+html.phone .brand { font-size: 0; gap: 0; }
+html.phone .brand .brand-mark { width: 22px; height: 22px; }
+html.phone .top-actions { gap: 2px; }
+html.phone #quick-add-btn, html.phone #side-btn, html.phone #add-list, html.phone #add-note { display: none; }
+html.phone .top-actions .icon-btn { width: 38px; height: 38px; }
+html.phone .pets-ctl { padding: 2px; gap: 0; }
+html.phone .pets-ctl .pet-nav { display: none; }
+html.phone .pets-ctl .icon-btn { width: 34px; height: 34px; }
+#m-search-btn { display: none; }
+html.phone #m-search-btn { display: grid; }
+html.phone .search { display: none; }
+html.phone.searching .search {
+  display: flex; position: fixed; z-index: 45; left: 10px; right: 10px; top: calc(58px + var(--safe-t)); max-width: none;
+  animation: m-drop .25s var(--ease);
+}
+html.phone.searching .search input { height: 44px; border-radius: 12px; box-shadow: var(--shadow); background: var(--bg-elev); }
+@keyframes m-drop { from { opacity: 0; transform: translateY(-8px); } }
+
+/* ---------- Bottom tab bar ---------- */
+.m-bar { display: none; }
+html.phone .m-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: grid; grid-template-columns: repeat(5, 1fr);
+  align-items: center; height: calc(var(--bar-h) + var(--safe-b)); padding: 0 6px var(--safe-b);
+  background: color-mix(in srgb, var(--bg-elev) 86%, transparent); backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4); border-top: 1px solid var(--line);
+}
+.m-tab {
+  display: grid; justify-items: center; gap: 3px; border: 0; background: none; color: var(--fg-faint);
+  font: 500 10.5px var(--font-body); padding: 6px 0; min-height: 48px; cursor: pointer; transition: color .2s;
+}
+.m-tab svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: transform .3s var(--spring-bouncy, var(--ease)); }
+.m-tab.on { color: var(--fg); }
+.m-tab.on svg { transform: translateY(-1px) scale(1.08); color: var(--accent); }
+.m-tab:active svg { transform: scale(.86); }
+.m-add {
+  justify-self: center; width: 52px; height: 52px; border-radius: 18px; border: 0; background: var(--accent); color: var(--accent-ink);
+  display: grid; place-items: center; box-shadow: 0 8px 24px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+  transform: translateY(-10px); transition: transform .25s var(--spring-bouncy, var(--ease));
+}
+.m-add svg { width: 26px; height: 26px; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; fill: none; }
+.m-add:active { transform: translateY(-10px) scale(.9); }
+
+/* Room for the bar: toasts, timer, zoom, pets. */
+html.phone .toasts { left: 12px; right: 12px; bottom: calc(var(--bar-h) + var(--safe-b) + 12px); justify-items: stretch; }
+html.phone .timer { bottom: calc(var(--bar-h) + var(--safe-b) + 12px) !important; }
+html.phone .zoom { left: 10px; bottom: calc(var(--bar-h) + var(--safe-b) + 10px); padding: 2px; }
+html.phone .zoom .icon-btn { width: 38px; height: 38px; }
+html.phone .board-hint { bottom: calc(var(--bar-h) + var(--safe-b) + 64px); left: 16px; right: 16px; transform: none; text-align: center; }
+
+/* ---------- Side panel as a full-screen sheet ---------- */
+html.phone .side { top: calc(52px + var(--safe-t)) !important; bottom: calc(var(--bar-h) + var(--safe-b)) !important; width: 100vw !important; box-shadow: none; border-left: 0; }
+html.phone body.side-closed .side { transform: translateX(105%); }
+html.phone .side .tabs { position: sticky; top: 0; }
+
+/* ---------- Touch targets ---------- */
+html.phone .item { grid-template-columns: 24px 1fr auto; padding: 9px 6px 9px 8px; touch-action: pan-y; }
+html.phone .check { width: 22px; height: 22px; border-radius: 7px; margin-top: 0; }
+html.phone .check:checked::after { width: 10px; height: 5px; }
+html.phone .item-text { font-size: 15px; line-height: 1.4; }
+html.phone .item-actions { display: none; }
+html.phone .card-head { padding: 12px 8px 8px 14px; }
+html.phone .card-head .icon-btn { width: 36px; height: 36px; }
+html.phone .card-body { touch-action: pan-y; }
+html.phone .add-item { min-height: 40px; }
+html.phone .resize { width: 26px; height: 26px; }
+html.phone .menu button { min-height: 44px; }
+html.phone .quick { top: calc(70px + var(--safe-t)); margin-top: 0; width: calc(100vw - 20px); }
+
+/* Swipe a task: right to complete, left for details. */
+.item.swiping { transition: none !important; z-index: 2; background: var(--bg-elev2); }
+.item.swipe-back { transition: transform .3s var(--ease) !important; }
+.swipe-hint {
+  position: absolute; top: 0; bottom: 0; display: grid; place-items: center; width: 64px; font-size: 18px; pointer-events: none;
+  opacity: 0; transition: opacity .15s;
+}
+.swipe-hint.done { left: -64px; color: var(--c, var(--accent)); }
+.swipe-hint.more { right: -64px; color: var(--fg-muted); }
+.item.swiping .swipe-hint.armed { opacity: 1; }
+
+/* ---------- Lists view: lists stacked in a scrolling column ---------- */
+html.phone .board.stacked {
+  overflow-y: auto; overflow-x: hidden; touch-action: pan-y; -webkit-overflow-scrolling: touch;
+  background-image: none; padding-bottom: calc(var(--bar-h) + var(--safe-b) + 24px);
+}
+.board.stacked .board-glow, .board.stacked .zoom, .board.stacked .board-hint, .board.stacked .links { display: none !important; }
+.board.stacked .world {
+  position: relative; transform: none !important; display: flex; flex-direction: column; gap: 14px; padding: 14px 12px 0;
+}
+.board.stacked .card {
+  position: relative !important; left: auto !important; top: auto !important; width: auto !important; height: auto !important;
+  min-width: 0; box-shadow: none;
+}
+.board.stacked .card-head { cursor: default; }
+.board.stacked .card-body { max-height: none !important; }
+.board.stacked .card.note textarea { min-height: 90px; }
+.board.stacked .resize { display: none; }
+.board.stacked .card.collapsed .card-head { padding-bottom: 12px; }
+/* The pet stays in view while the lists scroll under it. */
+html.phone .board.stacked .pets { position: fixed; top: calc(52px + var(--safe-t)); bottom: calc(var(--bar-h) + var(--safe-b)); }
+
+/* Pull down to sync. */
+.m-pull {
+  position: absolute; left: 50%; top: 0; z-index: 4; width: 34px; height: 34px; margin-left: -17px; border-radius: 50%;
+  background: var(--bg-elev); border: 1px solid var(--line); box-shadow: var(--shadow); display: grid; place-items: center;
+  transform: translateY(-48px); opacity: 0; pointer-events: none;
+}
+.m-pull svg { width: 18px; height: 18px; stroke: var(--accent); fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.m-pull.spin svg { animation: m-spin .8s linear infinite; }
+@keyframes m-spin { to { transform: rotate(360deg); } }

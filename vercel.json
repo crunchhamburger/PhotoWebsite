@@ -37,7 +37,7 @@
   ],
   "functions": {
     "api/research.js": { "maxDuration": 15 },
-    "api/planner.js": { "maxDuration": 20, "includeFiles": "planner/{public/index.html,public/*.css,public/js/**,public/vendor/**,proxy.mjs}" }
+    "api/planner.js": { "maxDuration": 20, "includeFiles": "planner/{public/index.html,public/*.css,public/manifest.webmanifest,public/icons/**,public/js/**,public/vendor/**,proxy.mjs}" }
   },
   "headers": [
     {

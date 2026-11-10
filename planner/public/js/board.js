@@ -14,6 +14,8 @@ const glow = document.getElementById('board-glow');
 export const MODE = document.body.dataset.mode || 'board';
 export const SOLO = MODE === 'solo' ? new URLSearchParams(location.search).get('list') : null;
 const passive = MODE !== 'board';
+// Phones can show the lists stacked in a scrolling column instead of the whiteboard (mobile.js).
+const stacked = () => board.classList.contains('stacked');
 const GRID = 10;
 const MIN_Z = 0.25;
 const MAX_Z = 2;
@@ -98,9 +100,19 @@ export function fit(instant = false) {
     y1 = Math.max(y1, c.y + (el?.offsetHeight || c.h || 200));
   }
   const r = board.getBoundingClientRect();
-  const pad = 48;
-  const z = Math.min(1.1, Math.max(MIN_Z, Math.min((r.width - pad * 2) / (x1 - x0), (r.height - pad * 2) / (y1 - y0))));
-  const target = { zoom: z, x: (r.width - (x1 - x0) * z) / 2 - x0 * z, y: (r.height - (y1 - y0) * z) / 2 - y0 * z };
+  // On a phone, everything at once is too small to read: stop at a readable zoom and start from
+  // the top-left list (swipe to see the rest).
+  const phone = document.documentElement.classList.contains('phone');
+  const pad = phone ? 14 : 48;
+  const minZ = phone ? 0.55 : MIN_Z;
+  const z = Math.min(1.1, Math.max(minZ, Math.min((r.width - pad * 2) / (x1 - x0), (r.height - pad * 2) / (y1 - y0))));
+  const wide = (x1 - x0) * z > r.width - pad * 2;
+  const tall = (y1 - y0) * z > r.height - pad * 2;
+  const target = {
+    zoom: z,
+    x: wide ? pad - x0 * z : (r.width - (x1 - x0) * z) / 2 - x0 * z,
+    y: tall ? pad - y0 * z : (r.height - (y1 - y0) * z) / 2 - y0 * z,
+  };
   if (instant) {
     view = target;
     applyView();
@@ -678,7 +690,17 @@ function startDragCard(e, id, mode) {
   }
   // Listen on window so the drag always ends, even if the capture is lost.
   try { el.setPointerCapture(e.pointerId); } catch {}
+  let cancelled = false;
+  const abort = () => {
+    cancelled = true;
+    el.style.left = ox + 'px';
+    el.style.top = oy + 'px';
+    if (mode !== 'move') { el.style.width = ow + 'px'; el.style.height = oh + 'px'; }
+    up();
+  };
+  cancelGesture = abort;
   const move = (ev) => {
+    if (ev.pointerId !== e.pointerId || cancelled) return;
     const dx = (ev.clientX - sx) / view.zoom;
     const dy = (ev.clientY - sy) / view.zoom;
     if (!moved && Math.hypot(dx, dy) < 3) return;
@@ -700,13 +722,15 @@ function startDragCard(e, id, mode) {
     }
     drawLinksLive(id, el);
   };
-  const up = () => {
+  const up = (ev) => {
+    if (ev && ev.pointerId !== e.pointerId) return;
     removeEventListener('pointermove', move);
     removeEventListener('pointerup', up);
     removeEventListener('pointercancel', up);
+    if (cancelGesture === abort) cancelGesture = () => {};
     el.classList.remove('dragging');
     el.style.rotate = '';
-    if (!moved) return;
+    if (!moved || cancelled) return;
     if (mode === 'move') fx.queue(`card:${id}`, { type: 'settle', rot });
     store.update((s) => {
       const i = s.cards.findIndex((x) => x.id === id);
@@ -742,27 +766,76 @@ function startPan(e) {
   const sy = e.clientY - view.y;
   board.classList.add('panning');
   board.setPointerCapture(e.pointerId);
+  const trail = [];
+  let cancelled = false;
   const move = (ev) => {
+    if (ev.pointerId !== e.pointerId || cancelled) return;
     view.x = ev.clientX - sx;
     view.y = ev.clientY - sy;
     applyView();
+    trail.push({ x: ev.clientX, y: ev.clientY, t: performance.now() });
+    if (trail.length > 6) trail.shift();
   };
-  const up = () => {
+  const abort = () => {
+    cancelled = true;
+    up();
+  };
+  cancelGesture = abort;
+  const up = (ev) => {
+    if (ev && ev.pointerId !== e.pointerId) return;
     board.classList.remove('panning');
     board.removeEventListener('pointermove', move);
     board.removeEventListener('pointerup', up);
     board.removeEventListener('pointercancel', up);
-    saveView();
+    if (cancelGesture === abort) cancelGesture = () => {};
+    // A flick on a touch screen keeps the board gliding and slowing down.
+    const a = trail[0];
+    const z = trail[trail.length - 1];
+    if (!cancelled && e.pointerType === 'touch' && a && z && z.t - a.t > 0 && performance.now() - z.t < 80) {
+      coast((z.x - a.x) / (z.t - a.t), (z.y - a.y) / (z.t - a.t));
+    } else saveView();
   };
   board.addEventListener('pointermove', move);
   board.addEventListener('pointerup', up);
   board.addEventListener('pointercancel', up);
 }
 
+/** Momentum after a flick: velocity in px/ms, decaying like iOS scrolling. */
+function coast(vx, vy) {
+  const sp = Math.hypot(vx, vy);
+  if (sp < 0.25 || fx.reduced()) return saveView();
+  const cap = Math.min(1, 4 / sp);
+  vx *= cap;
+  vy *= cap;
+  let last = performance.now();
+  let raf = 0;
+  const step = (now) => {
+    const dt = Math.min(32, now - last);
+    last = now;
+    view.x += vx * dt;
+    view.y += vy * dt;
+    const k = Math.pow(0.94, dt / 16.7);
+    vx *= k;
+    vy *= k;
+    applyView();
+    if (Math.hypot(vx, vy) > 0.02) raf = requestAnimationFrame(step);
+    else saveView();
+  };
+  raf = requestAnimationFrame(step);
+  cancelGlide();
+  cancelGlide = () => {
+    cancelAnimationFrame(raf);
+    saveView();
+  };
+}
+
+// Whatever one-finger gesture is running (pan, card drag) ends cleanly when a pinch starts.
+let cancelGesture = () => {};
+
 const isBackground = (t) => t === board || t === world || t === linksSvg || t.classList?.contains('board-hint');
 
 board.addEventListener('pointerdown', (e) => {
-  if (passive) return;
+  if (passive || stacked() || pinch) return;
   hideHint();
   if (e.button === 1 || (e.button === 0 && (space || isBackground(e.target)))) {
     if (connectingFrom && isBackground(e.target)) return endConnect(null);
@@ -790,7 +863,7 @@ board.addEventListener('pointerdown', (e) => {
 });
 
 board.addEventListener('dblclick', (e) => {
-  if (passive || !isBackground(e.target)) return;
+  if (passive || stacked() || !isBackground(e.target)) return;
   fx.ripple(e.clientX, e.clientY, 'var(--accent)', 180);
   addList(toWorld(e.clientX, e.clientY));
 });
@@ -810,7 +883,7 @@ board.addEventListener('pointermove', (e) => {
 board.addEventListener('pointerleave', () => board.classList.remove('lit'));
 
 board.addEventListener('wheel', (e) => {
-  if (passive) return;
+  if (passive || stacked()) return;
   // Let lists scroll their own items.
   const body = e.target.closest('.card-body, textarea');
   if (body && !e.ctrlKey && !e.metaKey && body.scrollHeight > body.clientHeight) return;
@@ -849,6 +922,105 @@ function hideHint() {
   hintHidden = true;
   const hint = document.getElementById('board-hint');
   if (hint) hint.style.opacity = '0';
+}
+
+// ---------- Touch: pinch to zoom, double-tap ----------
+
+const touches = new Map(); // pointerId -> { x, y }
+let pinch = null;
+
+function startPinch() {
+  cancelGesture();
+  cancelGlide();
+  const [a, b] = [...touches.values()];
+  const r = board.getBoundingClientRect();
+  const mx = (a.x + b.x) / 2 - r.left;
+  const my = (a.y + b.y) / 2 - r.top;
+  pinch = {
+    d0: Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)),
+    z0: view.zoom,
+    // The board point between the fingers stays between the fingers.
+    wx: (mx - view.x) / view.zoom,
+    wy: (my - view.y) / view.zoom,
+  };
+  board.classList.add('pinching');
+  hideHint();
+}
+
+function movePinch() {
+  const [a, b] = [...touches.values()];
+  const r = board.getBoundingClientRect();
+  const mx = (a.x + b.x) / 2 - r.left;
+  const my = (a.y + b.y) / 2 - r.top;
+  const z = Math.min(MAX_Z, Math.max(MIN_Z, pinch.z0 * (Math.hypot(a.x - b.x, a.y - b.y) / pinch.d0)));
+  view = { zoom: z, x: mx - pinch.wx * z, y: my - pinch.wy * z };
+  applyView();
+}
+
+board.addEventListener('pointerdown', (e) => {
+  if (e.pointerType !== 'touch' || passive || stacked()) return;
+  touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (touches.size === 2) {
+    e.preventDefault();
+    e.stopPropagation();
+    startPinch();
+  }
+}, true);
+addEventListener('pointermove', (e) => {
+  if (!touches.has(e.pointerId)) return;
+  touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && touches.size >= 2) movePinch();
+}, { passive: true });
+const liftTouch = (e) => {
+  if (!touches.delete(e.pointerId)) return;
+  if (pinch && touches.size < 2) {
+    pinch = null;
+    board.classList.remove('pinching');
+    saveView();
+    // The finger still down doesn't start a pan (that would make the board jump).
+    lastTap = null;
+  }
+};
+addEventListener('pointerup', liftTouch, true);
+addEventListener('pointercancel', liftTouch, true);
+// iOS Safari's own page pinch would fight the board's.
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+
+// Double-tap the board: zoom in there, or back out to everything. Double-tap a list's header:
+// zoom to that list.
+let lastTap = null;
+board.addEventListener('pointerup', (e) => {
+  if (e.pointerType !== 'touch' || passive || stacked() || pinch) return;
+  const head = e.target.closest?.('.card-head');
+  const onBg = isBackground(e.target);
+  if (!onBg && !(head && !e.target.closest('button'))) return (lastTap = null);
+  const now = performance.now();
+  const near = lastTap && now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30;
+  if (!near) {
+    lastTap = { t: now, x: e.clientX, y: e.clientY };
+    return;
+  }
+  lastTap = null;
+  if (head) return focusCard(head.closest('.card').dataset.id);
+  if (view.zoom < 0.95) zoomTo(Math.min(1.25, view.zoom * 1.9), e.clientX, e.clientY);
+  else fit();
+});
+
+function zoomTo(z, cx, cy) {
+  const r = board.getBoundingClientRect();
+  const px = cx - r.left;
+  const py = cy - r.top;
+  glideTo({ zoom: z, x: px - ((px - view.x) * z) / view.zoom, y: py - ((py - view.y) * z) / view.zoom }, 420);
+}
+
+/** Zooms so one card fills the width of the screen (for reading a list on a phone). */
+export function focusCard(id) {
+  const c = findCard(store.state, id);
+  const el = cardEls.get(id);
+  if (!c || !el) return;
+  const r = board.getBoundingClientRect();
+  const z = Math.min(MAX_Z, Math.max(MIN_Z, Math.min((r.width - 24) / el.offsetWidth, 1.6)));
+  glideTo({ zoom: z, x: (r.width - el.offsetWidth * z) / 2 - c.x * z, y: 16 - c.y * z }, 520);
 }
 
 // ---------- Item drag & drop between lists ----------
