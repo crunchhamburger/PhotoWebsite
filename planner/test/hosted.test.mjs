@@ -191,3 +191,34 @@ test('the home-screen manifest and icons load without signing in; nothing else d
   assert.equal((await req('/planner/icons/../js/app.js')).status, 401);
   assert.equal((await req('/planner/mobile.css')).status, 401);
 });
+
+test('versions survive the storage reporting a weak tag (W/) when reading a compressed board', async () => {
+  // Like production: reads come back as W/"…", conditional writes compare the plain "…".
+  let n = 0;
+  const m = new Map();
+  const store = {
+    async get(p) { const x = m.get(p); return x ? { ...x, etag: `W/${x.etag}` } : null; },
+    async put(p, body, contentType, { ifMatch } = {}) {
+      if (ifMatch && m.get(p)?.etag !== ifMatch) throw Object.assign(new Error('changed'), { status: 412 });
+      const etag = `"e${++n}"`;
+      m.set(p, { body, contentType, etag });
+      return { etag };
+    },
+  };
+  // The handler normalizes through strongTag, as blobStore() does in production.
+  const { strongTag } = await import('../../api/_lib/planner.js');
+  const wrapped = { get: async (p, o) => { const x = await store.get(p, o); return x && { ...x, etag: strongTag(x.etag) }; }, put: (...a) => store.put(...a) };
+  const handle = createPlannerHandler({ config: configFromEnv(env), store: wrapped, root, delay: 0 });
+  const req = (path, init = {}) => handle(new Request(ORIGIN + path, init));
+  const r = await req('/planner/login', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', origin: ORIGIN }, body: new URLSearchParams({ password: env.PLANNER_PASSWORD }) });
+  const cookie = r.headers.get('set-cookie').split(';')[0];
+  const h = { cookie, origin: ORIGIN };
+  await req('/planner/api/state', { method: 'PUT', headers: h, body: '{"n":1}' });
+  const v = (await req('/planner/api/state', { headers: { cookie } })).headers.get('x-board-version');
+  assert.ok(!v.startsWith('W/'));
+  assert.equal((await req('/planner/api/state', { method: 'PUT', headers: { ...h, 'x-board-base': v }, body: '{"n":2}' })).status, 204);
+  // A client that still holds a weak tag from before the fix is accepted too.
+  const v2 = (await req('/planner/api/state', { headers: { cookie } })).headers.get('x-board-version');
+  assert.equal((await req('/planner/api/state', { method: 'PUT', headers: { ...h, 'x-board-base': `W/${v2}` }, body: '{"n":3}' })).status, 204);
+  assert.equal(strongTag('W/"abc"'), '"abc"');
+});

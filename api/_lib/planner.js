@@ -45,6 +45,12 @@ export function configFromEnv(env) {
   return { missing, password, secret: env.PLANNER_SECRET };
 }
 
+/**
+ * Reads of a compressed blob report a weak ETag (W/"…") while conditional writes compare the strong
+ * one ("…"): the board's version is always the strong form, whichever a client sends back.
+ */
+export const strongTag = (t) => (t ? String(t).replace(/^W\//, '') : t);
+
 /** The private Blob store, behind a small interface so tests can swap it. */
 export function blobStore() {
   let mod;
@@ -54,14 +60,14 @@ export function blobStore() {
       const { get } = await lib();
       const r = await get(pathname, { access: 'private', useCache: !fresh });
       if (!r || r.statusCode !== 200) return null;
-      return { body: r.stream, contentType: r.blob.contentType, size: r.blob.size, etag: r.blob.etag };
+      return { body: r.stream, contentType: r.blob.contentType, size: r.blob.size, etag: strongTag(r.blob.etag) };
     },
     /** Saves; with `ifMatch`, only if the blob is still that version (else throws status 412). */
     async put(pathname, body, contentType, { ifMatch } = {}) {
       const { put, BlobPreconditionFailedError } = await lib();
       try {
-        const r = await put(pathname, body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType, cacheControlMaxAge: 60, ...(ifMatch ? { ifMatch } : {}) });
-        return { etag: r.etag };
+        const r = await put(pathname, body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType, cacheControlMaxAge: 60, ...(ifMatch ? { ifMatch: strongTag(ifMatch) } : {}) });
+        return { etag: strongTag(r.etag) };
       } catch (e) {
         if (e instanceof BlobPreconditionFailedError) throw Object.assign(new Error('changed since you loaded it'), { status: 412 });
         throw e;
@@ -199,7 +205,7 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
           if (!viaKey && !sameOrigin()) return text(403, 'Cross-origin write refused');
           const body = await readText(request, MAX_BODY);
           JSON.parse(body); // reject anything that isn't JSON
-          const ifMatch = request.headers.get('x-board-base') || undefined;
+          const ifMatch = strongTag(request.headers.get('x-board-base')) || undefined;
           try {
             const r = await store.put('board.json', body, 'application/json', { ifMatch });
             return respond(204, null, r?.etag ? { 'X-Board-Version': r.etag } : {});
