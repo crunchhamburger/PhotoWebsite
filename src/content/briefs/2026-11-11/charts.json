@@ -1,0 +1,12 @@
+[
+  {
+    "file": "prices-01-h100-3m.png",
+    "caption": "Ornn H100 compute index, three months: the Nov 2–3 peak near $3.53 and the drop back to $3.10 on the Nov 9 print (Ornn).",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "ft-01-nasdaq-futures-intraday.png",
+    "caption": "Nasdaq futures intraday on Nov 11, rising from ~27,950 to ~28,350 by 07:19 GMT on CoreWeave and Anthropic headlines (LSEG via FT).",
+    "url": "https://www.ft.com/content/639de881-6017-454f-abfa-cfb191d1e7cd"
+  }
+]
