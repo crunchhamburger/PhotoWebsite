@@ -141,6 +141,22 @@ test('first link: matching lists, notes and tasks pair up instead of duplicating
   assert.equal(canvas[0].done, true, 'done on the phone stays done, though the Mac board is newer');
 });
 
+test('hiding a list on one side and adding to it on the other: hidden, with the new task', () => {
+  const b = base();
+  const phone = clone(b);
+  phone.cards.find((c) => c.id === 'L2').hidden = true;
+  const mac = clone(b);
+  items(mac, 'L2').push({ id: 'n', text: 'new on Mac', done: false });
+  const m = mergeBoards(b, mac, phone);
+  const l2 = m.cards.find((c) => c.id === 'L2');
+  assert.equal(l2.hidden, true);
+  assert.deepEqual(texts(m, 'L2'), [' groceries', ' new on Mac']);
+  // Showing it again (the flag removed) merges back too.
+  const shown = clone(m);
+  delete shown.cards.find((c) => c.id === 'L2').hidden;
+  assert.equal(mergeBoards(m, shown, m).cards.find((c) => c.id === 'L2').hidden, undefined);
+});
+
 test('merging is stable: merging the result again changes nothing', () => {
   const b = base();
   const mac = clone(b);

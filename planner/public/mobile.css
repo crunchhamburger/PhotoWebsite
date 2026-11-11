@@ -119,3 +119,7 @@ html.phone .board.stacked .pets { position: fixed; top: calc(52px + var(--safe-t
 .m-pull svg { width: 18px; height: 18px; stroke: var(--accent); fill: none; stroke-width: 2.2; stroke-linecap: round; }
 .m-pull.spin svg { animation: m-spin .8s linear infinite; }
 @keyframes m-spin { to { transform: rotate(360deg); } }
+
+/* Hidden lists/notes pill: above the tab bar, and fixed while the Lists view scrolls. */
+html.phone .hidden-pill { right: 10px; bottom: calc(var(--bar-h) + var(--safe-b) + 12px); height: 38px; }
+html.phone .board.stacked .hidden-pill { position: fixed; }

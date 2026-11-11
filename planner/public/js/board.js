@@ -1,7 +1,7 @@
 // The whiteboard: an infinite, pannable, zoomable canvas of list cards and sticky notes.
 import { store, uid, findCard, findItem, COLORS } from './store.js';
 import { parseQuickAdd } from './parse.js';
-import { h, svg, ICONS, fmtDue, fmtEst, fmtTime, menu, toast } from './ui.js';
+import { h, svg, ICONS, fmtDue, fmtEst, fmtTime, menu, toast, popover, closeFloats } from './ui.js';
 import { toggleItem, openDetails, moveItem, startFocus, scheduleNext, addParsed } from './actions.js';
 import * as fx from './motion.js';
 
@@ -89,7 +89,7 @@ export function resetZoom() {
 
 export function fit(instant = false) {
   if (passive) return;
-  const cs = store.state.cards;
+  const cs = store.state.cards.filter((c) => !c.hidden);
   if (!cs.length) return;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const c of cs) {
@@ -123,6 +123,11 @@ export function fit(instant = false) {
 /** Glides so a card is centered (used by search and quick add). Resolves when it arrives. */
 export function reveal(cardId, { pulse = true } = {}) {
   const c = findCard(store.state, cardId);
+  // A hidden list comes back first (quick add to it, search, the hidden-cards panel).
+  if (c?.hidden) {
+    setHidden([cardId], false, { quiet: true });
+    return new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => reveal(cardId, { pulse }).then(res))));
+  }
   const el = cardEls.get(cardId);
   if (!c || !el) return Promise.resolve();
   const r = board.getBoundingClientRect();
@@ -215,7 +220,8 @@ export function render() {
   rendered = true;
 }
 
-const shownCards = (s) => (SOLO ? s.cards.filter((c) => c.id === SOLO) : MODE === 'pet' ? [] : s.cards);
+// Hidden cards stay in the planner (and in Today) but off the board; a pop-out window still shows its list.
+const shownCards = (s) => (SOLO ? s.cards.filter((c) => c.id === SOLO) : MODE === 'pet' ? [] : s.cards.filter((c) => !c.hidden));
 
 function paint(s) {
   const seen = new Set();
@@ -233,6 +239,7 @@ function paint(s) {
   for (const c of cards) world.append(cardEls.get(c.id));
   drawLinks();
   applyFilter();
+  updateHiddenPill(s);
 }
 
 // ---------- Animations ----------
@@ -475,6 +482,7 @@ function renderNote(c) {
       h('div.card-title.faint.small', { style: { fontWeight: 500, fontFamily: 'var(--font-body)' } }, 'Note'),
       h('button.icon-btn', { 'aria-label': 'Note menu', onclick: (e) => menu(e.currentTarget, [
         { label: 'Connect to…', onclick: () => startConnect(c.id) },
+        { label: 'Hide note', onclick: () => setHidden([c.id], true) },
         { label: 'Delete note', danger: true, onclick: () => deleteCard(c.id) },
       ]) }, svg(ICONS.dots)),
     ),
@@ -558,6 +566,7 @@ function listMenu(anchor, c) {
     { label: 'Auto-height', onclick: () => store.update((s) => (findCard(s, c.id).h = 0)) },
     window.plannerDesktop && !SOLO ? { label: 'Open in its own window', onclick: () => window.plannerDesktop.openList(c.id) } : null,
     'hr',
+    { label: 'Hide list', onclick: () => setHidden([c.id], true) },
     { label: 'Delete list', danger: true, onclick: () => deleteCard(c.id) },
   ]);
 }
@@ -573,6 +582,61 @@ export function archiveDone(id) {
     if (s.archive.length > 1000) s.archive.length = 1000;
   });
   toast(`Archived ${n} item${n > 1 ? 's' : ''}`, { action: 'Undo', onAction: () => store.undoLast() });
+}
+
+// ---------- Hiding lists and notes ----------
+
+const cardName = (c) => (c.kind === 'note' ? `note “${(c.text || '').split('\n')[0].slice(0, 30) || 'empty'}”` : `“${c.title}”`);
+
+/** Hides cards from the board (or shows them again). They keep their tasks, place and links. */
+export function setHidden(ids, hidden, { quiet = false } = {}) {
+  const set = new Set(ids);
+  const cards = store.state.cards.filter((c) => set.has(c.id) && !!c.hidden !== hidden);
+  if (!cards.length) return;
+  store.update((s) => {
+    for (const c of s.cards) {
+      if (!set.has(c.id)) continue;
+      if (hidden) c.hidden = true;
+      else delete c.hidden;
+    }
+  });
+  if (quiet) return;
+  const what = cards.length === 1 ? cardName(cards[0]) : `${cards.length} cards`;
+  if (hidden) toast(`Hid ${what}`, { action: 'Undo', onAction: () => setHidden(cards.map((c) => c.id), false, { quiet: true }) });
+  else requestAnimationFrame(() => cards.forEach((c) => cardEls.get(c.id)?.classList.add('pulse')));
+}
+
+let hiddenPill = null;
+function updateHiddenPill(s) {
+  if (MODE !== 'board') return;
+  const hiddenCards = s.cards.filter((c) => c.hidden);
+  if (!hiddenPill) {
+    hiddenPill = h('button.hidden-pill', { onclick: (e) => openHiddenPanel(e.currentTarget) });
+    board.append(hiddenPill);
+  }
+  hiddenPill.hidden = !hiddenCards.length;
+  hiddenPill.replaceChildren(svg(ICONS.eyeOff), `${hiddenCards.length} hidden`);
+  hiddenPill.title = hiddenCards.map((c) => (c.kind === 'note' ? 'Note' : c.title)).join(', ');
+}
+
+function openHiddenPanel(anchor) {
+  const hiddenCards = store.state.cards.filter((c) => c.hidden);
+  if (!hiddenCards.length) return;
+  const row = (c) => {
+    const open = c.kind === 'list' ? c.items.filter((i) => !i.done).length : null;
+    return h('div.hidden-row',
+      h('span.swatch', { style: { '--c': c.color } }),
+      h('div.hidden-name',
+        h('strong', c.kind === 'note' ? (c.text || '').split('\n')[0].slice(0, 40) || 'Empty note' : c.title),
+        h('span.faint.small', c.kind === 'note' ? 'Note' : `${open} open task${open === 1 ? '' : 's'}`)),
+      h('button.btn.small', { onclick: () => { closeFloats(); reveal(c.id); } }, 'Show'));
+  };
+  popover(anchor, h('div.hidden-panel',
+    h('div.inline', { style: { justifyContent: 'space-between', marginBottom: '6px' } },
+      h('strong', 'Hidden from the board'),
+      hiddenCards.length > 1 ? h('button.btn.small.ghost', { onclick: () => { closeFloats(); setHidden(hiddenCards.map((c) => c.id), false); } }, 'Show all') : null),
+    hiddenCards.map(row),
+    h('p.help', { style: { marginTop: '8px' } }, 'Hidden lists keep their tasks: anything due still shows in Today.')));
 }
 
 function deleteCard(id) {

@@ -1,7 +1,7 @@
 {
   "name": "planner-desktop",
   "productName": "Planner",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Whiteboard planner with a desk pet that roams your screen.",
   "author": "Michael Wang",
   "private": true,
