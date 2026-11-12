@@ -1,0 +1,22 @@
+[
+  {
+    "file": "ft-01-nvidia-share-price.png",
+    "caption": "Nvidia share price, Oct 11 to Nov 9: from ~$228 to ~$174, before Wednesday's +2.9% close and the 8.6% after-hours drop (LSEG via FT).",
+    "url": "https://www.ft.com/content/a93307a7-e2cd-4abd-bd89-c38832d8c40e"
+  },
+  {
+    "file": "wsj-01-nvidia-geographic-revenue.png",
+    "caption": "Nvidia reported geographic revenue, July 2025 quarter (billing location) vs October 2025 quarter (customer headquarters): the $10.2B Singapore line disappears and the US bar jumps (company data via WSJ).",
+    "url": "https://www.wsj.com/business/earnings/nvidias-disappearing-singapore-sales-deepen-mystery-around-megaspeed-7d483180"
+  },
+  {
+    "file": "prices-01-h100-3m.png",
+    "caption": "Ornn H100 compute index, three months: the Nov 2–3 peak near $3.53, the Nov 9 low at $3.10 and the rebound to $3.25 on the Nov 10 print (Ornn).",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "ft-02-asia-fdi-pledges.png",
+    "caption": "Asian FDI deals with the US: ~$1.4tn pledged versus ~$37.5bn of financing mobilised for Japan, Taiwan and South Korea (fDi Intelligence via FT).",
+    "url": "https://www.ft.com/content/70b733ec-6cab-41f5-9242-85f7f8916352"
+  }
+]
