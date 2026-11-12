@@ -479,3 +479,10 @@ button.chip.field:hover { border-color: currentColor; }
 .card-fields textarea.input { min-height: 54px; }
 .check-field { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--fg); }
 .check-field input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+/* Score 0–3: one tap per value. */
+.segmented { display: inline-flex; gap: 4px; }
+.segmented button { min-width: 38px; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--bg); color: var(--fg-muted); font-weight: 500; }
+.segmented button:hover { border-color: var(--fg-faint); color: var(--fg); }
+.segmented button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.segmented button.clear { color: var(--fg-faint); }
+.field-error { margin: 2px 0 0; font-size: 12.5px; color: var(--danger); }

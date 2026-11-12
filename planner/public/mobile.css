@@ -133,3 +133,24 @@ html.phone .item-fields dt { margin-top: 6px; }
 html.phone .item-fields dt:first-child { margin-top: 0; }
 html.phone .list-filter { height: 28px; font-size: 12.5px; }
 html.phone .menu button.opt { min-height: 44px; }
+html.phone .segmented button { min-width: 48px; height: 44px; }
+
+/* Choices on a phone open as a bottom sheet (status picker, status filter), never over another list. */
+.sheet { display: none; }
+html.phone .sheet {
+  display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; padding: 6px 10px calc(var(--safe-b) + 10px);
+  background: var(--bg-elev); border-top: 1px solid var(--line-strong); border-radius: 18px 18px 0 0; box-shadow: 0 -20px 60px rgb(0 0 0 / .45);
+  max-height: 70vh; overflow-y: auto;
+}
+html.phone .sheet[hidden] { display: none; }
+html.phone body.sheet-open::after { content: ''; position: fixed; inset: 0; z-index: 65; background: rgb(0 0 0 / .4); }
+.sheet-grip { width: 36px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 4px auto 10px; }
+.sheet-title { font: 600 13px var(--font-body); color: var(--fg-faint); text-transform: uppercase; letter-spacing: .06em; padding: 0 12px 6px; }
+.sheet button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 12px; border: 0; border-radius: 10px; background: none; text-align: left; font-size: 16px; }
+.sheet button:active { background: var(--bg-elev2); }
+.sheet button.opt .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; flex: none; }
+.sheet button.opt.c-gray { color: var(--fg-muted); } .sheet button.opt.c-blue { color: #7cc7ff; } .sheet button.opt.c-yellow { color: #ffd166; }
+.sheet button.opt.c-green { color: #5ee0b0; } .sheet button.opt.c-orange { color: #ff9e7a; } .sheet button.opt.c-red { color: var(--danger); }
+.sheet button.danger { color: var(--danger); }
+.sheet hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.sheet .sheet-cancel { justify-content: center; margin-top: 4px; color: var(--fg-muted); border-top: 1px solid var(--line); border-radius: 0; }

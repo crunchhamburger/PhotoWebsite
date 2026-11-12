@@ -4,6 +4,7 @@
 // storage on the website. Secrets (Canvas token, Google access token) never go in the board.
 
 import { mergeBoards, sameContent } from './merge.js';
+import { refreshPreset, reconcileDone } from './fields.js';
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -243,6 +244,11 @@ function migrate(s) {
   s.archive ??= [];
   s.blocks ??= [];
   s.view ??= base.view;
+  for (const c of s.cards) {
+    if (c.kind !== 'list' || !c.preset) continue;
+    refreshPreset(c);
+    for (const it of c.items || []) reconcileDone(c, it);
+  }
   return s;
 }
 

@@ -1,9 +1,10 @@
 // The whiteboard: an infinite, pannable, zoomable canvas of list cards and sticky notes.
 import { store, uid, findCard, findItem, COLORS } from './store.js';
 import { parseQuickAdd } from './parse.js';
-import { h, svg, ICONS, fmtDue, fmtEst, fmtTime, menu, toast, popover, closeFloats } from './ui.js';
+import { h, svg, ICONS, fmtDue, fmtEst, fmtTime, menu, choose, toast, popover, closeFloats } from './ui.js';
 import { toggleItem, openDetails, moveItem, startFocus, scheduleNext, addParsed, pickFieldValue } from './actions.js';
 import { FIELD_PRESETS, fieldsOf, isQueue, applyPreset, clearFields, getField, formatField, matchesFilter, searchText, chipColor } from './fields.js';
+import { getListFilter, setListFilter as storeListFilter, clearListFilter } from './listfilter.js';
 import * as fx from './motion.js';
 
 const board = document.getElementById('board');
@@ -28,10 +29,7 @@ let space = false;
 export let dragItemId = null;
 let lastListId = null;
 const cardEls = new Map();
-// Queue lists: the status filter is per device (not synced) and tasks whose fields are unfolded.
-const FILTER_KEY = 'planner.listFilter.v1';
-let listFilters = {};
-try { listFilters = JSON.parse(localStorage.getItem(FILTER_KEY) || '{}') || {}; } catch {}
+// Queue lists: tasks whose fields are unfolded (the status filter lives in listfilter.js).
 const expandedItems = new Set();
 
 export const getLastListId = () => lastListId;
@@ -410,7 +408,7 @@ function renderList(c) {
   const total = c.items.length;
   const done = c.items.filter((i) => i.done).length;
   const queue = isQueue(c);
-  const filter = queue ? listFilters[c.id] || {} : {};
+  const filter = queue ? getListFilter(c.id) : {};
   const shown = queue ? c.items.filter((it) => matchesFilter(it, filter)) : c.items;
   const filtering = shown.length !== c.items.length;
   const body = h('div.card-body', { dataset: { list: c.id, flipGroup: c.id }, style: c.h ? {} : { maxHeight: '560px' } },
@@ -464,12 +462,12 @@ function renderItem(it, list) {
   for (const f of defs.filter((f) => f.chip)) {
     const v = getField(it, f.key);
     const label = formatField(f, v);
-    if (f.type === 'select') {
+    if (f.type === 'select' && (label || f.always)) {
       chips.push(h(`button.chip.field${chipColor(f, v) ? '.c-' + chipColor(f, v) : ''}${v == null ? '.empty' : ''}`, {
         title: `${f.label}: click to change`,
         onpointerdown: (e) => e.stopPropagation(),
         onclick: (e) => pickFieldValue(e.currentTarget, list.id, it.id, f),
-      }, label || f.label));
+      }, label || `Set ${f.label.toLowerCase()}`));
     } else if (label) chips.push(h('span.chip.field', { title: f.label }, label));
   }
   if (defs.length && filled.length) {
@@ -637,12 +635,8 @@ function setPreset(id, presetId) {
     const l = findCard(s, id);
     presetId ? applyPreset(l, presetId) : clearFields(l);
   });
-  if (!presetId) { delete listFilters[id]; saveFilters(); }
+  if (!presetId) clearListFilter(id);
   toast(presetId ? `“${findCard(store.state, id).title}” now has ${FIELD_PRESETS[presetId].name} fields` : 'Card fields removed (values kept on the tasks)', { action: 'Undo', onAction: () => store.undoLast() });
-}
-
-function saveFilters() {
-  try { localStorage.setItem(FILTER_KEY, JSON.stringify(listFilters)); } catch {}
 }
 
 /** The filter chip in a queue list's header: one select field (e.g. Status) narrows the list. */
@@ -654,21 +648,16 @@ function filterButton(c, filter) {
     title: `Filter by ${def.label}`,
     'aria-label': `Filter by ${def.label}`,
     onpointerdown: (e) => e.stopPropagation(),
-    onclick: (e) => menu(e.currentTarget, [
+    onclick: (e) => choose(e.currentTarget, `Show ${def.label.toLowerCase()}`, [
       { label: `All (${c.items.length})`, onclick: () => setListFilter(c.id, def.key, '') },
       'hr',
-      ...def.options.map((o) => ({ label: `${o === cur ? '✓ ' : ''}${o} (${c.items.filter((it) => getField(it, def.key) === o).length})`, onclick: () => setListFilter(c.id, def.key, o) })),
+      ...def.options.map((o) => ({ label: `${o === cur ? '✓ ' : ''}${o} (${c.items.filter((it) => getField(it, def.key) === o).length})`, color: chipColor(def, o), onclick: () => setListFilter(c.id, def.key, o) })),
     ]),
   }, svg(ICONS.filter), h('span', cur || 'All'));
 }
 
 export function setListFilter(listId, key, value) {
-  const f = { ...(listFilters[listId] || {}) };
-  if (value) f[key] = value;
-  else delete f[key];
-  if (Object.keys(f).length) listFilters[listId] = f;
-  else delete listFilters[listId];
-  saveFilters();
+  storeListFilter(listId, key, value);
   store.emit();
 }
 

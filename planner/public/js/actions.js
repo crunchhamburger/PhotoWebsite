@@ -3,8 +3,9 @@ import { store, uid, findItem, findCard, lists, listByTag, COLORS } from './stor
 import { nextDue } from './parse.js';
 import { calendar, markCanvasDone, defaultEstimate, startOfDay, sameDay } from './feeds.js';
 import { gcal } from './gcal.js';
-import { h, toast, popover, closeFloats, fmtDue, fmtTime, toLocalInput, fmtEst, menu } from './ui.js';
-import { fieldsOf, getField, setField, chipColor } from './fields.js';
+import { h, toast, popover, closeFloats, fmtDue, fmtTime, toLocalInput, fmtEst, choose } from './ui.js';
+import { fieldsOf, getField, setField, chipColor, syncStatus, applyFilterDefaults } from './fields.js';
+import { getListFilter } from './listfilter.js';
 import * as fx from './motion.js';
 
 // ---------- Items ----------
@@ -36,9 +37,10 @@ export function toggleItem(id, from) {
   }
   const done = !it.done;
   store.update((s) => {
-    const x = findItem(s, id).item;
-    x.done = done;
-    x.doneAt = done ? Date.now() : null;
+    const f2 = findItem(s, id);
+    f2.item.done = done;
+    f2.item.doneAt = done ? Date.now() : null;
+    syncStatus(f2.list, f2.item); // queue lists: the checkbox and Status are one thing
   });
   if (it.source?.type === 'canvas') markCanvasDone(findItem(store.state, id).item, done);
   if (done) toast(`Completed “${truncate(it.text, 40)}”`, { action: 'Undo', onAction: () => store.undoLast(), ms: 3500 });
@@ -79,6 +81,8 @@ export function addParsed(p, fallbackListId) {
   store.update((s) => {
     if (createdList) s.cards.push(createdList);
     const l = findCard(s, list.id);
+    // Added while this list is filtered by status: the new task takes that status, so it stays in view.
+    applyFilterDefaults(l, item, getListFilter(l.id));
     l.items.push(item);
   });
   return { listId: list.id, itemId: item.id };
@@ -160,19 +164,31 @@ export function openDetails(anchor, id) {
   popover(anchor, content);
 }
 
-/** One input in the details popover for a card field. */
+/** One input in the details popover for a card field. A rejected value shows under the field. */
 function fieldInput(listId, itemId, def) {
   const cur = getField(findItem(store.state, itemId)?.item, def.key);
+  const error = h('p.field-error', { hidden: true });
   const save = (raw, input) => {
     let r;
     store.update((s) => {
       const f = findItem(s, itemId);
       r = setField(f.list, f.item, def.key, raw);
     });
-    if (!r.ok) { toast(r.error, { kind: 'warn' }); if (input) input.value = cur ?? ''; }
+    error.hidden = r.ok;
+    error.textContent = r.ok ? '' : r.error;
+    if (!r.ok && input) input.value = cur ?? '';
   };
   if (def.type === 'checkbox') {
     return h('label.field.check-field', h('input', { type: 'checkbox', checked: !!cur, onchange: (e) => save(e.target.checked) }), h('span', def.label));
+  }
+  // A small whole-number range (Score 0–3): one tap per value instead of a text box.
+  if (def.type === 'number' && def.min != null && def.max != null && def.max - def.min <= 10) {
+    const seg = h('div.segmented', { role: 'radiogroup', 'aria-label': def.label });
+    const paint = (v) => [...seg.children].forEach((b) => b.classList.toggle('on', b.dataset.v === String(v ?? '')));
+    for (let v = def.min; v <= def.max; v += def.step || 1) seg.append(h('button', { type: 'button', role: 'radio', dataset: { v: String(v) }, 'aria-checked': String(cur === v), onclick: () => { save(v); paint(v); } }, String(v)));
+    seg.append(h('button.clear', { type: 'button', dataset: { v: '' }, title: 'Clear', onclick: () => { save(null); paint(null); } }, '—'));
+    paint(cur);
+    return h('div.field', h('label', def.label), seg, error);
   }
   let input;
   if (def.type === 'select') {
@@ -187,21 +203,21 @@ function fieldInput(listId, itemId, def) {
       onchange: (e) => save(e.target.value, e.target),
     });
   }
-  return h('div.field', h('label', def.label), input);
+  return h('div.field', h('label', def.label), input, error);
 }
 
 /** A small menu to set a select field from its chip on the card (works with a thumb on a phone). */
 export function pickFieldValue(anchor, listId, itemId, def) {
   const cur = getField(findItem(store.state, itemId)?.item, def.key);
-  const choose = (v) => {
+  const pick = (v) => {
     let r;
     store.update((s) => { const f = findItem(s, itemId); r = setField(f.list, f.item, def.key, v); });
     if (!r.ok) toast(r.error, { kind: 'warn' });
   };
-  menu(anchor, [
-    ...def.options.map((o) => h(`button.opt${chipColor(def, o) ? '.c-' + chipColor(def, o) : ''}`, { onclick: () => { closeFloats(); choose(o); } }, h('i.dot'), `${o === cur ? '✓ ' : ''}${o}`)),
+  choose(anchor, def.label, [
+    ...def.options.map((o) => ({ label: `${o === cur ? '✓ ' : ''}${o}`, color: chipColor(def, o), onclick: () => pick(o) })),
     'hr',
-    { label: `Clear ${def.label.toLowerCase()}`, onclick: () => choose('') },
+    { label: `Clear ${def.label.toLowerCase()}`, onclick: () => pick('') },
   ]);
 }
 

@@ -135,6 +135,8 @@ function place(el, anchor) {
   if (x + w > innerWidth - 8) x = Math.max(8, r.right - w);
   if (y + hgt > innerHeight - 8) y = Math.max(8, r.top - hgt - 6);
   if (y < 8) y = 8;
+  // Taller than the room above and below (the details popover): keep it on screen at all costs.
+  if (y + hgt > innerHeight - 8) y = Math.max(8, innerHeight - 8 - hgt);
   el.style.left = x + 'px';
   el.style.top = y + 'px';
   // Grow out of the anchor.
@@ -172,6 +174,43 @@ export function menu(anchor, items) {
     ),
   );
   openFloating(el, anchor);
+}
+
+/**
+ * A list of choices: a menu by the anchor on desktop; on a phone a bottom sheet, so it never
+ * opens over another list. items: [{ label, onclick, color?, danger? }, 'hr']
+ */
+export function choose(anchor, title, items) {
+  if (!document.documentElement.classList.contains('phone')) {
+    return menu(anchor, items.map((it) => (it === 'hr' || !it.color ? it : h(`button.opt.c-${it.color}`, { onclick: () => { closeFloats(); it.onclick(); } }, h('i.dot'), it.label))));
+  }
+  let el = document.getElementById('sheet');
+  if (!el) {
+    el = h('div.sheet#sheet', { hidden: true, role: 'dialog' });
+    document.body.append(el);
+  }
+  closeFloats();
+  el.replaceChildren(
+    h('div.sheet-grip'),
+    title ? h('div.sheet-title', title) : null,
+    ...items.filter(Boolean).map((it) => (it === 'hr' ? h('hr') : h(`button${it.color ? '.opt.c-' + it.color : ''}${it.danger ? '.danger' : ''}`, { onclick: () => { closeFloats(); it.onclick(); } }, it.color ? h('i.dot') : null, it.label))),
+    h('button.sheet-cancel', { onclick: () => closeFloats() }, 'Cancel'),
+  );
+  el.hidden = false;
+  document.body.classList.add('sheet-open');
+  fx.play(el, [{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: 280, easing: fx.EASE_OUT });
+  const away = (e) => { if (!el.contains(e.target)) closeFloats(); };
+  const esc = (e) => e.key === 'Escape' && closeFloats();
+  setTimeout(() => document.addEventListener('pointerdown', away, true));
+  document.addEventListener('keydown', esc);
+  closeFloating = () => {
+    document.removeEventListener('pointerdown', away, true);
+    document.removeEventListener('keydown', esc);
+    el.hidden = true;
+    el.replaceChildren();
+    document.body.classList.remove('sheet-open');
+  };
+  return el;
 }
 
 export function popover(anchor, content, onClose) {

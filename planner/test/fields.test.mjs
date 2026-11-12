@@ -112,3 +112,77 @@ test('merge keeps fields on tasks like any other task property', async () => {
   assert.deepEqual(m.cards[0].items[0].fields, { status: 'Done', result: 'https://example.com/brief' });
   assert.deepEqual(m.cards[0].fields, base.cards[0].fields);
 });
+
+test('Status Done and the checkbox are one rule', async () => {
+  const { setClock, syncStatus } = await import('../public/js/fields.js');
+  setClock(() => 1000);
+  const l = applyPreset(list({ items: [{ id: 'i1', text: 'Job', done: false }] }), 'night-queue');
+  const it = l.items[0];
+  // Status → checkbox.
+  setField(l, it, 'status', 'Done');
+  assert.deepEqual([it.done, it.doneAt], [true, 1000]);
+  setField(l, it, 'status', 'Partial');
+  assert.deepEqual([it.done, it.doneAt], [false, null], 'Partial is unchecked');
+  setField(l, it, 'status', 'Blocked');
+  assert.equal(it.done, false, 'Blocked is unchecked');
+  setField(l, it, 'status', 'Done');
+  setField(l, it, 'status', null);
+  assert.equal(it.done, false, 'clearing the status unchecks');
+  // Checkbox → status.
+  it.done = true;
+  assert.equal(syncStatus(l, it), true);
+  assert.equal(getField(it, 'status'), 'Done');
+  it.done = false;
+  syncStatus(l, it);
+  assert.equal(getField(it, 'status'), 'Ready', 'unchecking a done task re-queues it');
+  setField(l, it, 'status', 'Blocked');
+  it.done = false;
+  assert.equal(syncStatus(l, it), false, 'nothing to do when already unchecked');
+  assert.equal(getField(it, 'status'), 'Blocked');
+  // The list counter counts done tasks, so it agrees by construction.
+  setField(l, it, 'status', 'Done');
+  assert.equal(l.items.filter((x) => x.done).length, 1);
+  // Ordinary lists are untouched by the rule.
+  const plain = list({ items: [{ id: 'p', text: 'x', done: true }] });
+  assert.equal(syncStatus(plain, plain.items[0]), false);
+  assert.equal(plain.items[0].fields, undefined);
+});
+
+test('a task added under a status filter takes that status', async () => {
+  const { applyFilterDefaults } = await import('../public/js/fields.js');
+  const l = applyPreset(list(), 'night-queue');
+  const it = applyFilterDefaults(l, { id: 'n', text: 'new', done: false }, { status: 'Running' });
+  assert.equal(getField(it, 'status'), 'Running');
+  assert.equal(matchesFilter(it, { status: 'Running' }), true, 'so it stays in view');
+  const done = applyFilterDefaults(l, { id: 'n2', text: 'new', done: false }, { status: 'Done' });
+  assert.equal(done.done, true, 'and the checkbox follows');
+  const kept = applyFilterDefaults(l, { id: 'n3', text: 'x', done: false, fields: { status: 'Blocked' } }, { status: 'Running' });
+  assert.equal(getField(kept, 'status'), 'Blocked', 'an explicit status is not overridden');
+  assert.deepEqual(applyFilterDefaults(l, { id: 'n4', text: 'x', done: false }, {}).fields, undefined, 'no filter, no change');
+});
+
+test('a list’s field definitions follow its preset when the preset changes', async () => {
+  const { refreshPreset } = await import('../public/js/fields.js');
+  const l = applyPreset(list(), 'night-queue');
+  assert.equal(refreshPreset(l), false, 'already current');
+  delete l.fields[0].done; // an older copy, from before the done rule existed
+  assert.equal(refreshPreset(l), true);
+  assert.equal(l.fields[0].done, 'Done');
+  const custom = list({ preset: 'something-else', fields: [{ key: 'k', label: 'K', type: 'text' }] });
+  assert.equal(refreshPreset(custom), false, 'unknown presets keep their own definitions');
+  assert.equal(refreshPreset(list()), false);
+});
+
+test('existing tasks are reconciled with the Done rule on load', async () => {
+  const { reconcileDone, setClock } = await import('../public/js/fields.js');
+  setClock(() => 7);
+  const l = applyPreset(list({ items: [
+    { id: 'a', text: 'checked before the rule', done: true, doneAt: 3, fields: { status: 'Running' } },
+    { id: 'b', text: 'marked Done by the old runner', done: false, fields: { status: 'Done' } },
+    { id: 'c', text: 'fine', done: false, fields: { status: 'Blocked' } },
+  ] }), 'night-queue');
+  assert.deepEqual(l.items.map((it) => reconcileDone(l, it)), [true, true, false]);
+  assert.equal(getField(l.items[0], 'status'), 'Done', 'a checked task is Done');
+  assert.deepEqual([l.items[1].done, l.items[1].doneAt], [true, 7], 'a Done task is checked');
+  assert.equal(l.items[2].done, false);
+});

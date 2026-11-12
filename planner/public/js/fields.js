@@ -14,7 +14,9 @@ export const FIELD_PRESETS = {
   'night-queue': {
     name: 'Night Queue',
     fields: [
-      { key: 'status', label: 'Status', type: 'select', options: ['Draft', 'Ready', 'Running', 'Done', 'Partial', 'Blocked'], colors: STATUS_COLORS, chip: true, filter: true },
+      // `done: 'Done'`: this option and the task's checkbox are one thing (see syncDone / syncStatus).
+      // `always`: shown on the card even when empty, so it can be set with a tap.
+      { key: 'status', label: 'Status', type: 'select', options: ['Draft', 'Ready', 'Running', 'Done', 'Partial', 'Blocked'], colors: STATUS_COLORS, chip: true, filter: true, always: true, done: 'Done', undone: 'Ready' },
       { key: 'exploration', label: 'Exploration', type: 'select', options: ['Higgsfield', 'Voice', 'Speaking', 'CRWV', 'Gamma', 'Night Shift', 'Recruiting'], chip: true },
       { key: 'goal', label: 'Goal', type: 'text', long: true },
       { key: 'inputs', label: 'Inputs', type: 'text', long: true },
@@ -40,6 +42,22 @@ export const FIELD_PRESETS = {
       { key: 'date', label: 'Date', type: 'date', chip: true },
     ],
   },
+  // The overnight runner's output lists. Each brief is a task titled YYYY-MM-DD whose notes hold
+  // the markdown; each voice transcript is a task titled with its date and time, notes = transcript.
+  'morning-briefs': {
+    name: 'Morning Briefs',
+    fields: [
+      { key: 'date', label: 'Date', type: 'date', chip: true },
+      { key: 'sections', label: 'Sections', type: 'text' },
+    ],
+  },
+  'voice-inbox': {
+    name: 'Voice Inbox',
+    fields: [
+      { key: 'recorded', label: 'Recorded', type: 'date', chip: true },
+      { key: 'processed', label: 'Processed', type: 'date', chip: true, colors: {} },
+    ],
+  },
 };
 
 /** The field definitions of a list, or [] for an ordinary list. */
@@ -53,6 +71,19 @@ export function applyPreset(list, presetId) {
   list.fields = structuredClone(p.fields);
   list.preset = presetId;
   return list;
+}
+
+/**
+ * A list keeps a copy of its preset's definitions; when the preset changes in code (a new rule, a
+ * new option), the copy is brought up to date on load. Lists whose preset is unknown keep theirs.
+ * Returns true if anything changed.
+ */
+export function refreshPreset(list) {
+  const p = list?.preset && FIELD_PRESETS[list.preset];
+  if (!p) return false;
+  if (JSON.stringify(list.fields) === JSON.stringify(p.fields)) return false;
+  list.fields = structuredClone(p.fields);
+  return true;
 }
 
 /** Removes the field definitions from a list. Values stay on the tasks, so this is reversible. */
@@ -112,7 +143,10 @@ export function coerce(def, raw) {
   }
 }
 
-/** Sets one field on a task after coercion. Returns the coerce result; the task is only changed when ok. */
+/**
+ * Sets one field on a task after coercion. Returns the coerce result; the task is only changed
+ * when ok. A status field with a `done` option keeps the task's checkbox in step (`syncDone`).
+ */
 export function setField(list, item, key, raw) {
   const def = fieldsOf(list).find((f) => f.key === key);
   if (!def) return { ok: false, error: `no field “${key}” on this list` };
@@ -122,7 +156,61 @@ export function setField(list, item, key, raw) {
   if (r.value == null || r.value === false) delete item.fields[key];
   else item.fields[key] = r.value;
   if (!Object.keys(item.fields).length) delete item.fields;
+  if (def.done) syncDone(def, item, now());
   return r;
+}
+
+let now = () => Date.now();
+/** Tests can pin the clock used for doneAt. */
+export const setClock = (fn) => (now = fn);
+
+/** The field (if any) whose `done` option means the task is finished. */
+export const doneField = (list) => fieldsOf(list).find((f) => f.type === 'select' && f.done) || null;
+
+/** Status → checkbox: the task is done exactly when the status is the field's `done` option. */
+export function syncDone(def, item, at = now()) {
+  const done = getField(item, def.key) === def.done;
+  if (!!item.done === done) return false;
+  item.done = done;
+  item.doneAt = done ? at : null;
+  return true;
+}
+
+/**
+ * Checkbox → status: checking sets the `done` option; unchecking a done task sets the field's
+ * `undone` option (Ready), so Partial and Blocked are never checked and Done is never unchecked.
+ */
+export function syncStatus(list, item) {
+  const def = doneField(list);
+  if (!def) return false;
+  const cur = getField(item, def.key);
+  if (item.done && cur !== def.done) { (item.fields ??= {})[def.key] = def.done; return true; }
+  if (!item.done && cur === def.done) {
+    if (def.undone && def.options.includes(def.undone)) item.fields[def.key] = def.undone;
+    else delete item.fields[def.key];
+    if (!Object.keys(item.fields).length) delete item.fields;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Brings an existing task in line with the rule (on load, and before the runner writes): a checked
+ * task becomes Done; an unchecked task whose status is Done gets checked. Returns true if changed.
+ */
+export function reconcileDone(list, item) {
+  const def = doneField(list);
+  if (!def) return false;
+  return item.done ? syncStatus(list, item) : syncDone(def, item, item.doneAt || now());
+}
+
+/** A task added while a filter is on takes the filter's values (so it doesn't vanish from view). */
+export function applyFilterDefaults(list, item, filter) {
+  for (const [k, v] of Object.entries(filter || {})) {
+    if (!v || getField(item, k) != null) continue;
+    setField(list, item, k, v);
+  }
+  return item;
 }
 
 /** How a value reads on a card or in the side panel. */
