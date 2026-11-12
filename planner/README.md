@@ -69,6 +69,34 @@ cp outputs/<newest, not *_raw>.glb <planner>/public/models/<kind>.glb
   narrows it by status. Presets: *Night Queue* and *Exploration Log* (`public/js/fields.js`).
   The definitions are stored on the list (`list.fields`) and the values on each task
   (`item.fields`), so the board JSON describes itself; lists without fields are unchanged.
+  Status "Done" and the task's checkbox are one thing: setting Done checks the task, checking
+  the task sets Done, and unchecking it sets Ready. A task added while the list is filtered by a
+  status gets that status.
+
+## Night Shift (overnight runner)
+
+`planner/nightshift.mjs` is how a script reads and writes the Night Shift lists on the website's
+board, through the same versioned path as the Mac app: read the board and its version, change it,
+save naming that version, and on 412 (the phone saved in between) apply the change again on the
+fresh copy. It only ever changes lists that have card fields; anything else is refused before the
+save. Settings live in `.env` at the repo root (git-ignored): `NIGHTSHIFT_SYNC_KEY`,
+`NIGHTSHIFT_KEY_EXPIRES`, `NIGHTSHIFT_SITE`.
+
+```sh
+node planner/nightshift.mjs connect            # password → sync key in .env (expires in a year; the date is kept next to it)
+node planner/nightshift.mjs seed planner/data/nightshift-seed.json   # the lists, rules note and starter cards (safe to re-run)
+node planner/nightshift.mjs status             # key expiry, board version, Night Shift lists
+node planner/nightshift.mjs list-ready         # Night Queue cards with Status = Ready, as JSON
+node planner/nightshift.mjs patch <id> status=Running
+node planner/nightshift.mjs patch <id> status=Done result=https://… "notes=Last run: 2026-11-12"
+node planner/nightshift.mjs brief Pre-market --date=2026-11-12 brief.md   # Morning Briefs › date › section
+node planner/nightshift.mjs voice --since=24h  # unprocessed Voice Inbox transcripts, as JSON
+node planner/nightshift.mjs processed <id> out.md                          # appends "Processed <date>"
+```
+
+Briefs are tasks titled `YYYY-MM-DD` in Morning Briefs whose notes hold the markdown, one `##`
+section per job. Voice transcripts are tasks in Voice Inbox titled with their date and time
+(`2026-11-12 21:40`), notes = the transcript. The seed file and `.env` are never committed.
 
 ## Data
 
