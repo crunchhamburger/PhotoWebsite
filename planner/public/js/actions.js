@@ -3,7 +3,8 @@ import { store, uid, findItem, findCard, lists, listByTag, COLORS } from './stor
 import { nextDue } from './parse.js';
 import { calendar, markCanvasDone, defaultEstimate, startOfDay, sameDay } from './feeds.js';
 import { gcal } from './gcal.js';
-import { h, toast, popover, closeFloats, fmtDue, fmtTime, toLocalInput, fmtEst } from './ui.js';
+import { h, toast, popover, closeFloats, fmtDue, fmtTime, toLocalInput, fmtEst, menu } from './ui.js';
+import { fieldsOf, getField, setField, chipColor } from './fields.js';
 import * as fx from './motion.js';
 
 // ---------- Items ----------
@@ -146,6 +147,7 @@ export function openDetails(anchor, id) {
         renderSubs();
       } })),
     h('div.field', h('label', 'Notes'), h('textarea.input', { value: it.notes || '', rows: 3, onchange: (e) => set({ notes: e.target.value }) })),
+    fieldsOf(f.list).length ? h('div.card-fields', h('h4', `${f.list.title} fields`), fieldsOf(f.list).map((def) => fieldInput(f.list.id, id, def))) : null,
     it.spent ? h('p.small.muted', `Focused ${fmtEst(Math.round(it.spent))} on this so far.`) : null,
     h('div.pop-foot',
       h('button.btn.small.danger', { onclick: () => { closeFloats(); deleteItem(id); } }, 'Delete'),
@@ -156,6 +158,51 @@ export function openDetails(anchor, id) {
     ),
   );
   popover(anchor, content);
+}
+
+/** One input in the details popover for a card field. */
+function fieldInput(listId, itemId, def) {
+  const cur = getField(findItem(store.state, itemId)?.item, def.key);
+  const save = (raw, input) => {
+    let r;
+    store.update((s) => {
+      const f = findItem(s, itemId);
+      r = setField(f.list, f.item, def.key, raw);
+    });
+    if (!r.ok) { toast(r.error, { kind: 'warn' }); if (input) input.value = cur ?? ''; }
+  };
+  if (def.type === 'checkbox') {
+    return h('label.field.check-field', h('input', { type: 'checkbox', checked: !!cur, onchange: (e) => save(e.target.checked) }), h('span', def.label));
+  }
+  let input;
+  if (def.type === 'select') {
+    input = h('select.input', { onchange: (e) => save(e.target.value, e.target) }, [['', '—'], ...def.options.map((o) => [o, o])].map(([v, l]) => h('option', { value: v, selected: String(cur ?? '') === v }, l)));
+  } else if (def.long) {
+    input = h('textarea.input', { value: cur ?? '', rows: 2, onchange: (e) => save(e.target.value, e.target) });
+  } else {
+    input = h('input.input', {
+      type: def.type === 'number' ? 'number' : def.type === 'url' ? 'url' : def.type === 'date' ? 'date' : 'text',
+      value: cur ?? '', placeholder: def.type === 'url' ? 'https://' : '',
+      ...(def.min != null ? { min: def.min } : {}), ...(def.max != null ? { max: def.max } : {}), ...(def.step ? { step: def.step } : {}),
+      onchange: (e) => save(e.target.value, e.target),
+    });
+  }
+  return h('div.field', h('label', def.label), input);
+}
+
+/** A small menu to set a select field from its chip on the card (works with a thumb on a phone). */
+export function pickFieldValue(anchor, listId, itemId, def) {
+  const cur = getField(findItem(store.state, itemId)?.item, def.key);
+  const choose = (v) => {
+    let r;
+    store.update((s) => { const f = findItem(s, itemId); r = setField(f.list, f.item, def.key, v); });
+    if (!r.ok) toast(r.error, { kind: 'warn' });
+  };
+  menu(anchor, [
+    ...def.options.map((o) => h(`button.opt${chipColor(def, o) ? '.c-' + chipColor(def, o) : ''}`, { onclick: () => { closeFloats(); choose(o); } }, h('i.dot'), `${o === cur ? '✓ ' : ''}${o}`)),
+    'hr',
+    { label: `Clear ${def.label.toLowerCase()}`, onclick: () => choose('') },
+  ]);
 }
 
 export function moveItem(id, toListId, index) {

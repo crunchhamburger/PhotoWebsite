@@ -2,7 +2,8 @@
 import { store, uid, findCard, findItem, COLORS } from './store.js';
 import { parseQuickAdd } from './parse.js';
 import { h, svg, ICONS, fmtDue, fmtEst, fmtTime, menu, toast, popover, closeFloats } from './ui.js';
-import { toggleItem, openDetails, moveItem, startFocus, scheduleNext, addParsed } from './actions.js';
+import { toggleItem, openDetails, moveItem, startFocus, scheduleNext, addParsed, pickFieldValue } from './actions.js';
+import { FIELD_PRESETS, fieldsOf, isQueue, applyPreset, clearFields, getField, formatField, matchesFilter, searchText, chipColor } from './fields.js';
 import * as fx from './motion.js';
 
 const board = document.getElementById('board');
@@ -27,6 +28,11 @@ let space = false;
 export let dragItemId = null;
 let lastListId = null;
 const cardEls = new Map();
+// Queue lists: the status filter is per device (not synced) and tasks whose fields are unfolded.
+const FILTER_KEY = 'planner.listFilter.v1';
+let listFilters = {};
+try { listFilters = JSON.parse(localStorage.getItem(FILTER_KEY) || '{}') || {}; } catch {}
+const expandedItems = new Set();
 
 export const getLastListId = () => lastListId;
 
@@ -403,14 +409,19 @@ function cardShell(c, extraClass, children) {
 function renderList(c) {
   const total = c.items.length;
   const done = c.items.filter((i) => i.done).length;
+  const queue = isQueue(c);
+  const filter = queue ? listFilters[c.id] || {} : {};
+  const shown = queue ? c.items.filter((it) => matchesFilter(it, filter)) : c.items;
+  const filtering = shown.length !== c.items.length;
   const body = h('div.card-body', { dataset: { list: c.id, flipGroup: c.id }, style: c.h ? {} : { maxHeight: '560px' } },
-    c.items.length ? c.items.map((it) => renderItem(it, c)) : h('div.empty-hint', c.source === 'canvas' ? 'Add your Canvas calendar feed in Settings to fill this list automatically.' : 'Nothing here yet.'),
+    shown.length ? shown.map((it) => renderItem(it, c)) : h('div.empty-hint', filtering ? 'Nothing matches this filter.' : c.source === 'canvas' ? 'Add your Canvas calendar feed in Settings to fill this list automatically.' : 'Nothing here yet.'),
   );
-  return cardShell(c, c.collapsed ? '.collapsed' : '', [
+  return cardShell(c, `${c.collapsed ? '.collapsed' : ''}${queue ? '.queue' : ''}`, [
     h('div.card-head', { dataset: { drag: c.id } },
       h('button.swatch', { title: 'Change color', 'aria-label': 'Change color', onclick: (e) => colorMenu(e.currentTarget, c) }),
       h('div.card-title', { ondblclick: () => editTitle(c.id) }, c.title),
-      h('span.card-count', total ? `${done}/${total}` : ''),
+      queue ? filterButton(c, filter) : null,
+      h('span.card-count', filtering ? `${shown.length} of ${total}` : total ? `${done}/${total}` : ''),
       h('button.icon-btn', { title: 'List menu', 'aria-label': 'List menu', onclick: (e) => listMenu(e.currentTarget, c) }, svg(ICONS.dots)),
     ),
     h('div.card-progress', h('span', { style: { width: total ? `${(done / total) * 100}%` : '0' } })),
@@ -447,11 +458,42 @@ function renderItem(it, list) {
   if (it.sub?.length) chips.push(h('span.chip', `${it.sub.filter((x) => x.done).length}/${it.sub.length} steps`));
   if (it.url) chips.push(h('a.chip', { href: it.url, target: '_blank', rel: 'noopener noreferrer', title: it.url, onpointerdown: (e) => e.stopPropagation() }, svg(ICONS.link), 'Open'));
 
+  // Queue lists: select fields show as chips (tap to change, also on a phone); the rest unfold below.
+  const defs = fieldsOf(list);
+  const filled = defs.filter((f) => !f.chip && formatField(f, getField(it, f.key)));
+  for (const f of defs.filter((f) => f.chip)) {
+    const v = getField(it, f.key);
+    const label = formatField(f, v);
+    if (f.type === 'select') {
+      chips.push(h(`button.chip.field${chipColor(f, v) ? '.c-' + chipColor(f, v) : ''}${v == null ? '.empty' : ''}`, {
+        title: `${f.label}: click to change`,
+        onpointerdown: (e) => e.stopPropagation(),
+        onclick: (e) => pickFieldValue(e.currentTarget, list.id, it.id, f),
+      }, label || f.label));
+    } else if (label) chips.push(h('span.chip.field', { title: f.label }, label));
+  }
+  if (defs.length && filled.length) {
+    const open = expandedItems.has(it.id);
+    chips.push(h(`button.chip.unfold${open ? '.on' : ''}`, {
+      title: open ? 'Hide fields' : 'Show fields',
+      onpointerdown: (e) => e.stopPropagation(),
+      onclick: () => { open ? expandedItems.delete(it.id) : expandedItems.add(it.id); store.emit(); },
+    }, svg(ICONS.chev), `${filled.length} field${filled.length === 1 ? '' : 's'}`));
+  }
+  const fieldRows = defs.length && expandedItems.has(it.id) && filled.length
+    ? h('dl.item-fields', { onclick: (e) => { if (!e.target.closest('a')) openDetails(e.currentTarget, it.id); } },
+        filled.map((f) => {
+          const v = getField(it, f.key);
+          return [h('dt', f.label), h('dd', f.type === 'url' ? h('a', { href: v, target: '_blank', rel: 'noopener noreferrer', onpointerdown: (e) => e.stopPropagation() }, v) : formatField(f, v))];
+        }))
+    : null;
+
   const row = h(`div.item${it.done ? '.done' : ''}`, { draggable: true, dataset: { item: it.id } },
     h('input.check', { type: 'checkbox', checked: it.done, 'aria-label': 'Done', onchange: (e) => toggleItem(it.id, e.currentTarget) }),
     h('div.item-main',
       h('span.item-text', { onclick: (e) => editItemText(e.currentTarget, it.id) }, it.text),
       chips.length ? h('div.chips', chips) : null,
+      fieldRows,
     ),
     h('div.item-actions',
       h('button.icon-btn', { title: 'Focus (25 min)', 'aria-label': 'Start focus timer', onclick: () => startFocus(it.id) }, svg(ICONS.play)),
@@ -566,6 +608,9 @@ function listMenu(anchor, c) {
     { label: 'Auto-height', onclick: () => store.update((s) => (findCard(s, c.id).h = 0)) },
     window.plannerDesktop && !SOLO ? { label: 'Open in its own window', onclick: () => window.plannerDesktop.openList(c.id) } : null,
     'hr',
+    ...Object.entries(FIELD_PRESETS).map(([id, p]) => (c.preset === id ? null : { label: `Card fields: ${p.name}`, onclick: () => setPreset(c.id, id) })),
+    isQueue(c) ? { label: 'Remove card fields', onclick: () => setPreset(c.id, null) } : null,
+    'hr',
     { label: 'Hide list', onclick: () => setHidden([c.id], true) },
     { label: 'Delete list', danger: true, onclick: () => deleteCard(c.id) },
   ]);
@@ -582,6 +627,49 @@ export function archiveDone(id) {
     if (s.archive.length > 1000) s.archive.length = 1000;
   });
   toast(`Archived ${n} item${n > 1 ? 's' : ''}`, { action: 'Undo', onAction: () => store.undoLast() });
+}
+
+// ---------- Card fields (queue lists) ----------
+
+/** Gives a list a preset's fields, or removes them (task values are kept either way). */
+function setPreset(id, presetId) {
+  store.update((s) => {
+    const l = findCard(s, id);
+    presetId ? applyPreset(l, presetId) : clearFields(l);
+  });
+  if (!presetId) { delete listFilters[id]; saveFilters(); }
+  toast(presetId ? `“${findCard(store.state, id).title}” now has ${FIELD_PRESETS[presetId].name} fields` : 'Card fields removed (values kept on the tasks)', { action: 'Undo', onAction: () => store.undoLast() });
+}
+
+function saveFilters() {
+  try { localStorage.setItem(FILTER_KEY, JSON.stringify(listFilters)); } catch {}
+}
+
+/** The filter chip in a queue list's header: one select field (e.g. Status) narrows the list. */
+function filterButton(c, filter) {
+  const def = fieldsOf(c).find((f) => f.filter && f.type === 'select');
+  if (!def) return null;
+  const cur = filter[def.key] || '';
+  return h(`button.list-filter${cur ? '.on' : ''}${cur && chipColor(def, cur) ? '.c-' + chipColor(def, cur) : ''}`, {
+    title: `Filter by ${def.label}`,
+    'aria-label': `Filter by ${def.label}`,
+    onpointerdown: (e) => e.stopPropagation(),
+    onclick: (e) => menu(e.currentTarget, [
+      { label: `All (${c.items.length})`, onclick: () => setListFilter(c.id, def.key, '') },
+      'hr',
+      ...def.options.map((o) => ({ label: `${o === cur ? '✓ ' : ''}${o} (${c.items.filter((it) => getField(it, def.key) === o).length})`, onclick: () => setListFilter(c.id, def.key, o) })),
+    ]),
+  }, svg(ICONS.filter), h('span', cur || 'All'));
+}
+
+export function setListFilter(listId, key, value) {
+  const f = { ...(listFilters[listId] || {}) };
+  if (value) f[key] = value;
+  else delete f[key];
+  if (Object.keys(f).length) listFilters[listId] = f;
+  else delete listFilters[listId];
+  saveFilters();
+  store.emit();
 }
 
 // ---------- Hiding lists and notes ----------
@@ -722,7 +810,7 @@ function applyFilter() {
     if (!filter) { el.classList.remove('dim'); el.querySelectorAll('.match').forEach((x) => x.classList.remove('match')); continue; }
     let hit = (c.title || c.text || '').toLowerCase().includes(filter);
     for (const it of c.items || []) {
-      const m = `${it.text} ${it.course || ''} ${it.notes || ''}`.toLowerCase().includes(filter);
+      const m = `${it.text} ${it.course || ''} ${it.notes || ''} ${searchText(c, it)}`.toLowerCase().includes(filter);
       el.querySelector(`[data-item="${it.id}"]`)?.classList.toggle('match', m);
       hit ||= m;
     }

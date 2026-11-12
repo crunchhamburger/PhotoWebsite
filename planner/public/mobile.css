@@ -123,3 +123,13 @@ html.phone .board.stacked .pets { position: fixed; top: calc(52px + var(--safe-t
 /* Hidden lists/notes pill: above the tab bar, and fixed while the Lists view scrolls. */
 html.phone .hidden-pill { right: 10px; bottom: calc(var(--bar-h) + var(--safe-b) + 12px); height: 38px; }
 html.phone .board.stacked .hidden-pill { position: fixed; }
+
+/* ---------- Card fields on a phone ---------- */
+/* Fields read fine but are edited in Details (swipe a task left); Status is a tap target on the card. */
+html.phone button.chip.field { height: 26px; padding: 0 9px; font-size: 12.5px; }
+html.phone .chip.unfold { height: 26px; }
+html.phone .item-fields { font-size: 13.5px; grid-template-columns: 1fr; gap: 2px 0; }
+html.phone .item-fields dt { margin-top: 6px; }
+html.phone .item-fields dt:first-child { margin-top: 0; }
+html.phone .list-filter { height: 28px; font-size: 12.5px; }
+html.phone .menu button.opt { min-height: 44px; }

@@ -63,6 +63,12 @@ cp outputs/<newest, not *_raw>.glb <planner>/public/models/<kind>.glb
 ```
 - Focus timer (25/5) that logs time per task, due-date notifications, search (`/`), undo (`⌘Z`),
   light/dark, JSON export/import.
+- **Card fields.** A list's ⋯ menu › *Card fields* turns it into a queue: its tasks carry
+  structured fields (a colored Status chip you can tap to change, also on a phone; text, link,
+  number, checkbox and date fields edited in the task's Details), and a filter in the list header
+  narrows it by status. Presets: *Night Queue* and *Exploration Log* (`public/js/fields.js`).
+  The definitions are stored on the list (`list.fields`) and the values on each task
+  (`item.fields`), so the board JSON describes itself; lists without fields are unchanged.
 
 ## Data
 

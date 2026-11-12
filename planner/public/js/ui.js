@@ -47,6 +47,7 @@ export const ICONS = {
   repeat: '<path d="M4 9V8a3 3 0 0 1 3-3h8l-2-2M16 11v1a3 3 0 0 1-3 3H5l2 2"/>',
   chev: '<path d="m7 8 3 3 3-3"/>',
   sync: '<path d="M16 6.5A6.5 6.5 0 0 0 4.3 7.5M4 13.5a6.5 6.5 0 0 0 11.7-1M16 3v3.5h-3.5M4 17v-3.5h3.5"/>',
+  filter: '<path d="M3 5h14l-5.5 6.5V16l-3-1.5v-3L3 5z"/>',
 };
 
 // ---------- Dates ----------

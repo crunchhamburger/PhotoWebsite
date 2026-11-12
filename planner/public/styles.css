@@ -429,3 +429,53 @@ body:not(.side-closed) .toasts { right: calc(var(--side-w) + 16px); }
   body:not(.side-closed) .toasts { right: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ---------- Card fields (queue lists) ---------- */
+/* Chip colors for select fields (Status, Decision): the name comes from the field definition. */
+.chip.c-gray { color: var(--fg-muted); }
+.chip.c-blue { color: #7cc7ff; border-color: color-mix(in srgb, #7cc7ff 45%, transparent); }
+.chip.c-yellow { color: #ffd166; border-color: color-mix(in srgb, #ffd166 45%, transparent); }
+.chip.c-green { color: #5ee0b0; border-color: color-mix(in srgb, #5ee0b0 45%, transparent); }
+.chip.c-orange { color: #ff9e7a; border-color: color-mix(in srgb, #ff9e7a 45%, transparent); }
+.chip.c-red { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+:root[data-theme='light'] .chip.c-blue { color: #1f5fd1; }
+:root[data-theme='light'] .chip.c-yellow { color: #9a6a00; }
+:root[data-theme='light'] .chip.c-green { color: #1c8a62; }
+:root[data-theme='light'] .chip.c-orange { color: #c2561f; }
+button.chip { cursor: pointer; font-family: inherit; }
+button.chip.field { font-weight: 500; }
+button.chip.field:hover { border-color: currentColor; }
+.chip.field.empty { color: var(--fg-faint); font-weight: 400; border-style: dashed; }
+.chip.unfold { color: var(--fg-faint); background: transparent; }
+.chip.unfold svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; transition: transform .2s var(--ease); }
+.chip.unfold.on svg { transform: rotate(180deg); }
+.chip.unfold:hover { color: var(--fg); }
+/* Unfolded fields under a task: a label/value grid; click to edit in Details. */
+.item-fields {
+  display: grid; grid-template-columns: minmax(84px, auto) 1fr; gap: 3px 10px; margin: 6px 0 2px;
+  padding: 8px 10px; border-radius: 7px; background: var(--bg); border: 1px solid var(--line); font-size: 12.5px; cursor: pointer;
+}
+.item-fields dt { color: var(--fg-faint); white-space: nowrap; }
+.item-fields dd { margin: 0; color: var(--fg); white-space: pre-wrap; word-break: break-word; min-width: 0; }
+.item-fields dd a { color: #7cc7ff; word-break: break-all; }
+/* Status filter in a queue list's header. */
+.list-filter {
+  display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 6px; flex: none;
+  border: 1px solid var(--line); background: var(--bg-elev2); color: var(--fg-faint); font-size: 11.5px; cursor: pointer; max-width: 110px;
+}
+.list-filter span { overflow: hidden; text-overflow: ellipsis; }
+.list-filter svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; flex: none; }
+.list-filter:hover { color: var(--fg); border-color: var(--line-strong); }
+.list-filter.on { color: var(--fg); border-color: var(--line-strong); font-weight: 500; }
+.list-filter.on.c-blue { color: #7cc7ff; } .list-filter.on.c-yellow { color: #ffd166; } .list-filter.on.c-green { color: #5ee0b0; }
+.list-filter.on.c-orange { color: #ff9e7a; } .list-filter.on.c-red { color: var(--danger); }
+/* Menu entries for a select field, with a colored dot. */
+.menu button.opt .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.menu button.opt.c-gray { color: var(--fg-muted); } .menu button.opt.c-blue { color: #7cc7ff; } .menu button.opt.c-yellow { color: #ffd166; }
+.menu button.opt.c-green { color: #5ee0b0; } .menu button.opt.c-orange { color: #ff9e7a; } .menu button.opt.c-red { color: var(--danger); }
+/* Fields section in the details popover. */
+.card-fields { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--line); }
+.card-fields h4 { margin: 0 0 8px; font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-faint); }
+.card-fields textarea.input { min-height: 54px; }
+.check-field { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--fg); }
+.check-field input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
