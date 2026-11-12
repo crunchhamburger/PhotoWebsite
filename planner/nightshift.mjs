@@ -9,7 +9,13 @@
 //   node planner/nightshift.mjs brief <title> [--date=YYYY-MM-DD] [file.md | - (stdin)]
 //   node planner/nightshift.mjs voice [--since=24h] [--all]  transcripts as JSON (with the text)
 //   node planner/nightshift.mjs processed <id> [--date=…] [file.md | -]
-//   node planner/nightshift.mjs seed <seed.json>             create the Night Shift lists/cards (idempotent)
+//   node planner/nightshift.mjs export [file]                save the full live board (default: planner/data/exports/board-<time>.json)
+//   node planner/nightshift.mjs seed <seed.json>             create the Night Shift lists/cards (needs an export from the last hour)
+//   node planner/nightshift.mjs prepare <dir>                export, write <dir>/jobs/<id>/job.json per Ready card, mark them Running
+//   node planner/nightshift.mjs collect <dir>                read each job's result.json and write the outcomes to the planner
+//
+// Agents never get the key: prepare/collect do every planner write, agents only read job.json and
+// write result.json + markdown files in their job folder.
 //
 // Settings come from .env at the repo root (git-ignored): NIGHTSHIFT_SYNC_KEY, NIGHTSHIFT_KEY_EXPIRES,
 // NIGHTSHIFT_SITE (default https://www.haozhewang.com). The key is never printed.
@@ -18,9 +24,11 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
 import { createClient, connect, parseEnv, updateEnv, DEFAULT_SITE } from './nightshift/client.mjs';
+import { exportBoard, recentExport, prepare, collect, EXPORT_MAX_AGE } from './nightshift/night.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ENV_FILE = resolve(ROOT, '.env');
+const EXPORTS = resolve(ROOT, 'planner/data/exports');
 
 const args = process.argv.slice(2);
 const flags = {};
@@ -112,13 +120,33 @@ const commands = {
     const r = await c.processed(id, { markdown, ...(flags.date ? { date: flags.date } : {}) });
     out(`Appended “Processed ${r.result.date}” under transcript ${id}`);
   },
+  async export(file) {
+    const { c } = await client();
+    out(`Exported the live board to ${await exportBoard(c, file ? { file } : { dir: EXPORTS })}`);
+  },
   async seed(file) {
     if (!file) throw new Error('seed <seed.json>');
     const spec = JSON.parse(await readFile(resolve(file), 'utf8'));
+    const backup = await recentExport(EXPORTS);
+    if (!backup) throw new Error(`seed changes the live board: first run “node planner/nightshift.mjs export” (an export from the last ${EXPORT_MAX_AGE / 60000} minutes is required; none found in planner/data/exports).`);
+    console.error(`Backup on hand: ${backup}`);
     const { c } = await client();
     const r = await c.seed(spec);
     out(r.changed ? `Added: ${r.result.join(', ')}` : 'Nothing to add: everything in the seed is already on the board.');
   },
+};
+
+commands.prepare = async (dir) => {
+  if (!dir) throw new Error('prepare <dir>');
+  const { c } = await client();
+  const m = await prepare(c, dir);
+  out(m.jobs.length ? `Prepared ${m.jobs.length} job(s) in ${resolve(dir)}/jobs (board exported to ${m.export}); they are Running now.` : 'No Ready cards; nothing prepared.');
+  for (const j of m.jobs) out(`  ${j.id}  ${j.job}`);
+};
+commands.collect = async (dir) => {
+  if (!dir) throw new Error('collect <dir>');
+  const { c } = await client();
+  for (const r of await collect(c, dir)) out(`  ${r.status.padEnd(8)} ${r.job}${r.written?.length ? `  → ${r.written.join(', ')}` : ''}${r.reason ? `  (${r.reason})` : ''}`);
 };
 
 const fn = commands[cmd];

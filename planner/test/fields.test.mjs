@@ -186,3 +186,37 @@ test('existing tasks are reconciled with the Done rule on load', async () => {
   assert.deepEqual([l.items[1].done, l.items[1].doneAt], [true, 7], 'a Done task is checked');
   assert.equal(l.items[2].done, false);
 });
+
+test('old code (site@c792012 merge, used by the deployed app and the Mac sync) keeps card fields', async () => {
+  const { mergeBoards: oldMerge } = await import('./fixtures/merge-site-c792012.js');
+  const nq = applyPreset(list({ items: [
+    { id: 'q1', text: 'CRWV pre-market brief', done: false, fields: { status: 'Ready', exploration: 'CRWV', goal: 'Brief me.' } },
+    { id: 'q2', text: 'Voice note', done: false, fields: { status: 'Ready' } },
+  ] }), 'night-queue');
+  const base = { version: 1, cards: [list({ id: 'plain', title: 'Research', items: [{ id: 'p1', text: 'Read', done: false }] }), nq], links: [], blocks: [], archive: [], settings: { theme: 'dark' }, view: {}, updatedAt: 1 };
+  // The Mac app (old code) renames q1 and checks q2; the runner (new code) sets q1's status.
+  const mac = structuredClone(base);
+  mac.cards[1].items[0].text = 'CRWV pre-market brief (renamed on the Mac)';
+  mac.cards[1].items[1].done = true;
+  mac.cards[1].items.push({ id: 'q3', text: 'added on the Mac', done: false });
+  mac.updatedAt = 2;
+  const runner = structuredClone(base);
+  runner.cards[1].items[0].fields.status = 'Done';
+  runner.cards[1].items[0].fields.result = 'https://example.com/brief';
+  runner.updatedAt = 3;
+  for (const [a, b] of [[mac, runner], [runner, mac]]) {
+    const m = oldMerge(base, a, b);
+    const q = m.cards.find((c) => c.id === 'l1');
+    assert.deepEqual(q.fields, nq.fields, 'list definitions survive');
+    assert.equal(q.preset, 'night-queue');
+    // q1 changed on both sides: the merge is per task, so the copy saved later (the runner, 3 > 2)
+    // wins whole; the Mac's rename of that one task is lost, its fields are not.
+    assert.deepEqual(q.items[0], { id: 'q1', text: 'CRWV pre-market brief', done: false, fields: { status: 'Done', exploration: 'CRWV', goal: 'Brief me.', result: 'https://example.com/brief' } });
+    // q2 changed only on the Mac: its edit stays, and the fields it never knew about stay with it.
+    assert.deepEqual(q.items[1], { id: 'q2', text: 'Voice note', done: true, fields: { status: 'Ready' } });
+    assert.equal(q.items[2].text, 'added on the Mac');
+  }
+  // First link (no base): old code pairs lists by title and still keeps the fields.
+  const linked = oldMerge(null, mac, runner);
+  assert.deepEqual(linked.cards.find((c) => c.id === 'l1').fields, nq.fields);
+});

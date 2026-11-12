@@ -98,6 +98,26 @@ Briefs are tasks titled `YYYY-MM-DD` in Morning Briefs whose notes hold the mark
 section per job. Voice transcripts are tasks in Voice Inbox titled with their date and time
 (`2026-11-12 21:40`), notes = the transcript. The seed file and `.env` are never committed.
 
+### A night, and who holds the key
+
+The sync key lives only in `.env` and is only ever read by `nightshift.mjs`. Agents (Claude or
+anything else doing the actual work) never run with it: they get a folder, not the planner.
+
+```sh
+node planner/nightshift.mjs prepare ~/night/2026-11-12   # 1. runner: export the board, write jobs/<id>/job.json, mark Running
+#   2. agents: for each jobs/<id>/, read job.json (the card, the rules, any transcripts) and write
+#      result.json ({ status: Done|Partial|Blocked, notes?, stuck?, result?, questions?, briefs?,
+#      processed? }) plus the markdown files it names. Run them from that folder, as a user or in a
+#      sandbox that cannot read the repo's .env.
+node planner/nightshift.mjs collect ~/night/2026-11-12   # 3. runner: every planner write, from result.json
+```
+
+A job with no result.json, or one whose status isn't Done/Partial/Blocked, is marked Blocked with
+the reason and nothing else of it is written. Every run starts with a full export in
+`planner/data/exports/`, which is also what `seed` insists on (one from the last hour) before it
+changes the live board. Scores and review minutes are left for the morning checker pass:
+`node planner/nightshift.mjs patch <id> score=2 reviewMinutes=6`.
+
 ## Data
 
 The board is one JSON document saved to `planner/data/board.json` (git-ignored) and to the
