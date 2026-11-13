@@ -1,0 +1,17 @@
+[
+  {
+    "file": "wsj-01-nvidia-free-cash-flow.png",
+    "caption": "Nvidia quarterly free cash flow, fiscal 2026 to fiscal 2028; the last four quarters are analyst projections that keep rising (FactSet via WSJ).",
+    "url": "https://www.wsj.com/finance/stocks/how-the-ai-trade-hijacked-the-treasury-market-for-a-month-3fa26a9f"
+  },
+  {
+    "file": "prices-01-h100-3m.png",
+    "caption": "Ornn H100 compute index, three months: the early-November peak above $3.50, two dips to $3.10 and the rebound to $3.39 on the latest point (Ornn).",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "ft-01-oil-balance-surplus.png",
+    "caption": "Global oil balance by month, January to October 2026: the deficit peaked near 6.3mn b/d in March and flipped to a surplus of about 2mn b/d in October (IEA via FT).",
+    "url": "https://www.ft.com/content/20b68fe2-9d60-4c0c-b714-1f3e03015823"
+  }
+]
