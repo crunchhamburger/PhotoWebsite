@@ -10,7 +10,7 @@ import LineChart from '../components/charts/LineChart.astro';
 import BarChart from '../components/charts/BarChart.astro';
 import VoicePlayer from '../components/VoicePlayer.astro';
 import SpeedControl from '../components/SpeedControl.astro';
-import { getBrief, placeCharts, audioPath, episodeText, episodeHref, hasZh, localizeChart, zhVoices, type Episode } from '../lib/podcast';
+import { getBrief, placeCharts, audioPath, episodeText, episodeHref, hasZh, hasZhAudio, localizeChart, zhVoices, type Episode } from '../lib/podcast';
 import { langFromUrl, useT } from '../i18n';
 
 interface Props {
@@ -63,8 +63,8 @@ const back = lang === 'zh' ? '/zh/podcast' : '/podcast';
       <p class="lede">{headline}</p>
       {showNotice && <p class="notice">{t('podcast.noZh')}</p>}
       <div class="listen">
-        <span class="eyebrow">{useZh ? t('podcast.listen') : 'Listen · narrated brief'}</span>
-        {useZh ? (
+        <span class="eyebrow">{useZh ? t(hasZhAudio(episode) ? 'podcast.listen' : 'podcast.listenEn') : 'Listen · narrated brief'}</span>
+        {useZh && hasZhAudio(episode) ? (
           <VoicePlayer voices={zhVoices(episode)} label={t('podcast.play', { title })} />
         ) : (
           <audio controls preload="metadata" src={audioPath(episode, briefLang)} aria-label={t('podcast.play', { title })}></audio>

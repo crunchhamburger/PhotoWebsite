@@ -11,13 +11,15 @@ export async function getEpisodes(): Promise<Episode[]> {
   return episodes.sort((a, b) => b.data.date.getTime() - a.data.date.getTime() || b.id.localeCompare(a.id));
 }
 
-/** Whether an episode has a Chinese edition (Chinese audio plus the Chinese brief or headline). */
-export const hasZh = (ep: Episode) => Boolean(ep.data.audio_zh);
+/** Whether an episode has a Chinese edition (the Chinese brief and title, with or without Chinese audio). */
+export const hasZh = (ep: Episode) => Boolean(ep.data.audio_zh || ep.data.title_zh);
+/** Whether it has Chinese narration. Without it, Chinese pages play the English audio. */
+export const hasZhAudio = (ep: Episode) => Boolean(ep.data.audio_zh);
 
 /** Public URL of an episode's MP3 (the import script names it after the slug; Chinese: <slug>.zh.mp3).
  *  Chinese pages fall back to the English audio when an episode has no Chinese edition. */
 export const audioPath = (ep: Episode, lang: Lang = 'en') =>
-  lang === 'zh' && hasZh(ep) ? `/podcast/audio/${ep.id}.zh.mp3` : `/podcast/audio/${ep.id}.mp3`;
+  lang === 'zh' && hasZhAudio(ep) ? `/podcast/audio/${ep.id}.zh.mp3` : `/podcast/audio/${ep.id}.mp3`;
 /** Path of the MP3 on disk, relative to the project root. */
 export const audioFile = (ep: Episode) => `public/podcast/audio/${ep.id}.mp3`;
 
@@ -28,7 +30,7 @@ export function episodeText(ep: Episode, lang: Lang) {
   return {
     title: (zh && d.title_zh) || d.title,
     headline: (lang === 'zh' && d.headline_zh) || d.headline,
-    duration: zh ? (d.duration_zh ?? d.duration) : d.duration,
+    duration: zh && hasZhAudio(ep) ? (d.duration_zh ?? d.duration) : d.duration,
   };
 }
 
@@ -168,7 +170,7 @@ export function localizeChart<T extends { after: string; title: string; note?: s
 /** The Chinese narrations of an episode, in display order: the main voice and an optional second one. */
 export function zhVoices(ep: Episode): { name: string; src: string; duration?: number }[] {
   const d = ep.data;
-  if (!hasZh(ep)) return [];
+  if (!hasZhAudio(ep)) return [];
   const voices = [{ name: d.voice_zh ?? '中文', src: `/podcast/audio/${ep.id}.zh.mp3`, duration: d.duration_zh }];
   if (d.audio_zh_2) voices.push({ name: d.voice_zh_2 ?? '第二配音', src: `/podcast/audio/${ep.id}.zh-2.mp3`, duration: d.duration_zh_2 });
   return voices;
