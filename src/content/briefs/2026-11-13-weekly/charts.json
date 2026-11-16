@@ -1,0 +1,22 @@
+[
+  {
+    "file": "01-ai-datacentre-stocks.png",
+    "caption": "Goldman Sachs US AI data-centre basket vs US infrastructure basket and the S&P 500, rebased to May 2024: the AI basket peaked near 390 in mid-2026 and was falling well before the midterms (Bloomberg, Goldman Sachs via FT)",
+    "url": "https://www.ft.com/content/d5adde7e-68cc-455b-ba78-b39cc3676b7a"
+  },
+  {
+    "file": "02-sp500-sectors-since-june.png",
+    "caption": "S&P 500 sector price change, Jun 30 to Nov 13: energy +22%, healthcare +19%, industrials −9%, technology −11% (FactSet via FT)",
+    "url": "https://www.ft.com/content/d5adde7e-68cc-455b-ba78-b39cc3676b7a"
+  },
+  {
+    "file": "03-rotation-to-defensives.png",
+    "caption": "S&P 500 sector returns before and after Oct 6: info tech went from +31.8% to −14.3% while healthcare, staples and utilities turned up (Bloomberg via FT)",
+    "url": "https://www.ft.com/content/936376d1-4a69-4a3c-8975-3c55e9cb9d42"
+  },
+  {
+    "file": "04-h100-index-3m.png",
+    "caption": "Ornn H100 rental index, 3 months: the early-November peak near $3.53, two dips to $3.10, a rebound to $3.39 and $3.19 on the Nov 13 print; +11% over three months",
+    "url": "https://dashboard.ornnai.com/compute"
+  }
+]
