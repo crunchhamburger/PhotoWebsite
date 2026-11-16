@@ -1,0 +1,27 @@
+[
+  {
+    "file": "wsj-02-ai-stocks-since-oct6-heatmap.png",
+    "caption": "Fourteen AI-linked stocks since the Oct 6 Nasdaq record, through Nov 13: Intel, Sandisk, CoreWeave and Dell are hit hardest; Apple, Amazon, Tesla and Microsoft least (FactSet via WSJ).",
+    "url": "https://www.wsj.com/finance/stocks/the-month-that-rocked-the-ai-trade-and-rewired-wall-street-f33d3af3"
+  },
+  {
+    "file": "ft-02-sp500-sector-performance.png",
+    "caption": "S&P 500 sector price change, Jun 30 to Nov 13: technology −11%, industrials −9%, energy +22% (FactSet and State Street via FT).",
+    "url": "https://www.ft.com/content/d5adde7e-68cc-455b-ba78-b39cc3676b7a"
+  },
+  {
+    "file": "prices-01-h100-1m.png",
+    "caption": "Ornn H100 compute index, one month: the early-November peak near $3.53, the dips to $3.10, the Nov 12 high at $3.39 and the slide to $3.06 (Ornn).",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "wsj-01-anthropic-valuation-by-round.png",
+    "caption": "Anthropic's valuation by funding round, from the 2021 Series A to $965B in May 2026 and the $1.33T IPO target (PitchBook via WSJ).",
+    "url": "https://www.wsj.com/finance/investing/the-investors-set-to-win-big-in-anthropics-ipo-a2fc795c"
+  },
+  {
+    "file": "ft-01-ipo-class-of-2026.png",
+    "caption": "Average share-price change from offer for the top 10 US IPOs each year, 2021 to 2026: the 2026 group is about −20% through Nov 12, against gains in the four prior years (Bloomberg via FT).",
+    "url": "https://www.ft.com/content/7974acec-e378-4298-a1a7-2b16b00d8b32"
+  }
+]
