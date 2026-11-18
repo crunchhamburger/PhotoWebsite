@@ -15,4 +15,5 @@ planner/public/models/
 .vercel/
 
 # Local design-hook settings
-.impeccable/
+**/.impeccable/config.local.json
+**/.impeccable/hook.cache.json

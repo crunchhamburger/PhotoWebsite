@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "public/index.html"
+        ],
+        "createdAt": "2026-11-18T21:50:25.805Z",
+        "reason": "Claude: #pet-thumb has no src on purpose; pets.js sets it to a rendered thumbnail at load (pre-existing markup)"
+      }
+    ]
+  }
+}
