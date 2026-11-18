@@ -11,6 +11,15 @@
         ],
         "createdAt": "2026-11-18T21:50:25.805Z",
         "reason": "Claude: #pet-thumb has no src on purpose; pets.js sets it to a rendered thumbnail at load (pre-existing markup)"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "public/inbox.css"
+        ],
+        "createdAt": "2026-11-18T21:51:14.949Z",
+        "reason": "Claude: .vi-md blockquote's neutral left rule marks quoted Markdown in briefs and Night Shift output (standard blockquote convention), not a colored card accent"
       }
     ]
   }
