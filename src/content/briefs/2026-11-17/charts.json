@@ -1,0 +1,12 @@
+[
+  {
+    "file": "ft-01-nvidia-share-price.png",
+    "caption": "Nvidia share price, Nov 2024 to Nov 2026: a peak near $240 in October and about $160 now (LSEG via FT).",
+    "url": "https://www.ft.com/content/4a3b9892-67c6-4177-8503-80c0a5eb3b60"
+  },
+  {
+    "file": "prices-01-h100-index-1m.png",
+    "caption": "Ornn H100 compute index, one month: $3.16/hr, with the rebound from the Nov 14 low of $3.06 (Ornn).",
+    "url": "https://dashboard.ornnai.com/compute"
+  }
+]
