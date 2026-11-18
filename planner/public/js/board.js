@@ -605,6 +605,7 @@ function listMenu(anchor, c) {
     { label: 'Connect to…', onclick: () => startConnect(c.id) },
     { label: 'Auto-height', onclick: () => store.update((s) => (findCard(s, c.id).h = 0)) },
     window.plannerDesktop && !SOLO ? { label: 'Open in its own window', onclick: () => window.plannerDesktop.openList(c.id) } : null,
+    c.preset === 'voice-inbox' ? { label: 'Open the Voice Inbox app', onclick: () => (location.href = 'voice-inbox/') } : null,
     'hr',
     ...Object.entries(FIELD_PRESETS).map(([id, p]) => (c.preset === id ? null : { label: `Card fields: ${p.name}`, onclick: () => setPreset(c.id, id) })),
     isQueue(c) ? { label: 'Remove card fields', onclick: () => setPreset(c.id, null) } : null,

@@ -98,6 +98,15 @@ Briefs are tasks titled `YYYY-MM-DD` in Morning Briefs whose notes hold the mark
 section per job. Voice transcripts are tasks in Voice Inbox titled with their date and time
 (`2026-11-12 21:40`), notes = the transcript. The seed file and `.env` are never committed.
 
+### Voice Inbox app
+
+`/voice-inbox/` locally and `/planner/voice-inbox` on the website (`public/voice-inbox/`): a
+capture-first view of the same Voice Inbox list. Dictate with the mic (Web Speech API, Chrome and
+Safari) or paste a transcript; saving stamps it with the date and time, which is what the runner
+keys on. Each note shows whether it is waiting for tonight or processed, and unfolds the runner's
+output rendered from Markdown (`public/js/markdown.js`). It uses the planner's store, so saves go
+through the same versioned sync, and the board's Voice Inbox list menu links to it.
+
 ### A night, and who holds the key
 
 The sync key lives only in `.env` and is only ever read by `nightshift.mjs`. Agents (Claude or

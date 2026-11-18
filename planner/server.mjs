@@ -92,6 +92,8 @@ async function handle(req, res) {
   if (path.endsWith('/')) path += 'index.html';
   const file = resolve(PUBLIC, '.' + path);
   if (file !== PUBLIC && !file.startsWith(PUBLIC + sep)) return send(res, 404, 'not found');
+  // Sub-apps live in their own folder (/voice-inbox → voice-inbox/index.html).
+  if (!extname(file) && (await stat(file).catch(() => null))?.isDirectory()) return send(res, 302, '', { Location: path + '/' + url.search });
   try {
     const body = await readFile(file);
     return send(res, 200, body, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' });

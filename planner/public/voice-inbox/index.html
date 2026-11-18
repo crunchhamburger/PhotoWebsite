@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b0c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Voice Inbox">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="planner-api" content="/api/state">
+  <meta name="planner-ics" content="/api/ics">
+  <meta name="planner-canvas" content="/api/canvas">
+  <title>Voice Inbox</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='12' y='4' width='8' height='16' rx='4' fill='%23ff7ab6'/%3E%3Cpath d='M8 15a8 8 0 0 0 16 0' stroke='%23ff7ab6' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Raleway:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="voice.css">
+</head>
+<body>
+  <header class="vi-top">
+    <a class="vi-back" href="../" aria-label="Back to the planner"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4 6 10l6 6"/></svg></a>
+    <div class="vi-title">
+      <h1>Voice Inbox</h1>
+      <p class="vi-sub" id="vi-sub">Loading…</p>
+    </div>
+    <button class="vi-icon" id="vi-sync" title="Sync now" aria-label="Sync now"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 6.5A6.5 6.5 0 0 0 4.3 7.5M4 13.5a6.5 6.5 0 0 0 11.7-1M16 3v3.5h-3.5M4 17v-3.5h3.5"/></svg></button>
+    <span class="vi-dot" id="vi-dot" title="Saved"></span>
+  </header>
+
+  <main class="vi-main">
+    <section class="vi-capture" id="vi-capture" aria-label="New voice note">
+      <div class="vi-capture-head">
+        <span class="vi-now" id="vi-now"></span>
+        <span class="vi-live" id="vi-live" hidden><i></i><i></i><i></i><i></i><i></i></span>
+      </div>
+      <textarea id="vi-text" rows="3" placeholder="Speak, or paste a transcript…" aria-label="Transcript"></textarea>
+      <div class="vi-interim" id="vi-interim" aria-live="polite"></div>
+      <div class="vi-capture-foot">
+        <button class="vi-mic" id="vi-mic" aria-label="Dictate" aria-pressed="false">
+          <span class="ring"></span><span class="ring"></span>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="2.5" width="6" height="10" rx="3"/><path d="M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5M7.5 17.5h5"/></svg>
+        </button>
+        <span class="vi-hint" id="vi-hint">Stamped with the time when you save. The Night Shift runner picks it up tonight.</span>
+        <button class="vi-save" id="vi-save" disabled>Save note</button>
+      </div>
+    </section>
+
+    <nav class="vi-filter" id="vi-filter" aria-label="Show">
+      <span class="vi-ink" id="vi-ink"></span>
+      <button data-f="all" aria-pressed="true">All</button>
+      <button data-f="new" aria-pressed="false">New</button>
+      <button data-f="done" aria-pressed="false">Processed</button>
+    </nav>
+
+    <section class="vi-feed" id="vi-feed" aria-live="polite"></section>
+  </main>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <div class="menu" id="menu" hidden></div>
+  <div class="popover" id="popover" hidden></div>
+  <script type="module" src="voice.js"></script>
+</body>
+</html>
