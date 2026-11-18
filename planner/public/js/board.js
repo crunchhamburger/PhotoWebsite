@@ -44,6 +44,7 @@ function applyView() {
   board.style.backgroundPosition = glow.style.backgroundPosition = `${view.x}px ${view.y}px`;
   const zl = document.getElementById('zoom-level');
   if (zl) zl.textContent = `${Math.round(view.zoom * 100)}%`;
+  drawMapSoon();
 }
 
 // Glides the camera to a target view. Any wheel/drag cancels it.
@@ -244,6 +245,7 @@ function paint(s) {
   drawLinks();
   applyFilter();
   updateHiddenPill(s);
+  drawMapSoon();
 }
 
 // ---------- Animations ----------
@@ -691,11 +693,17 @@ function updateHiddenPill(s) {
   const hiddenCards = s.cards.filter((c) => c.hidden);
   if (!hiddenPill) {
     hiddenPill = h('button.hidden-pill', { onclick: (e) => openHiddenPanel(e.currentTarget) });
-    board.append(hiddenPill);
+    (document.getElementById('dock-hidden') || board).append(hiddenPill);
   }
   hiddenPill.hidden = !hiddenCards.length;
   hiddenPill.replaceChildren(svg(ICONS.eyeOff), `${hiddenCards.length} hidden`);
   hiddenPill.title = hiddenCards.map((c) => (c.kind === 'note' ? 'Note' : c.title)).join(', ');
+}
+
+/** The hidden-cards panel, from the omnibox (anchored to the dock's pill, or the board). */
+export function showHiddenPanel() {
+  if (!store.state.cards.some((c) => c.hidden)) return toast('Nothing is hidden');
+  openHiddenPanel(hiddenPill && !hiddenPill.hidden ? hiddenPill : { x: innerWidth / 2 - 150, y: innerHeight - 380 });
 }
 
 function openHiddenPanel(anchor) {
@@ -1164,6 +1172,111 @@ export function focusCard(id) {
   const r = board.getBoundingClientRect();
   const z = Math.min(MAX_Z, Math.max(MIN_Z, Math.min((r.width - 24) / el.offsetWidth, 1.6)));
   glideTo({ zoom: z, x: (r.width - el.offsetWidth * z) / 2 - c.x * z, y: 16 - c.y * z }, 520);
+}
+
+// ---------- Map ----------
+// Every card on the board as a block in its color, the screen as a frame. Click or drag on it to
+// move there. A first step toward a linked "map" view of the planner.
+
+const MAP_KEY = 'planner.map';
+const mapBox = document.getElementById('minimap');
+const mapCanvas = document.getElementById('minimap-canvas');
+let mapFrame = 0;
+let mapGeom = null; // how the last drawing maps board coordinates to the canvas
+
+export function toggleMap(on) {
+  if (!mapBox || passive) return;
+  const show = on ?? mapBox.hidden;
+  mapBox.hidden = !show;
+  document.getElementById('map-btn')?.setAttribute('aria-pressed', String(show));
+  try { localStorage.setItem(MAP_KEY, show ? '1' : '0'); } catch {}
+  if (show) drawMap();
+}
+
+function drawMapSoon() {
+  if (!mapBox || mapBox.hidden || mapFrame) return;
+  mapFrame = requestAnimationFrame(() => { mapFrame = 0; drawMap(); });
+}
+
+function drawMap() {
+  if (!mapBox || mapBox.hidden || !store.state) return;
+  const cards = store.state.cards.filter((c) => !c.hidden);
+  const W = mapCanvas.clientWidth;
+  const H = mapCanvas.clientHeight;
+  if (!W || !H) return;
+  const dpr = devicePixelRatio || 1;
+  if (mapCanvas.width !== Math.round(W * dpr)) { mapCanvas.width = Math.round(W * dpr); mapCanvas.height = Math.round(H * dpr); }
+  const g = mapCanvas.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  // The visible part of the board, in board coordinates.
+  const r = board.getBoundingClientRect();
+  const vis = { x: -view.x / view.zoom, y: -view.y / view.zoom, w: r.width / view.zoom, h: r.height / view.zoom };
+  let x0 = vis.x, y0 = vis.y, x1 = vis.x + vis.w, y1 = vis.y + vis.h;
+  const rects = cards.map((c) => {
+    const el = cardEls.get(c.id);
+    const rc = { x: c.x, y: c.y, w: el?.offsetWidth || c.w || 300, h: el?.offsetHeight || c.h || 160, color: c.color, note: c.kind === 'note' };
+    x0 = Math.min(x0, rc.x); y0 = Math.min(y0, rc.y); x1 = Math.max(x1, rc.x + rc.w); y1 = Math.max(y1, rc.y + rc.h);
+    return rc;
+  });
+  const pad = 40;
+  x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
+  const k = Math.min(W / (x1 - x0), H / (y1 - y0));
+  const ox = (W - (x1 - x0) * k) / 2 - x0 * k;
+  const oy = (H - (y1 - y0) * k) / 2 - y0 * k;
+  mapGeom = { k, ox, oy, vis };
+  const css = getComputedStyle(document.documentElement);
+  for (const rc of rects) {
+    g.globalAlpha = rc.note ? 0.45 : 0.75;
+    g.fillStyle = rc.color || '#a3a19c';
+    roundRect(g, ox + rc.x * k, oy + rc.y * k, Math.max(3, rc.w * k), Math.max(3, rc.h * k), 2);
+    g.fill();
+  }
+  g.globalAlpha = 1;
+  g.strokeStyle = css.getPropertyValue('--fg').trim() || '#fff';
+  g.lineWidth = 1.5;
+  roundRect(g, ox + vis.x * k, oy + vis.y * k, vis.w * k, vis.h * k, 3);
+  g.stroke();
+  g.globalAlpha = 0.06;
+  g.fillStyle = g.strokeStyle;
+  g.fill();
+  g.globalAlpha = 1;
+}
+
+function roundRect(g, x, y, w, h, r) {
+  g.beginPath();
+  g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h);
+}
+
+/** Centers the screen on the board point under the pointer. */
+function mapGo(e, smooth) {
+  if (!mapGeom) return;
+  const rc = mapCanvas.getBoundingClientRect();
+  const bx = (e.clientX - rc.left - mapGeom.ox) / mapGeom.k;
+  const by = (e.clientY - rc.top - mapGeom.oy) / mapGeom.k;
+  const r = board.getBoundingClientRect();
+  const target = { zoom: view.zoom, x: r.width / 2 - bx * view.zoom, y: r.height / 2 - by * view.zoom };
+  if (smooth) glideTo(target, 420);
+  else {
+    cancelGlide();
+    view = target;
+    applyView();
+    saveView();
+  }
+}
+
+if (mapCanvas && !passive) {
+  mapCanvas.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    mapCanvas.setPointerCapture(e.pointerId);
+    mapGo(e, true);
+    const move = (ev) => mapGo(ev, false);
+    mapCanvas.addEventListener('pointermove', move);
+    mapCanvas.addEventListener('pointerup', () => mapCanvas.removeEventListener('pointermove', move), { once: true });
+  });
+  addEventListener('resize', drawMapSoon);
+  try { if (localStorage.getItem(MAP_KEY) === '1') requestAnimationFrame(() => toggleMap(true)); } catch {}
 }
 
 // ---------- Item drag & drop between lists ----------

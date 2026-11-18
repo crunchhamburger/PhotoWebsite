@@ -4,8 +4,10 @@
 import { store } from './store.js';
 import { h, menu, toast } from './ui.js';
 import { toggleItem, openDetails, startFocus, scheduleNext } from './actions.js';
-import { render, fit, setFilter } from './board.js';
+import { render, fit } from './board.js';
 import { showTab } from './sidebar.js';
+import { openOmni, close as closeOmni } from './omni.js';
+import { voiceStats, latestBrief, briefSeen } from './inbox.js';
 
 const VIEW_KEY = 'planner.mobile.view';
 const root = document.documentElement;
@@ -31,17 +33,33 @@ const ICON = {
   today: '<rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="m9 14.5 2 2 4-4"/>',
   more: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.8 12h2.4M18.8 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/>',
+  sun: '<path d="M3.5 18h17M6.5 18a5.5 5.5 0 0 1 11 0M12 5v3M5 8.5l2 2M19 8.5l-2 2"/>',
   search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
 };
-const tab = (id, label, paths) => h('button.m-tab', { dataset: { tab: id }, 'aria-label': label }, icon(paths), h('span', label));
+const tab = (id, label, paths) => h('button.m-tab', { dataset: { tab: id }, 'aria-label': label }, icon(paths), h('span', label), h('i.m-badge', { hidden: true }));
+// Today · the board (Lists or Board, tap again to switch) · add · Voice · Brief. Calendar and
+// Settings are tabs inside the Today sheet.
 const bar = h('nav.m-bar', { 'aria-label': 'Sections' },
-  tab('board', 'Board', ICON.board),
-  tab('lists', 'Lists', ICON.lists),
-  h('button.m-add', { 'aria-label': 'Quick add', onclick: () => document.getElementById('quick-add-btn').click() }, icon(ICON.plus)),
   tab('today', 'Today', ICON.today),
-  tab('more', 'Settings', ICON.more),
+  tab('view', 'Lists', ICON.lists),
+  h('button.m-add', { 'aria-label': 'Add, find or run a command', onclick: () => openOmni() }, icon(ICON.plus)),
+  tab('voice', 'Voice', ICON.mic),
+  tab('brief', 'Brief', ICON.sun),
 );
 document.body.append(bar);
+
+/** Badges on the bar: voice notes waiting, an unread brief. */
+function barBadges() {
+  const v = bar.querySelector('[data-tab="voice"] .m-badge');
+  const n = voiceStats().waiting;
+  v.hidden = !n;
+  v.textContent = n > 9 ? '9+' : n ? String(n) : '';
+  const b = latestBrief();
+  bar.querySelector('[data-tab="brief"] .m-badge').hidden = !(b && b.key !== briefSeen());
+}
+store.subscribe(barBadges);
+document.addEventListener('planner:brief-seen', barBadges);
 
 let view = 'board';
 try { view = localStorage.getItem(VIEW_KEY) === 'lists' ? 'lists' : 'board'; } catch {}
@@ -53,17 +71,26 @@ function setSide(open, which) {
   markTabs();
 }
 function markTabs() {
-  const active = !sideOpen() ? view : document.querySelector('.tabs [aria-selected="true"]')?.dataset.tab === 'settings' ? 'more' : 'today';
+  const pane = document.querySelector('.tabs [aria-selected="true"]')?.dataset.tab;
+  const active = !sideOpen() ? 'view' : pane === 'voice' || pane === 'brief' ? pane : 'today';
   for (const b of bar.querySelectorAll('.m-tab')) b.classList.toggle('on', b.dataset.tab === active);
+  // The view tab says which view you're in; tapping it again switches.
+  const vt = bar.querySelector('[data-tab="view"]');
+  vt.querySelector('svg').replaceWith(icon(view === 'lists' ? ICON.lists : ICON.board));
+  vt.querySelector('span').textContent = view === 'lists' ? 'Lists' : 'Board';
+  vt.setAttribute('aria-label', `${view === 'lists' ? 'Lists' : 'Board'} (tap again to switch)`);
 }
 bar.addEventListener('click', (e) => {
   const b = e.target.closest('.m-tab');
   if (!b) return;
   const t = b.dataset.tab;
-  if (t === 'today') return setSide(!(sideOpen() && b.classList.contains('on')), 'today');
-  if (t === 'more') return setSide(!(sideOpen() && b.classList.contains('on')), 'settings');
-  setSide(false);
-  setView(t);
+  if (t === 'view') {
+    if (sideOpen()) return setSide(false);
+    setView(view === 'lists' ? 'board' : 'lists');
+    return toast(view === 'lists' ? 'Lists view' : 'Board view', { ms: 1000 });
+  }
+  // Today, Voice and Brief open the sheet on that tab; tapping the open one closes it.
+  setSide(!(sideOpen() && b.classList.contains('on')), t);
 });
 for (const t of document.querySelectorAll('.tabs [role=tab]')) t.addEventListener('click', () => requestAnimationFrame(markTabs));
 
@@ -180,22 +207,13 @@ board.addEventListener('touchend', async (e) => {
 
 // ---------- Search from the top bar ----------
 
-const searchBtn = h('button.icon-btn#m-search-btn', { 'aria-label': 'Search tasks', onclick: () => {
-  root.classList.toggle('searching');
-  if (root.classList.contains('searching')) document.getElementById('search').focus();
-  else {
-    document.getElementById('search').value = '';
-    setFilter('');
-  }
-} }, icon(ICON.search));
+const searchBtn = h('button.icon-btn#m-search-btn', { 'aria-label': 'Add, find or run a command', onclick: () => (root.classList.contains('omni-open') ? closeOmni() : openOmni()) }, icon(ICON.search));
 document.querySelector('.top-actions').prepend(searchBtn);
-document.getElementById('search').addEventListener('blur', (e) => {
-  if (!e.target.value) root.classList.remove('searching');
-});
 
 // ---------- Start ----------
 
 document.body.classList.add('side-closed');
 setView(view);
 markTabs();
+barBadges();
 render();

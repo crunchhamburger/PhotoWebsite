@@ -18,6 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Raleway:wght@500;600;700&display=swap">
   <link rel="stylesheet" href="voice.css">
+  <link rel="stylesheet" href="../inbox.css">
 </head>
 <body>
   <header class="vi-top">
@@ -31,33 +32,7 @@
     <span class="vi-dot" id="vi-dot" title="Saved"></span>
   </header>
 
-  <main class="vi-main">
-    <section class="vi-capture" id="vi-capture" aria-label="New voice note">
-      <div class="vi-capture-head">
-        <span class="vi-now" id="vi-now"></span>
-        <span class="vi-live" id="vi-live" hidden><i></i><i></i><i></i><i></i><i></i></span>
-      </div>
-      <textarea id="vi-text" rows="3" placeholder="Speak, or paste a transcript…" aria-label="Transcript"></textarea>
-      <div class="vi-interim" id="vi-interim" aria-live="polite"></div>
-      <div class="vi-capture-foot">
-        <button class="vi-mic" id="vi-mic" aria-label="Dictate" aria-pressed="false">
-          <span class="ring"></span><span class="ring"></span>
-          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="2.5" width="6" height="10" rx="3"/><path d="M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5M7.5 17.5h5"/></svg>
-        </button>
-        <span class="vi-hint" id="vi-hint">Stamped with the time when you save. The Night Shift runner picks it up tonight.</span>
-        <button class="vi-save" id="vi-save" disabled>Save note</button>
-      </div>
-    </section>
-
-    <nav class="vi-filter" id="vi-filter" aria-label="Show">
-      <span class="vi-ink" id="vi-ink"></span>
-      <button data-f="all" aria-pressed="true">All</button>
-      <button data-f="new" aria-pressed="false">New</button>
-      <button data-f="done" aria-pressed="false">Processed</button>
-    </nav>
-
-    <section class="vi-feed" id="vi-feed" aria-live="polite"></section>
-  </main>
+  <main class="vi-main" id="vi-main"></main>
 
   <div class="toasts" id="toasts" aria-live="polite"></div>
   <div class="menu" id="menu" hidden></div>

@@ -1,13 +1,16 @@
-// Planner bootstrap: wires the store, whiteboard, side panel, quick add, search and shortcuts.
-import { store, findCard, lists, listByTag } from './store.js';
+// Planner bootstrap: wires the store, whiteboard, side panel, command bar (omnibox, now chip,
+// brief and voice) and shortcuts.
+import { store, lists } from './store.js';
 import { calendar } from './feeds.js';
-import { parseQuickAdd } from './parse.js';
-import { h, fmtDue, fmtEst, toast } from './ui.js';
-import { initBoard, render, addList, addNote, fit, zoomBy, resetZoom, setFilter, revealFirstMatch, reveal, isVisible, getLastListId, isTyping, viewCenter } from './board.js';
-import { renderSide, showTab, moveInk } from './sidebar.js';
-import { addParsed, notify } from './actions.js';
+import { fmtDue, toast } from './ui.js';
+import { initBoard, render, addList, addNote, fit, zoomBy, resetZoom, isTyping, viewCenter, toggleMap, showHiddenPanel } from './board.js';
+import { renderSide, showTab, moveInk, openVoice, openBrief } from './sidebar.js';
+import { notify, startFocus } from './actions.js';
 import * as fx from './motion.js';
 import { initPets, syncPet } from './pets.js';
+import { initOmni, openOmni } from './omni.js';
+import { initNow } from './now.js';
+import { voiceStats, latestBrief, briefSeen } from './inbox.js';
 
 const SIDE_KEY = 'planner.side';
 const SYNC_EVERY = 15 * 60000;
@@ -59,7 +62,32 @@ function toggleSide() {
 showTab('today');
 if (innerWidth < 860) document.body.classList.add('side-closed');
 
-// ---------- Top bar ----------
+// Drag the panel's left edge to make it wider or narrower (remembered; double-click resets).
+const SIDE_W_KEY = 'planner.side.w';
+const setSideW = (w) => document.documentElement.style.setProperty('--side-w', `${Math.round(Math.min(Math.max(w, 320), Math.min(720, innerWidth - 360)))}px`);
+try { const w = Number(localStorage.getItem(SIDE_W_KEY)); if (w) setSideW(w); } catch {}
+const resizer = document.getElementById('side-resize');
+resizer.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  resizer.setPointerCapture(e.pointerId);
+  document.body.classList.add('side-resizing');
+  const move = (ev) => { setSideW(innerWidth - ev.clientX); moveInk(); };
+  const up = () => {
+    resizer.removeEventListener('pointermove', move);
+    document.body.classList.remove('side-resizing');
+    try { localStorage.setItem(SIDE_W_KEY, String(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--side-w')))); } catch {}
+  };
+  resizer.addEventListener('pointermove', move);
+  resizer.addEventListener('pointerup', up, { once: true });
+  resizer.addEventListener('pointercancel', up, { once: true });
+});
+resizer.addEventListener('dblclick', () => {
+  document.documentElement.style.removeProperty('--side-w');
+  try { localStorage.removeItem(SIDE_W_KEY); } catch {}
+  moveInk();
+});
+
+// ---------- Board dock ----------
 
 document.getElementById('add-list').addEventListener('click', () => addList());
 document.getElementById('add-note').addEventListener('click', () => addNote());
@@ -67,9 +95,69 @@ document.getElementById('zoom-in').addEventListener('click', () => zoomBy(1.2));
 document.getElementById('zoom-out').addEventListener('click', () => zoomBy(1 / 1.2));
 document.getElementById('zoom-level').addEventListener('click', resetZoom);
 document.getElementById('zoom-fit').addEventListener('click', () => fit());
+document.getElementById('map-btn').addEventListener('click', () => toggleMap());
+
+// ---------- Command bar ----------
+
 document.getElementById('theme-btn').addEventListener('click', (e) => toggleTheme(e.currentTarget));
+document.getElementById('brief-btn').addEventListener('click', () => openBrief());
+document.getElementById('voice-btn').addEventListener('click', () => openVoice({ dictate: true }));
+document.getElementById('quick-add-btn').addEventListener('click', () => openOmni());
 addEventListener('resize', moveInk);
 document.fonts?.ready.then(moveInk);
+
+/** Badges: a dot when there's a brief you haven't opened, the count of voice notes waiting. */
+function updateBadges() {
+  const b = latestBrief();
+  const unread = !!b && b.key !== briefSeen();
+  document.getElementById('brief-dot').hidden = !unread;
+  document.getElementById('tab-brief-dot').hidden = !unread;
+  document.getElementById('brief-btn').title = b ? `Morning brief${unread ? ' · new' : ''}${b.questions ? ` · ${b.questions} question${b.questions > 1 ? 's' : ''} for you` : ''} (B)` : 'Morning brief (B)';
+  const { waiting } = voiceStats();
+  for (const id of ['voice-count', 'tab-voice-count']) {
+    const el = document.getElementById(id);
+    el.hidden = !waiting;
+    el.textContent = waiting > 9 ? '9+' : String(waiting);
+  }
+  document.getElementById('voice-btn').title = `Voice note${waiting ? ` · ${waiting} waiting for tonight` : ''} (V)`;
+}
+updateBadges();
+store.subscribe(updateBadges);
+document.addEventListener('planner:brief-seen', updateBadges);
+
+initNow({ onFocus: (id) => startFocus(id), onOpen: () => showTab('today') });
+
+const I = {
+  mic: '<rect x="7" y="2.5" width="6" height="10" rx="3"/><path d="M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5"/>',
+  sun: '<path d="M3 15h14M5.5 15a4.5 4.5 0 0 1 9 0M10 4v2.5M4.2 7.2l1.6 1.6M15.8 7.2l-1.6 1.6"/>',
+  today: '<rect x="3" y="4" width="14" height="13" rx="2.5"/><path d="M3 8h14M7 2.5v3M13 2.5v3M7.5 12l2 2 3.5-3.5"/>',
+  cal: '<rect x="3" y="4" width="14" height="13" rx="2.5"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/>',
+  list: '<rect x="3" y="3.5" width="14" height="13" rx="2.5"/><path d="M6.5 8h7M6.5 11h5"/>',
+  note: '<path d="M4 3.5h12v8.5l-4 4.5H4z"/><path d="M12 16.5V12h4"/>',
+  fit: '<path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/>',
+  map: '<path d="M3 5.5 7.5 3.5l5 2 4.5-2v11l-4.5 2-5-2L3 16.5z"/><path d="M7.5 3.5v11M12.5 5.5v11"/>',
+  eye: '<path d="M3 3l14 14M8.5 5.2A7.7 7.7 0 0 1 10 5c4.5 0 7.5 5 7.5 5a13 13 0 0 1-2.2 2.8M5.6 6.6C3.6 8 2.5 10 2.5 10s3 5 7.5 5c1 0 1.9-.2 2.7-.5"/>',
+  moon: '<path d="M10 3a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7Z"/>',
+  panel: '<rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M12.5 3.5v13"/>',
+  gear: '<circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2M10 15.5v2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M2.5 10h2M15.5 10h2M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/>',
+  sync: '<path d="M16 6.5A6.5 6.5 0 0 0 4.3 7.5M4 13.5a6.5 6.5 0 0 0 11.7-1M16 3v3.5h-3.5M4 17v-3.5h3.5"/>',
+};
+initOmni([
+  { label: 'Record a voice note', group: 'Capture', key: 'V', icon: I.mic, suggest: true, keywords: 'voice dictate inbox mic', run: () => openVoice({ dictate: true }) },
+  { label: 'New list', group: 'Capture', key: 'L', icon: I.list, suggest: true, run: () => addList(viewCenter()) },
+  { label: 'New sticky note', group: 'Capture', icon: I.note, suggest: true, keywords: 'note pad', run: () => addNote() },
+  { label: 'Read the morning brief', group: 'Go to', key: 'B', icon: I.sun, suggest: true, keywords: 'night shift brief', run: () => openBrief() },
+  { label: 'Plan my day', group: 'Go to', key: '1', icon: I.today, suggest: true, keywords: 'today agenda', run: () => showTab('today') },
+  { label: 'Voice Inbox', group: 'Go to', key: '3', icon: I.mic, keywords: 'notes transcripts', run: () => openVoice() },
+  { label: 'Calendar', group: 'Go to', key: '4', icon: I.cal, suggest: true, run: () => showTab('calendar') },
+  { label: 'Settings', group: 'Go to', key: '5', icon: I.gear, keywords: 'feeds canvas google preferences', run: () => showTab('settings') },
+  { label: 'Fit the whole board', group: 'Board', key: 'F', icon: I.fit, suggest: true, keywords: 'zoom overview', run: () => fit() },
+  { label: 'Show the map', group: 'Board', key: 'M', icon: I.map, suggest: true, keywords: 'minimap navigator', run: () => toggleMap() },
+  { label: 'Show hidden lists and notes', group: 'Board', icon: I.eye, keywords: 'hidden unhide', run: () => showHiddenPanel() },
+  { label: 'Switch light / dark', group: 'App', icon: I.moon, keywords: 'theme dark light', run: () => toggleTheme(document.getElementById('theme-btn')) },
+  { label: 'Show or hide the side panel', group: 'App', key: '\\', icon: I.panel, run: () => toggleSide() },
+  { label: 'Sync calendars now', group: 'App', icon: I.sync, keywords: 'refresh canvas google', run: () => calendar.sync() },
+]);
 
 /** Light/dark with a circular reveal spreading from the button (View Transitions). */
 function toggleTheme(btn) {
@@ -103,108 +191,14 @@ document.addEventListener('planner:saved', (e) => {
 });
 document.addEventListener('planner:toast', (e) => toast(e.detail.text, { kind: e.detail.kind }));
 
-// ---------- Search ----------
-
-const search = document.getElementById('search');
-search.addEventListener('input', () => setFilter(search.value));
-search.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') revealFirstMatch();
-  if (e.key === 'Escape') {
-    search.value = '';
-    setFilter('');
-    search.blur();
-  }
-});
-
-// ---------- Quick add ----------
-
-const dlg = document.getElementById('quick');
-const qi = document.getElementById('quick-input');
-const preview = document.getElementById('quick-preview');
-
-function openQuick() {
-  qi.value = '';
-  prevChips = new Set();
-  renderPreview();
-  dlg.showModal();
-  qi.focus();
-  fx.play(dlg, [{ opacity: 0, transform: 'translateY(-14px) scale(.96)', filter: 'blur(4px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], fx.SPRING);
-}
-
-// Chips that weren't in the preview a keystroke ago pop in.
-let prevChips = new Set();
-function popNewChips() {
-  const now = new Set();
-  [...preview.children].forEach((c) => {
-    now.add(c.textContent);
-    if (!prevChips.has(c.textContent)) fx.popIn(c, { from: 0.5 });
-  });
-  prevChips = now;
-}
-
-function targetFor(p) {
-  return listByTag(store.state, p.list) || findCard(store.state, getLastListId()) || lists(store.state)[0];
-}
-
-function renderPreview() {
-  const p = parseQuickAdd(qi.value);
-  const chips = [];
-  if (!qi.value.trim()) {
-    preview.replaceChildren(h('span.chip', `→ ${targetFor(p)?.title ?? 'first list'}`));
-    return;
-  }
-  const t = listByTag(store.state, p.list);
-  chips.push(h('span.chip', { style: t ? { color: t.color } : {} }, p.list && !t ? `→ new list “${p.list}”` : `→ ${(t || targetFor(p))?.title}`));
-  if (p.due) {
-    const d = fmtDue(p.due.toISOString(), p.hasTime);
-    chips.push(h(`span.chip.${d.status}`, d.label));
-  }
-  if (p.est) chips.push(h('span.chip', `~${fmtEst(p.est)}`));
-  if (p.priority) chips.push(h(`span.chip.p${p.priority}`, '!'.repeat(p.priority)));
-  if (p.repeat) chips.push(h('span.chip', `↻ ${p.repeat}`));
-  preview.replaceChildren(...chips);
-  popNewChips();
-}
-
-qi.addEventListener('input', renderPreview);
-document.getElementById('quick-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const p = parseQuickAdd(qi.value);
-  const from = qi.getBoundingClientRect();
-  qi.value = '';
-  dlg.close();
-  if (!p.text) return;
-  const { listId, itemId } = addParsed(p, getLastListId());
-  const l = findCard(store.state, listId);
-  toast(`Added to ${l.title}`, { action: 'Show', onAction: () => reveal(listId) });
-  // The task flies from the input to its place in the list (gliding there first if it's off screen).
-  const launch = () => {
-    const target = document.querySelector(`.card [data-item="${itemId}"]`);
-    if (target) fx.flyChip(p.text, { left: from.left + 18, top: from.top + 14 }, target, l.color);
-  };
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (isVisible(listId)) launch();
-    else reveal(listId, { pulse: false }).then(launch);
-  }));
-});
-// Chrome can leave focus on the input of a closed <dialog>, which would swallow shortcuts.
-// The close event is async: skip it if quick add was already reopened.
-dlg.addEventListener('close', () => {
-  if (dlg.open) return;
-  qi.value = '';
-  qi.blur();
-  document.getElementById('board').focus({ preventScroll: true });
-});
-dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
-document.getElementById('quick-add-btn').addEventListener('click', openQuick);
-
 // ---------- Shortcuts ----------
 
+const TAB_KEYS = { 1: 'today', 2: 'brief', 3: 'voice', 4: 'calendar', 5: 'settings' };
 addEventListener('keydown', (e) => {
   const mod = e.metaKey || e.ctrlKey;
   if (mod && e.key.toLowerCase() === 'k') {
     e.preventDefault();
-    return dlg.open ? dlg.close() : openQuick();
+    return openOmni();
   }
   if (mod && e.key.toLowerCase() === 'z' && !isTyping(e.target)) {
     e.preventDefault();
@@ -212,16 +206,16 @@ addEventListener('keydown', (e) => {
     if (!ok) toast(e.shiftKey ? 'Nothing to redo' : 'Nothing to undo', { ms: 1500 });
     return;
   }
-  const typing = isTyping(e.target) && !e.target.closest('dialog:not([open])');
-  if (mod || e.altKey || typing || dlg.open) return;
+  if (mod || e.altKey || isTyping(e.target) || document.querySelector('dialog[open]')) return;
   const k = e.key;
-  if (k === 'n' || k === 'N') { e.preventDefault(); openQuick(); }
-  else if (k === '/') { e.preventDefault(); search.focus(); }
+  if (k === 'n' || k === 'N') { e.preventDefault(); openOmni(); }
+  else if (k === '/') { e.preventDefault(); openOmni('/'); }
   else if (k === 'l' || k === 'L') addList(viewCenter());
   else if (k === 'f' || k === 'F') fit();
-  else if (k === '1') showTab('today');
-  else if (k === '2') showTab('calendar');
-  else if (k === '3') showTab('settings');
+  else if (k === 'm' || k === 'M') toggleMap();
+  else if (k === 'b' || k === 'B') openBrief();
+  else if (k === 'v' || k === 'V') { e.preventDefault(); openVoice({ dictate: true }); }
+  else if (TAB_KEYS[k]) showTab(TAB_KEYS[k]);
   else if (k === '\\') toggleSide();
   else if (k === '=' || k === '+') zoomBy(1.2);
   else if (k === '-') zoomBy(1 / 1.2);

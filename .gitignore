@@ -13,3 +13,6 @@ planner/data/
 # Planner: generated pet models (fan art of copyrighted characters, kept local)
 planner/public/models/
 .vercel/
+
+# Local design-hook settings
+.impeccable/

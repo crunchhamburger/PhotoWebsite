@@ -1,4 +1,5 @@
-// Side panel: Today (plan my day), Calendar (workload heatmap + day timeline), Settings.
+// Side panel: Today (plan my day), Brief (the Night Shift's morning brief), Voice (the Voice Inbox),
+// Calendar (workload heatmap + day timeline), Settings.
 import { store, uid, lists, findItem, COLORS } from './store.js';
 import { calendar, workload, defaultEstimate, canvasToken, setCanvasToken, startOfDay, addDays, sameDay } from './feeds.js';
 import { gcal } from './gcal.js';
@@ -6,9 +7,10 @@ import { h, fill, svg, ICONS, fmtDue, fmtDay, fmtMonth, fmtHours, fmtTime, fmtEs
 import { toggleItem, openDetails, scheduleNext, createBlock, updateBlock, deleteBlock } from './actions.js';
 import { dragItemId, reveal } from './board.js';
 import * as fx from './motion.js';
+import { mountVoice, mountBriefs, voiceStats, latestBrief, briefSeen, markBriefSeen } from './inbox.js';
 
-const panes = { today: document.getElementById('pane-today'), calendar: document.getElementById('pane-calendar'), settings: document.getElementById('pane-settings') };
-const TABS = ['today', 'calendar', 'settings'];
+const TABS = ['today', 'brief', 'voice', 'calendar', 'settings'];
+const panes = Object.fromEntries(TABS.map((t) => [t, document.getElementById(`pane-${t}`)]));
 let tab = 'today';
 let month = startOfDay(new Date());
 month.setDate(1);
@@ -44,7 +46,41 @@ export function moveInk() {
   ink.style.width = on.offsetWidth + 'px';
 }
 
+// Brief and Voice are the shared components (inbox.js), built the first time their tab opens.
+const mounted = {};
+function inboxPane(name) {
+  const pane = panes[name];
+  if (!mounted[name]) {
+    const status = h('span.pane-status');
+    const body = h('div.pane-body');
+    const page = name === 'brief' ? 'briefs/' : 'voice-inbox/';
+    pane.replaceChildren(
+      h('div.pane-head',
+        h('div', h('h2', name === 'brief' ? 'Morning brief' : 'Voice Inbox'), status),
+        h('a.btn.small.ghost', { href: page, target: window.plannerDesktop ? '_self' : '_blank', title: 'Open as a full page' }, 'Full page', svg('<path d="M8 4h8v8M16 4 7 13M5 7v9h9"/>'))),
+      body);
+    const onStatus = (t) => (status.textContent = t);
+    mounted[name] = name === 'brief' ? mountBriefs(body, { onStatus }) : mountVoice(body, { onStatus });
+  }
+  mounted[name].render();
+  if (name === 'brief') markBriefSeen();
+  return mounted[name];
+}
+
+/** Opens the Voice tab; with dictate, starts listening (or focuses the box where it can't). */
+export function openVoice({ dictate = false } = {}) {
+  showTab('voice');
+  const v = inboxPane('voice');
+  requestAnimationFrame(() => (dictate ? v.dictate() : v.focus()));
+}
+export const openBrief = () => showTab('brief');
+
 export function renderSide() {
+  if (tab === 'brief' || tab === 'voice') {
+    inboxPane(tab);
+    fresh = false;
+    return;
+  }
   const pane = panes[tab];
   // Preserve a focused field (typing a feed URL while a sync finishes, for instance).
   const ae = document.activeElement;
@@ -190,6 +226,7 @@ function renderToday(pane) {
       h('div', h('h2', 'Plan my day'), h('div.muted.small', fmtDay(now))),
       syncButton(),
     ),
+    nightTiles(),
     meter(today),
     unblocked.length ? h('div.inline', { style: { marginTop: '10px', gap: '6px' } },
       h('button.btn.small', { onclick: () => {
@@ -208,6 +245,26 @@ function renderToday(pane) {
     )),
     section('Next 7 days', week, 'Nothing due this week.'),
     noFeedsHint(),
+  );
+}
+
+/** This morning's brief and the Voice Inbox, one tap away from Today. */
+function nightTiles() {
+  const b = latestBrief();
+  const v = voiceStats();
+  if (!b && !v.hasList) return null;
+  const unread = b && b.key !== briefSeen();
+  return h('div.night-tiles',
+    b ? h(`button.night-tile.brief${unread ? '.unread' : ''}`, { dataset: { key: 'tile:brief' }, onclick: () => showTab('brief') },
+      h('span.tile-kicker', svg('<path d="M3 15h14M5.5 15a4.5 4.5 0 0 1 9 0M10 4v2.5M4.2 7.2l1.6 1.6M15.8 7.2l-1.6 1.6"/>'), b.today ? 'This morning' : `Brief · ${b.date.slice(5).replace('-', '/')}`),
+      h('strong', b.sections.length ? b.sections.slice(0, 2).join(' · ') + (b.sections.length > 2 ? ` +${b.sections.length - 2}` : '') : 'Morning brief'),
+      b.questions ? h('span.tile-flag', `${b.questions} question${b.questions > 1 ? 's' : ''} for you`) : h('span.tile-sub', unread ? 'New since you last looked' : 'Read'),
+    ) : null,
+    v.hasList ? h('button.night-tile.voice', { dataset: { key: 'tile:voice' }, onclick: () => openVoice() },
+      h('span.tile-kicker', svg('<rect x="7" y="2.5" width="6" height="10" rx="3"/><path d="M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5"/>'), 'Voice Inbox'),
+      h('strong', v.waiting ? `${v.waiting} waiting for tonight` : 'All caught up'),
+      h('span.tile-sub', v.total ? `${v.total} note${v.total > 1 ? 's' : ''} · tap to record` : 'Tap to record a note'),
+    ) : null,
   );
 }
 

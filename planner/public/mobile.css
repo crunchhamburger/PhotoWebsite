@@ -55,8 +55,15 @@ html.phone .m-bar {
 /* Room for the bar: toasts, timer, zoom, pets. */
 html.phone .toasts { left: 12px; right: 12px; bottom: calc(var(--bar-h) + var(--safe-b) + 12px); justify-items: stretch; }
 html.phone .timer { bottom: calc(var(--bar-h) + var(--safe-b) + 12px) !important; }
-html.phone .zoom { left: 10px; bottom: calc(var(--bar-h) + var(--safe-b) + 10px); padding: 2px; }
-html.phone .zoom .icon-btn { width: 38px; height: 38px; }
+/* The board dock sits above the tab bar; making lists and notes lives in the + sheet there. */
+html.phone .dock { bottom: calc(var(--bar-h) + var(--safe-b) + 10px); }
+html.phone .dock #add-list, html.phone .dock #add-note, html.phone .dock #map-btn, html.phone .dock .dock-sep, html.phone .minimap { display: none !important; }
+html.phone .dock .zoom .icon-btn, html.phone .dock-btn.icon { width: 40px; height: 40px; }
+html.phone .dock .zoom-level { height: 40px; }
+html.phone #brief-btn, html.phone #voice-btn { display: none; }
+.m-tab { position: relative; }
+.m-badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 8px; height: 8px; border-radius: 999px; background: var(--accent); }
+.m-tab[data-tab='voice'] .m-badge { min-width: 16px; height: 16px; padding: 0 4px; top: 1px; background: var(--voice); color: #fff; font: 600 10px/16px var(--font-body); font-style: normal; text-align: center; }
 html.phone .board-hint { bottom: calc(var(--bar-h) + var(--safe-b) + 64px); left: 16px; right: 16px; transform: none; text-align: center; }
 
 /* ---------- Side panel as a full-screen sheet ---------- */
@@ -121,8 +128,11 @@ html.phone .board.stacked .pets { position: fixed; top: calc(52px + var(--safe-t
 @keyframes m-spin { to { transform: rotate(360deg); } }
 
 /* Hidden lists/notes pill: above the tab bar, and fixed while the Lists view scrolls. */
-html.phone .hidden-pill { right: 10px; bottom: calc(var(--bar-h) + var(--safe-b) + 12px); height: 38px; }
-html.phone .board.stacked .hidden-pill { position: fixed; }
+/* Lists view: only the hidden-cards pill stays in the dock, fixed above the tab bar. */
+html.phone .board.stacked .dock { position: fixed; }
+html.phone .board.stacked .dock > :not(.dock-slot) { display: none !important; }
+html.phone .board.stacked .dock:has(.dock-slot:empty) { display: none; }
+html.phone .dock .hidden-pill { height: 40px; }
 
 /* ---------- Card fields on a phone ---------- */
 /* Fields read fine but are edited in Details (swipe a task left); Status is a tap target on the card. */
@@ -154,3 +164,9 @@ html.phone body.sheet-open::after { content: ''; position: fixed; inset: 0; z-in
 .sheet button.danger { color: var(--danger); }
 .sheet hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
 .sheet .sheet-cancel { justify-content: center; margin-top: 4px; color: var(--fg-muted); border-top: 1px solid var(--line); border-radius: 0; }
+
+/* The omnibox on a phone: full width under the top bar, results above the keyboard. */
+html.phone.searching .omni { max-width: none; margin: 0; }
+html.phone .omni-kbd, html.phone .omni-foot, html.phone .omni-row .key { display: none; }
+html.phone .omni-list { max-height: calc(100dvh - 190px); }
+html.phone .omni-row { min-height: 48px; }
