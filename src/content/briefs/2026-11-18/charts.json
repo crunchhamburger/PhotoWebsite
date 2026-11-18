@@ -1,0 +1,12 @@
+[
+  {
+    "file": "ft-01-dollar-index.png",
+    "caption": "ICE US Dollar index since early 2024, marked with the election, tariff announcements, the start of the Iran war and the first Fed hike since 2023; the index is back near 104 (LSEG via FT).",
+    "url": "https://www.ft.com/content/b8215e9c-bed2-49e8-a36f-6d7aca599bba"
+  },
+  {
+    "file": "prices-01-h100-1m.jpg",
+    "caption": "Ornn H100 compute index, one month: $2.92/hr, at the one-month low after the $3.39 high on Nov 12 (Ornn).",
+    "url": "https://dashboard.ornnai.com/compute"
+  }
+]
