@@ -60,8 +60,7 @@
 .now-chip:hover { border-color: var(--line-strong); color: var(--fg); transform: translateY(-1px); }
 .now-chip:active { transform: scale(.97); }
 .now-chip .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--fg-faint); flex: none; }
-.now-chip.live .pulse { background: var(--ok); animation: now-pulse 2.4s ease-in-out infinite; }
-@keyframes now-pulse { 50% { opacity: .35; } }
+.now-chip.live .pulse { background: var(--ok); }
 .now-chip b { color: var(--fg); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .now-chip .when { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .now-chip .bar { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--ok); width: var(--p, 0%); transition: width 1s linear; }
@@ -190,5 +189,4 @@ body.side-resizing .side { transition: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .omni-pop, .minimap { animation: none; }
-  .now-chip.live .pulse { animation: none; }
 }
