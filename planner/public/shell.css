@@ -87,8 +87,10 @@
 
 /* ---------- Side panel ---------- */
 @media (min-width: 861px) { .side { position: relative; } }
-.side-resize { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 5; }
-.side-resize::after { content: ''; position: absolute; left: 3px; top: 0; bottom: 0; width: 2px; background: var(--accent); opacity: 0; transition: opacity .2s; }
+/* A slim strip on the panel's left edge. (motion.css gives the panel's children a min-width of the
+   panel; the strip must not inherit it, or it covers the whole panel.) */
+.side > .side-resize { position: absolute; left: 0; top: 0; bottom: 0; width: 7px; min-width: 0; cursor: col-resize; z-index: 5; }
+.side-resize::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--accent); opacity: 0; transition: opacity .2s; }
 .side-resize:hover::after, body.side-resizing .side-resize::after { opacity: .6; }
 body.side-resizing, body.side-resizing * { cursor: col-resize !important; user-select: none; }
 body.side-resizing .side { transition: none; }
