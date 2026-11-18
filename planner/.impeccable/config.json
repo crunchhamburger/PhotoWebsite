@@ -20,6 +20,15 @@
         ],
         "createdAt": "2026-11-18T21:51:14.949Z",
         "reason": "Claude: .vi-md blockquote's neutral left rule marks quoted Markdown in briefs and Night Shift output (standard blockquote convention), not a colored card accent"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "public/styles.css"
+        ],
+        "createdAt": "2026-11-18T21:57:12.509Z",
+        "reason": "Claude: .allday div / .ev left bar is the event's calendar color in the day timeline (standard calendar color-coding; encodes the source calendar), pre-existing"
       }
     ]
   }
