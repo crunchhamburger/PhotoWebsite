@@ -168,14 +168,16 @@ test('voice: transcripts from the last 24h by title or Recorded field, until pro
   // Transcripts added from the phone (by hand, so no Recorded field: the title carries the time).
   await client.commit((b) => {
     const vi = b.cards.find((c) => c.title === 'Voice Inbox');
-    vi.items.push({ id: 'v1', text: '2026-11-11 21:40', notes: 'I should finish the memo.' }, { id: 'v2', text: '2026-11-09 08:00', notes: 'old' }, { id: 'v3', text: 'untitled', notes: 'no date', fields: { recorded: '2026-11-12' } });
+    vi.items.push({ id: 'v1', text: '2026-11-11 21:40', notes: 'I should finish the memo.' }, { id: 'v2', text: '2026-11-09 08:00', notes: 'old' }, { id: 'v3', text: 'untitled', notes: 'no date', fields: { recorded: '2026-11-12' } }, { id: 'v4', text: 'typed from the phone, no date at all' });
   });
   const fresh = await client.voice({ hours: 24 });
-  assert.deepEqual(fresh.map((v) => v.id), ['v1', 'v3']);
+  assert.deepEqual(fresh.map((v) => v.id), ['v1', 'v3', 'v4'], 'dated within 24h, or undated and unprocessed');
+  assert.equal(fresh[2].recorded, null);
   assert.equal(fresh[0].transcript, 'I should finish the memo.');
   await client.processed('v1', { markdown: '### Diary\nFinished the memo.' });
+  await client.processed('v4', { markdown: 'x' });
   assert.deepEqual((await client.voice({ hours: 24 })).map((v) => v.id), ['v3']);
-  assert.deepEqual((await client.voice({ hours: 24, all: true })).map((v) => v.id), ['v1', 'v3']);
+  assert.deepEqual((await client.voice({ hours: 24, all: true })).map((v) => v.id), ['v1', 'v3', 'v4']);
   const v1 = current().cards.find((c) => c.title === 'Voice Inbox').items[0];
   assert.equal(v1.notes, 'I should finish the memo.\n\n## Processed 2026-11-12\n\n### Diary\nFinished the memo.\n');
   assert.equal(v1.fields.processed, '2026-11-12');

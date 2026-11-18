@@ -48,10 +48,11 @@ const RULES = `Night Shift rules (binding for every job)
  * Exports the board, then writes <dir>/jobs/<id>/job.json for every Ready card and marks it
  * Running. Voice jobs also get the unprocessed transcripts of the last 24h. Returns the manifest.
  */
-export async function prepare(client, dir, { now = Date.now(), voiceHours = 24 } = {}) {
+export async function prepare(client, dir, { now = Date.now(), voiceHours = 24, only = null } = {}) {
   const root = resolve(dir);
   const exported = await exportBoard(client, { dir: join(root, 'exports'), now });
-  const ready = await client.queue({ status: 'Ready' });
+  // `only`: card ids or a word from the job title, to run a subset (a first test, a re-run of one job).
+  const ready = (await client.queue({ status: 'Ready' })).filter((j) => !only || only.some((o) => j.id === o || j.job.toLowerCase().includes(o.toLowerCase())));
   const voice = ready.some((j) => j.exploration === 'Voice') ? await client.voice({ hours: voiceHours }) : [];
   const manifest = { preparedAt: new Date(now).toISOString(), export: exported, jobs: [] };
   for (const job of ready) {

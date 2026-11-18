@@ -168,7 +168,11 @@ export function createClient({ site = DEFAULT_SITE, key, fetch: fetchFn = fetch,
       });
     },
 
-    /** Voice Inbox transcripts recorded in the last `hours` (by the Recorded field or a "YYYY-MM-DD HH:MM" title), unprocessed unless `all`. */
+    /**
+     * Voice Inbox transcripts from the last `hours` (by the Recorded field or a "YYYY-MM-DD HH:MM"
+     * title). An undated item (typed in from the phone's quick add) counts as new until it is
+     * processed: skipping it silently would lose it. Processed items are left out unless `all`.
+     */
     async voice({ hours = 24, all = false, list = 'Voice Inbox' } = {}) {
       const { board } = await read();
       const l = board && listByTitle(board, list);
@@ -178,7 +182,7 @@ export function createClient({ site = DEFAULT_SITE, key, fetch: fetchFn = fetch,
         .filter((it) => {
           if (!all && getField(it, 'processed')) return false;
           const when = recordedAt(it);
-          return when == null ? false : when >= since;
+          return when == null ? true : when >= since;
         })
         .map((it) => ({ ...view(l, it), transcript: it.notes ?? '' }));
     },

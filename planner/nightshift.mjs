@@ -11,7 +11,7 @@
 //   node planner/nightshift.mjs processed <id> [--date=…] [file.md | -]
 //   node planner/nightshift.mjs export [file]                save the full live board (default: planner/data/exports/board-<time>.json)
 //   node planner/nightshift.mjs seed <seed.json>             create the Night Shift lists/cards (needs an export from the last hour)
-//   node planner/nightshift.mjs prepare <dir>                export, write <dir>/jobs/<id>/job.json per Ready card, mark them Running
+//   node planner/nightshift.mjs prepare <dir> [--only=id,word]  export, write <dir>/jobs/<id>/job.json per Ready card, mark them Running
 //   node planner/nightshift.mjs collect <dir>                read each job's result.json and write the outcomes to the planner
 //
 // Agents never get the key: prepare/collect do every planner write, agents only read job.json and
@@ -139,7 +139,7 @@ const commands = {
 commands.prepare = async (dir) => {
   if (!dir) throw new Error('prepare <dir>');
   const { c } = await client();
-  const m = await prepare(c, dir);
+  const m = await prepare(c, dir, flags.only ? { only: String(flags.only).split(',') } : {});
   out(m.jobs.length ? `Prepared ${m.jobs.length} job(s) in ${resolve(dir)}/jobs (board exported to ${m.export}); they are Running now.` : 'No Ready cards; nothing prepared.');
   for (const j of m.jobs) out(`  ${j.id}  ${j.job}`);
 };

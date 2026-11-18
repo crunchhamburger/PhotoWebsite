@@ -73,6 +73,13 @@ test('prepare: one folder per Ready job with everything the agent may read, jobs
   assert.equal(current().cards.find((c) => c.title === 'Night Queue').items[2].fields.status, 'Draft');
 });
 
+test('prepare --only runs a subset by id or by a word of the title', async () => {
+  const { client, dir } = await setup();
+  const m = await prepare(client, dir, { now: NOW, only: ['voice'] });
+  assert.deepEqual(m.jobs.map((j) => j.job), ['Voice note → diary']);
+  assert.deepEqual((await client.queue({ status: 'Ready' })).map((j) => j.job), ['CRWV filing watch'], 'the other job stays Ready');
+});
+
 test('collect: results become planner writes; a missing or bad result blocks only that job', async () => {
   const { client, dir, current } = await setup();
   const m = await prepare(client, dir, { now: NOW });
