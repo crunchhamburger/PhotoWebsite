@@ -1,0 +1,12 @@
+/* Morning Briefs reader: one card per day, its sections as folds, the latest day open. */
+.br-day { padding: 14px 16px 4px; }
+.br-date { margin: 0; font: 700 22px/1.15 var(--font-display); letter-spacing: .01em; }
+.br-date small { display: block; font: 500 12.5px var(--font-body); color: var(--fg-muted); margin-top: 3px; }
+.br-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px 12px; }
+.br-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 500; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+:root[data-theme='light'] .br-chip { color: #2a35c9; }
+.br-section .vi-fold-btn { font-size: 15px; }
+.br-section .vi-fold-btn .n { color: var(--fg-muted); font-weight: 400; font-size: 13px; margin-left: 2px; }
+.vi-md .br-questions { margin: 10px 0 4px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--warn) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); }
+.vi-md .br-questions h3 { margin: 0 0 6px; color: var(--warn); font-size: 13px; letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-body); }
+.vi-md .br-questions ul { margin: 0; }

@@ -239,6 +239,9 @@ test('the Voice Inbox sub-app is served at /planner/voice-inbox with its own bas
   const js = await req('/planner/voice-inbox/voice.js', { headers: { cookie } });
   assert.equal(js.status, 200);
   assert.match(js.headers.get('content-type'), /javascript/);
+  const briefs = await req('/planner/briefs', { headers: { cookie } });
+  assert.equal(briefs.status, 200);
+  assert.match(await briefs.text(), /<base href="\/planner\/briefs\/">/);
   // The main page keeps its base.
   assert.match(await (await req('/planner/', { headers: { cookie } })).text(), /<base href="\/planner\/">/);
 });

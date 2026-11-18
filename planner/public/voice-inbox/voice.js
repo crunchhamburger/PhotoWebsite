@@ -284,6 +284,7 @@ function render() {
 
 await store.load();
 document.documentElement.dataset.theme = store.state.settings.theme === 'light' ? 'light' : 'dark';
+document.querySelector('meta[name="theme-color"]').content = store.state.settings.theme === 'light' ? '#f6f5f2' : '#0b0b0c';
 setFilter(filter);
 store.subscribe(() => {
   document.documentElement.dataset.theme = store.state.settings.theme === 'light' ? 'light' : 'dark';
