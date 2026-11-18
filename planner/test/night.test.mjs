@@ -105,9 +105,11 @@ test('collect: results become planner writes; a missing or bad result blocks onl
   const m2 = await prepare(client, dir, { now: NOW + 86400000 });
   assert.equal(m2.jobs.length, 1);
   await writeFile(join(m2.jobs[0].folder, 'diary.md'), '### Diary\nMemo finished.');
-  await writeFile(join(m2.jobs[0].folder, 'result.json'), JSON.stringify({ status: 'Done', processed: [{ id: 'v1', file: 'diary.md' }] }));
+  await writeFile(join(m2.jobs[0].folder, 'result.json'), JSON.stringify({ status: 'Done', questions: ['Stamp dates on quick-add transcripts?'], processed: [{ id: 'v1', file: 'diary.md' }] }));
   const r2 = await collect(client, dir, { now: NOW + 86400000 });
-  assert.deepEqual(r2[0].written, ['processed v1']);
+  assert.deepEqual(r2[0].written, ['brief 2026-11-13 › Voice note → diary: questions', 'processed v1']);
+  const day2 = current().cards.find((c) => c.title === 'Morning Briefs').items.find((i) => i.text === '2026-11-13');
+  assert.match(day2.notes, /## Voice note → diary: questions\n\n### Questions for you\n- Stamp dates on quick-add transcripts\?/);
   const v1 = current().cards.find((c) => c.title === 'Voice Inbox').items[0];
   assert.equal(v1.fields.processed, '2026-11-13');
   assert.match(v1.notes, /## Processed 2026-11-13\n\n### Diary\nMemo finished\./);

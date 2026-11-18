@@ -104,6 +104,11 @@ export async function collect(client, dir, { now = Date.now() } = {}) {
         const out = await client.brief({ title: b.title, markdown: withQuestions(markdown, r.questions), date: b.date || today(now) });
         written.push(`brief ${out.result.date} › ${b.title}`);
       }
+      // Questions with no brief to ride on still reach the morning: a section of their own.
+      if (!(r.briefs || []).length && Array.isArray(r.questions) && r.questions.length) {
+        const out = await client.brief({ title: `${job}: questions`, markdown: withQuestions('', r.questions), date: today(now) });
+        written.push(`brief ${out.result.date} › ${job}: questions`);
+      }
       for (const p of r.processed || []) {
         const markdown = await readFile(join(folder, p.file), 'utf8');
         await client.processed(p.id, { markdown, date: p.date || today(now) });
