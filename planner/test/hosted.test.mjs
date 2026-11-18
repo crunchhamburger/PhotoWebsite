@@ -222,3 +222,26 @@ test('versions survive the storage reporting a weak tag (W/) when reading a comp
   assert.equal((await req('/planner/api/state', { method: 'PUT', headers: { ...h, 'x-board-base': `W/${v2}` }, body: '{"n":3}' })).status, 204);
   assert.equal(strongTag('W/"abc"'), '"abc"');
 });
+
+test('the Voice Inbox sub-app is served at /planner/voice-inbox with its own base, behind the session', async () => {
+  const { req, login } = setup();
+  assert.equal((await req('/planner/voice-inbox')).status, 401);
+  const { cookie } = await login();
+  for (const p of ['/planner/voice-inbox', '/planner/voice-inbox/']) {
+    const r = await req(p, { headers: { cookie } });
+    assert.equal(r.status, 200, p);
+    const html = await r.text();
+    assert.match(html, /<base href="\/planner\/voice-inbox\/">/);
+    assert.match(html, /content="\/planner\/api\/state"/);
+    assert.match(html, /<title>Voice Inbox<\/title>/);
+    assert.equal(r.headers.get('cache-control'), 'private, no-store, max-age=0');
+  }
+  const js = await req('/planner/voice-inbox/voice.js', { headers: { cookie } });
+  assert.equal(js.status, 200);
+  assert.match(js.headers.get('content-type'), /javascript/);
+  const briefs = await req('/planner/briefs', { headers: { cookie } });
+  assert.equal(briefs.status, 200);
+  assert.match(await briefs.text(), /<base href="\/planner\/briefs\/">/);
+  // The main page keeps its base.
+  assert.match(await (await req('/planner/', { headers: { cookie } })).text(), /<base href="\/planner\/">/);
+});

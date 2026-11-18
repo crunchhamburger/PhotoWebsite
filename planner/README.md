@@ -63,6 +63,69 @@ cp outputs/<newest, not *_raw>.glb <planner>/public/models/<kind>.glb
 ```
 - Focus timer (25/5) that logs time per task, due-date notifications, search (`/`), undo (`⌘Z`),
   light/dark, JSON export/import.
+- **Card fields.** A list's ⋯ menu › *Card fields* turns it into a queue: its tasks carry
+  structured fields (a colored Status chip you can tap to change, also on a phone; text, link,
+  number, checkbox and date fields edited in the task's Details), and a filter in the list header
+  narrows it by status. Presets: *Night Queue* and *Exploration Log* (`public/js/fields.js`).
+  The definitions are stored on the list (`list.fields`) and the values on each task
+  (`item.fields`), so the board JSON describes itself; lists without fields are unchanged.
+  Status "Done" and the task's checkbox are one thing: setting Done checks the task, checking
+  the task sets Done, and unchecking it sets Ready. A task added while the list is filtered by a
+  status gets that status.
+
+## Night Shift (overnight runner)
+
+`planner/nightshift.mjs` is how a script reads and writes the Night Shift lists on the website's
+board, through the same versioned path as the Mac app: read the board and its version, change it,
+save naming that version, and on 412 (the phone saved in between) apply the change again on the
+fresh copy. It only ever changes lists that have card fields; anything else is refused before the
+save. Settings live in `.env` at the repo root (git-ignored): `NIGHTSHIFT_SYNC_KEY`,
+`NIGHTSHIFT_KEY_EXPIRES`, `NIGHTSHIFT_SITE`.
+
+```sh
+node planner/nightshift.mjs connect            # password → sync key in .env (expires in a year; the date is kept next to it)
+node planner/nightshift.mjs seed planner/data/nightshift-seed.json   # the lists, rules note and starter cards (safe to re-run)
+node planner/nightshift.mjs status             # key expiry, board version, Night Shift lists
+node planner/nightshift.mjs list-ready         # Night Queue cards with Status = Ready, as JSON
+node planner/nightshift.mjs patch <id> status=Running
+node planner/nightshift.mjs patch <id> status=Done result=https://… "notes=Last run: 2026-11-12"
+node planner/nightshift.mjs brief Pre-market --date=2026-11-12 brief.md   # Morning Briefs › date › section
+node planner/nightshift.mjs voice --since=24h  # unprocessed Voice Inbox transcripts, as JSON
+node planner/nightshift.mjs processed <id> out.md                          # appends "Processed <date>"
+```
+
+Briefs are tasks titled `YYYY-MM-DD` in Morning Briefs whose notes hold the markdown, one `##`
+section per job. Voice transcripts are tasks in Voice Inbox titled with their date and time
+(`2026-11-12 21:40`), notes = the transcript. The seed file and `.env` are never committed.
+
+### Voice Inbox app
+
+`/voice-inbox/` locally and `/planner/voice-inbox` on the website (`public/voice-inbox/`): a
+capture-first view of the same Voice Inbox list. Dictate with the mic (Web Speech API, Chrome and
+Safari) or paste a transcript; saving stamps it with the date and time, which is what the runner
+keys on. Each note shows whether it is waiting for tonight or processed, and unfolds the runner's
+output rendered from Markdown (`public/js/markdown.js`). It uses the planner's store, so saves go
+through the same versioned sync, and the board's Voice Inbox list menu links to it.
+
+### A night, and who holds the key
+
+The sync key lives only in `.env` and is only ever read by `nightshift.mjs`. Agents (Claude or
+anything else doing the actual work) never run with it: they get a folder, not the planner.
+
+```sh
+node planner/nightshift.mjs prepare ~/night/2026-11-12   # 1. runner: export the board, write jobs/<id>/job.json, mark Running
+#   2. agents: for each jobs/<id>/, read job.json (the card, the rules, any transcripts) and write
+#      result.json ({ status: Done|Partial|Blocked, notes?, stuck?, result?, questions?, briefs?,
+#      processed? }) plus the markdown files it names. Run them from that folder, as a user or in a
+#      sandbox that cannot read the repo's .env.
+node planner/nightshift.mjs collect ~/night/2026-11-12   # 3. runner: every planner write, from result.json
+```
+
+A job with no result.json, or one whose status isn't Done/Partial/Blocked, is marked Blocked with
+the reason and nothing else of it is written. Every run starts with a full export in
+`planner/data/exports/`, which is also what `seed` insists on (one from the last hour) before it
+changes the live board. Scores and review minutes are left for the morning checker pass:
+`node planner/nightshift.mjs patch <id> score=2 reviewMinutes=6`.
 
 ## Data
 

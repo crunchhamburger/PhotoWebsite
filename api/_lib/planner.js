@@ -23,6 +23,7 @@ const SESSION_DAYS = 30;
 const SYNC_DAYS = 365; // the Mac app's sync key
 const MAX_BODY = 5 * 1024 * 1024;
 const MODELS = new Set(['nailong', 'naiwa', 'naidan', 'laoshu']);
+const SUBAPPS = new Set(['voice-inbox', 'briefs']);
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -243,7 +244,9 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
       }
 
       // ---- The app's own files ----
-      const rel = rest === '' ? 'index.html' : rest;
+      // Sub-apps (the Voice Inbox) live in their own folder and get their own <base>.
+      const sub = SUBAPPS.has(rest.replace(/\/$/, '')) ? rest.replace(/\/$/, '') : '';
+      const rel = rest === '' ? 'index.html' : sub ? `${sub}/index.html` : rest;
       if (rel.startsWith('dev/') || rel.startsWith('models/') || rel.split('/').some((s) => s === '..' || s.startsWith('.'))) return text(404, 'Not found');
       const file = resolve(ROOT, rel);
       if (!file.startsWith(ROOT + sep)) return text(404, 'Not found');
@@ -254,11 +257,12 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
         return text(404, 'Not found');
       }
       const type = TYPES[extname(file)] ?? 'application/octet-stream';
-      if (rel === 'index.html') body = hostedIndex(body.toString('utf8'));
+      const isPage = rel.endsWith('index.html');
+      if (isPage) body = hostedIndex(body.toString('utf8'), sub ? `${sub}/` : '');
       return respond(200, method === 'HEAD' ? null : body, {
         'Content-Type': type,
-        // Code can be cached privately for a while; the page itself is always fresh.
-        'Cache-Control': rel === 'index.html' ? 'private, no-store, max-age=0' : 'private, max-age=300',
+        // Code can be cached privately for a while; the pages themselves are always fresh.
+        'Cache-Control': isPage ? 'private, no-store, max-age=0' : 'private, max-age=300',
       });
     } catch (e) {
       if (e.status) return text(e.status, e.message);
@@ -281,10 +285,10 @@ export function createPlannerHandler({ config, store, root = resolve(process.cwd
   }
 }
 
-/** The app's index.html as served on the site: base path and API paths under /planner. */
-export function hostedIndex(html) {
+/** A page as served on the site: base path (`dir` for a sub-app, e.g. "voice-inbox/") and API paths under /planner. */
+export function hostedIndex(html, dir = '') {
   return html
-    .replace('<head>', '<head>\n  <base href="/planner/">')
+    .replace('<head>', `<head>\n  <base href="/planner/${dir}">`)
     .replace('content="/api/state"', 'content="/planner/api/state"')
     .replace('content="/api/ics"', 'content="/planner/api/ics"')
     .replace('content="/api/canvas"', 'content="/planner/api/canvas"')
