@@ -1,0 +1,22 @@
+[
+  {
+    "file": "wsj-01-index-performance-anthropic-debut.png",
+    "caption": "S&P 500, Dow and Nasdaq intraday on Nov 19: early gains on the Anthropic open fade to losses of about 2% (FactSet via WSJ).",
+    "url": "https://www.wsj.com/livecoverage/anthropic-ipo-stock-market-today-11-19-2026/card/dow-leads-stocks-lower-after-anthropic-starts-trading-jv24jYbcrKM1TFFmALTz"
+  },
+  {
+    "file": "prices-01-h100-1m.jpg",
+    "caption": "Ornn H100 compute index, one month: $2.93/hr, holding at the one-month low after the $3.53 peak on Nov 4 (Ornn).",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "ft-02-lng-capacity-vs-demand.png",
+    "caption": "LNG demand to 2040 against existing and under-construction export capacity: 928 bcm under stated policies, 605 bcm if importers pull back further (IEA World Energy Outlook 2026 via FT).",
+    "url": "https://www.ft.com/content/1e00aad2-0007-4328-8492-0fea09aa69ad"
+  },
+  {
+    "file": "ft-01-lng-demand-scenarios.png",
+    "caption": "Change in LNG imports 2025–2035 by region in three IEA scenarios: 367, 254 and 45 bcm, against the change in supply (IEA World Energy Outlook 2026 via FT).",
+    "url": "https://www.ft.com/content/1e00aad2-0007-4328-8492-0fea09aa69ad"
+  }
+]
