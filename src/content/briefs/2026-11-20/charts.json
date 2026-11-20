@@ -1,0 +1,12 @@
+[
+  {
+    "file": "prices-01-h100-index-1m.png",
+    "caption": "Ornn H100 compute index, one month: $2.78/hr, a new one-month low, −10.32% over the month (Ornn).",
+    "url": "https://dashboard.ornnai.com/compute"
+  },
+  {
+    "file": "wsj-01-brent-futures-2026.png",
+    "caption": "Brent crude futures in 2026: a war spike above $110, a dip near $72 mid-year, a peak near $117 before the midterms, now about $92 (FactSet via WSJ).",
+    "url": "https://www.wsj.com/finance/commodities-futures/oil-prices-new-charts-f84ad9d7"
+  }
+]
